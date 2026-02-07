@@ -1,0 +1,95 @@
+/* Reset básico */
+* {
+    margin: 0;
+    padding: 0;
+    box-sizing: border-box;
+    font-family: Arial, sans-serif;
+}
+
+body {
+    background-color: #f4f4f4;
+}
+
+/* Contenedor del menú */
+nav {
+    background-color: #000;
+    color: #fff;
+    width: 100%;
+}
+
+/* Lista principal horizontal */
+ul.menu-bar {
+    list-style: none;
+    display: flex;
+    position: relative;
+    z-index: 100;
+}
+
+li {
+    position: relative;
+}
+
+/* Enlaces (Estilo visual) */
+a {
+    display: block;
+    padding: 15px 20px;
+    text-decoration: none;
+    color: white;
+    white-space: nowrap;
+    transition: background-color 0.3s;
+}
+
+a:hover {
+    background-color: #333;
+}
+
+/* Flechita indicadora para items con submenús (Opcional pero útil) */
+li.tiene-hijos>a::after {
+    content: ' ▸';
+    /* Un pequeño triangulo */
+    font-size: 0.8em;
+    margin-left: 10px;
+}
+
+/* La flecha del nivel 1 debe apuntar abajo, no a la derecha (opcional) */
+ul.menu-bar>li.tiene-hijos>a::after {
+    content: ' ▾';
+}
+
+/* --- Lógica del Dropdown (Submenús Generales) --- */
+ul.submenu {
+    display: none;
+    /* Oculto por defecto */
+    position: absolute;
+    background-color: #000;
+    list-style: none;
+    min-width: 200px;
+    border: 1px solid #333;
+    /* Borde sutil para separar */
+    z-index: 1000;
+    box-shadow: 0px 8px 16px 0px rgba(0, 0, 0, 0.2);
+}
+
+/* Mostrar submenú al hacer hover */
+li:hover>ul.submenu {
+    display: block;
+}
+
+/* --- POSICIONAMIENTO POR NIVELES --- */
+
+/* NIVEL 2: Cae verticalmente debajo del Nivel 1 */
+ul.menu-bar>li>ul.submenu {
+    top: 100%;
+    /* Justo debajo */
+    left: 0;
+}
+
+/* NIVEL 3 en adelante: Sale a la derecha del item padre */
+ul.submenu li>ul.submenu {
+    top: 0;
+    /* Alineado con la parte SUPERIOR del item padre */
+    left: 100%;
+    /* Justo a la DERECHA del item padre */
+    border-left: 1px solid #333;
+    /* Separador visual */
+}
