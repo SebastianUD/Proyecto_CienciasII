@@ -11,13 +11,11 @@ export class MenuModel {
         // Estructura jerárquica del menú.
         // Cada objeto representa un ítem que puede tener:
         // - titulo: Texto a mostrar.
-        // - url: Archivo HTML al que redirige (sin ruta relativa, la vista la resuelve).
         // - accion: Identificador opcional para lógica futura.
         // - subtemas: Array recursivo de ítems hijos.
         this.temas = [
             {
                 titulo: "Inicio",
-                url: "index",
                 accion: "inicio"
             },
             {
@@ -26,24 +24,24 @@ export class MenuModel {
                     {
                         titulo: "Internas",
                         subtemas: [
-                            { titulo: "Secuencial", url: "secuencial.html", accion: "secuencial" },
-                            { titulo: "Binario", url: "binario.html", accion: "binario" },
+                            { titulo: "Secuencial", accion: "secuencial" },
+                            { titulo: "Binario", accion: "binario" },
                             {
                                 titulo: "Transformación de Claves",
                                 subtemas: [
-                                    { titulo: "Función Hash Módulo", url: "hash_modulo.html", accion: "hash_modulo" },
-                                    { titulo: "Función Hash Cuadrado", url: "hash_cuadrado.html", accion: "hash_cuadrado" },
-                                    { titulo: "Función Hash Plegamiento", url: "hash_plegamiento.html", accion: "hash_plegamiento" },
-                                    { titulo: "Función Hash Truncamiento", url: "hash_truncamiento.html", accion: "hash_truncamiento" }
+                                    { titulo: "Función Hash Módulo", accion: "hash_modulo" },
+                                    { titulo: "Función Hash Cuadrado", accion: "hash_cuadrado" },
+                                    { titulo: "Función Hash Plegamiento", accion: "hash_plegamiento" },
+                                    { titulo: "Función Hash Truncamiento", accion: "hash_truncamiento" }
                                 ]
                             },
                             {
                                 titulo: "Por Residuos",
                                 subtemas: [
-                                    { titulo: "Árboles de búsqueda digital", url: "arb_digital.html", accion: "arb_digital" },
-                                    { titulo: "Árboles de búsqueda por residuo", url: "arb_residuo.html", accion: "arb_residuo" },
-                                    { titulo: "Árboles por residuo múltiples", url: "arb_multiple.html", accion: "arb_multiple" },
-                                    { titulo: "Árboles de Huffman", url: "arb_huffman.html", accion: "arb_huffman" }
+                                    { titulo: "Árboles de búsqueda digital", accion: "arb_digital" },
+                                    { titulo: "Árboles de búsqueda por residuo", accion: "arb_residuo" },
+                                    { titulo: "Árboles por residuo múltiples", accion: "arb_multiple" },
+                                    { titulo: "Árboles de Huffman", accion: "arb_huffman" }
                                 ]
                             }
                         ]

@@ -9,15 +9,11 @@
 export class MenuView {
     /**
      * @param {string} contenedorId - ID del elemento HTML donde se renderizará el menú.
+     * @param {Function} onNavigate - Callback que se ejecuta al seleccionar una opción de navegación.
      */
-    constructor(contenedorId) {
+    constructor(contenedorId, onNavigate) {
         this.contenedor = document.getElementById(contenedorId);
-
-        // Optimización: Calculamos la ubicación una sola vez al cargar la clase,
-        // en lugar de hacerlo por cada ítem del menú.
-        // Verificamos si estamos dentro de la carpeta 'pages' para ajustar las rutas relativas.
-        const path = window.location.pathname;
-        this.isPagesDir = path.includes('/pages/') || path.includes('\\pages\\');
+        this.onNavigate = onNavigate;
 
         // Inicializamos los listeners globales
         this._initGlobalListeners();
@@ -60,7 +56,7 @@ export class MenuView {
 
     /**
      * Método auxiliar recursivo para crear ítems de lista (<li>) y submenús (<ul>).
-     * @param {Object} item - Objeto con la información del ítem (titulo, url, subtemas, etc).
+     * @param {Object} item - Objeto con la información del ítem (titulo, accion, subtemas, etc).
      * @returns {HTMLElement} - El elemento <li> construido.
      */
     _crearItem(item) {
@@ -68,26 +64,28 @@ export class MenuView {
         const enlace = document.createElement('a');
 
         enlace.textContent = item.titulo;
-
-        // --- Lógica de Rutas ---
-        // Ajustamos los enlaces (href) dependiendo de dónde estemos (raíz vs carpeta pages)
-        if (item.url) {
-            if (item.url === 'index') {
-                // Si vamos al inicio, y estamos en pages/ debemos subir un nivel (../)
-                enlace.href = this.isPagesDir ? '../index.html' : 'index.html';
-            } else {
-                // Si vamos a una página interna:
-                // - Desde pages/: es directo (ej: secuencial.html)
-                // - Desde raíz: debemos entrar a pages/ (ej: pages/secuencial.html)
-                enlace.href = this.isPagesDir ? item.url : `pages/${item.url}`;
-            }
-        } else {
-            // Si no tiene URL, es un elemento contenedor o acción sin navegación
-            enlace.href = "#";
-        }
+        // Usamos hash para evitar recargas, la navegación es controlada por JS
+        enlace.href = "#";
 
         // Atributo de datos para lógica extra si se requiere (ej: identificadores)
-        if (item.accion) enlace.dataset.accion = item.accion;
+        if (item.accion) {
+            enlace.dataset.accion = item.accion;
+
+            // Si tiene acción y NO tiene subtemas (es un nodo hoja navegable), agregamos el listener
+            if (!item.subtemas || item.subtemas.length === 0) {
+                enlace.addEventListener('click', (e) => {
+                    e.preventDefault(); // Evitar salto de hash
+
+                    // Cerrar menús abiertos al navegar
+                    const openMenus = document.querySelectorAll('.menu-bar li.show');
+                    openMenus.forEach(menu => menu.classList.remove('show'));
+
+                    if (this.onNavigate) {
+                        this.onNavigate(item.accion);
+                    }
+                });
+            }
+        }
 
         li.appendChild(enlace);
 

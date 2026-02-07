@@ -132,7 +132,7 @@ ul.submenu {
     min-width: 220px;
     box-shadow: var(--shadow-lg);
     z-index: 1000;
-    animation: menuFade In 0.2s ease-out;
+    animation: menuFadeIn 0.2s ease-out;
 }
 
 @keyframes menuFadeIn {
