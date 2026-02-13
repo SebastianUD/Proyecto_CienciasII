@@ -130,14 +130,21 @@ class DataStructure {
 
     /**
      * Compara dos claves según el tipo de dato.
-     * Para numéricas usa comparación numérica; para texto/alfanumérico usa código ASCII.
+     * Para claves numéricas (ya paddeadas a igual longitud) usa comparación
+     * lexicográfica, que preserva el orden numérico correcto y evita
+     * pérdida de precisión con números grandes (>16 dígitos).
+     * Para texto/alfanumérico usa comparación carácter por carácter por código ASCII.
      * @param {string} a - Primera clave.
      * @param {string} b - Segunda clave.
      * @returns {number} Negativo si a < b, 0 si iguales, positivo si a > b.
      */
     _compareKeys(a, b) {
         if (this.dataType === 'numerico') {
-            return parseInt(a, 10) - parseInt(b, 10);
+            // Las claves numéricas ya están paddeadas con ceros a la misma longitud,
+            // por lo que la comparación lexicográfica preserva el orden numérico.
+            if (a < b) return -1;
+            if (a > b) return 1;
+            return 0;
         }
         // Para texto y alfanumérico: comparación carácter por carácter por código ASCII
         for (let i = 0; i < Math.min(a.length, b.length); i++) {
