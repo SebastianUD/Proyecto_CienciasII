@@ -83,8 +83,8 @@ class AlgorithmView {
                     </div>
                     <div class="config-buttons">
                         <button class="btn btn-primary" id="btn-create">Crear</button>
-                        <button class="btn btn-secondary" id="btn-clear">Limpiar</button>
                         <button class="btn btn-success" id="btn-load">Cargar</button>
+                        <button class="btn btn-secondary" id="btn-clear">Limpiar</button>
                     </div>
                 </div>
             </div>
@@ -265,6 +265,8 @@ class AlgorithmView {
         el.range.disabled = true;
         el.toggleDuplicates.style.pointerEvents = 'none';
         el.toggleDuplicates.style.opacity = '0.5';
+        el.btnCreate.disabled = true;
+        el.btnLoad.disabled = true;
 
         // Mostrar tabla y log
         el.tableContainer.style.display = '';
@@ -304,6 +306,8 @@ class AlgorithmView {
         el.toggleDuplicates.style.opacity = '';
         el.toggleYes.classList.add('active');
         el.toggleNo.classList.remove('active');
+        el.btnCreate.disabled = false;
+        el.btnLoad.disabled = false;
 
         // Deshabilitar controles de inserción
         el.inputKey.value = '';
@@ -356,6 +360,8 @@ class AlgorithmView {
         el.range.disabled = true;
         el.toggleDuplicates.style.pointerEvents = 'none';
         el.toggleDuplicates.style.opacity = '0.5';
+        el.btnCreate.disabled = true;
+        el.btnLoad.disabled = true;
 
         // Habilitar controles
         el.inputKey.disabled = false;
