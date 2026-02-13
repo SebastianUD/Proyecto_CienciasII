@@ -592,13 +592,14 @@ body {
     display: flex;
     gap: 20px;
     flex-wrap: wrap;
-    align-items: flex-start;
+    align-items: center;
 }
 
 .table-container {
     flex: 0 0 auto;
     width: fit-content;
     min-width: 220px;
+    max-width: 1000px;
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
