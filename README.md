@@ -37,9 +37,5 @@ Actualmente, el proyecto incluye los siguientes algoritmos de búsqueda interna:
     ```
 2.  Abre el archivo `index.html` en tu navegador web preferido.
 
-## 🤝 Contribución
-
-Las contribuciones son bienvenidas. Por favor, abre un issue para discutir cambios importantes antes de enviar un pull request.
-
 ---
 Desarrollado para el curso de Ciencias de la Computación II.
