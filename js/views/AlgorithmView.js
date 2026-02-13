@@ -508,7 +508,13 @@ class AlgorithmView {
     _clearHighlights() {
         const rows = this.elements.tableBody.querySelectorAll('tr');
         rows.forEach(row => {
-            row.classList.remove('highlight-checking', 'highlight-found', 'highlight-not-found');
+            row.classList.remove(
+                'highlight-checking',
+                'highlight-found',
+                'highlight-not-found',
+                'highlight-discarded',
+                'highlight-mid'
+            );
         });
     }
 }

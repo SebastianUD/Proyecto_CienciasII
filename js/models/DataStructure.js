@@ -261,31 +261,32 @@ class DataStructure {
         let low = 0;
         let high = this.count - 1;
 
-        // Reducir el rango mientras haya más de un elemento
-        while (low < high) {
+        while (low <= high) {
             const mid = Math.floor((low + high) / 2);
             const midKey = this.keys[mid];
             const cmp = this._compareKeys(searchKey, midKey);
 
-            if (cmp <= 0) {
-                // Si es menor o igual, la clave podría estar en la mitad izquierda (incluye mid)
-                steps.push({ low, high, mid, midKey, action: cmp < 0 ? 'descarta-derecha' : 'descarta-derecha' });
-                high = mid;
+            if (cmp === 0) {
+                // Clave encontrada en el punto medio
+                steps.push({ low, high, mid, midKey, action: 'encontrada' });
+                return { found: true, position: mid, steps };
+            } else if (cmp < 0) {
+                // La clave buscada es menor, descarta mitad derecha
+                steps.push({ low, high, mid, midKey, action: 'descarta-derecha' });
+                high = mid - 1;
             } else {
-                // Si es mayor, descarta la mitad izquierda
+                // La clave buscada es mayor, descarta mitad izquierda
                 steps.push({ low, high, mid, midKey, action: 'descarta-izquierda' });
                 low = mid + 1;
             }
         }
 
-        // Verificar igualdad en el último elemento restante
-        if (low <= high && this.count > 0) {
-            const finalKey = this.keys[low];
-            const isMatch = finalKey === searchKey;
-            steps.push({ low, high: low, mid: low, midKey: finalKey, action: isMatch ? 'encontrada' : 'no-encontrada' });
-            if (isMatch) {
-                return { found: true, position: low, steps };
-            }
+        // No encontrada — agregar paso final indicando fallo
+        if (steps.length === 0) {
+            steps.push({ low: 0, high: 0, mid: 0, midKey: this.keys[0] || '', action: 'no-encontrada' });
+        } else {
+            const last = steps[steps.length - 1];
+            steps.push({ low: last.low, high: last.high, mid: last.mid, midKey: last.midKey, action: 'no-encontrada' });
         }
 
         return { found: false, position: -1, steps };

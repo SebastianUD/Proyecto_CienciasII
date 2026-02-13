@@ -716,7 +716,7 @@ body {
     font-size: 0.85rem;
     color: var(--text-secondary);
     overflow-y: auto;
-    max-height: 380px;
+    max-height: 370px;
     line-height: 1.6;
     font-family: 'Consolas', 'Courier New', monospace;
 }
