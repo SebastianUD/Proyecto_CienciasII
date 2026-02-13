@@ -223,6 +223,12 @@ class AlgorithmView {
     _onCreate() {
         const el = this.elements;
 
+        // Impedir crear si ya existe una estructura activa
+        if (this.dataStructure.created) {
+            Validation.showWarning('Ya existe una estructura activa. Debe limpiarla antes de crear una nueva.');
+            return;
+        }
+
         const validation = Validation.validateCreateParams(
             el.range.value,
             el.keyLength.value,
@@ -322,6 +328,12 @@ class AlgorithmView {
      * @async
      */
     async _onLoad() {
+        // Impedir cargar si ya existe una estructura activa
+        if (this.dataStructure.created) {
+            Validation.showWarning('Ya existe una estructura activa. Debe limpiarla antes de cargar otra.');
+            return;
+        }
+
         const data = await FileManager.load();
         if (!data) return;
 

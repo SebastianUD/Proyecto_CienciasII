@@ -78,15 +78,4 @@
     sidebarToggle.addEventListener('click', toggleSidebar);
     sidebarExpand.addEventListener('click', toggleSidebar);
 
-    // Auto-expandir "Búsquedas > Internas" al cargar
-    setTimeout(() => {
-        const busquedasItem = menuTreeEl.querySelector('[data-id="busquedas"] > .menu-item');
-        if (busquedasItem) busquedasItem.click();
-
-        setTimeout(() => {
-            const internasItem = menuTreeEl.querySelector('[data-id="internas"] > .menu-item');
-            if (internasItem) internasItem.click();
-        }, 100);
-    }, 200);
-
 })();
