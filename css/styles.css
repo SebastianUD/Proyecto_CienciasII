@@ -592,6 +592,7 @@ body {
     display: flex;
     gap: 20px;
     flex-wrap: wrap;
+    align-items: flex-start;
 }
 
 .table-container {
@@ -716,7 +717,7 @@ body {
     font-size: 0.85rem;
     color: var(--text-secondary);
     overflow-y: auto;
-    max-height: 370px;
+    max-height: 420px;
     line-height: 1.6;
     font-family: 'Consolas', 'Courier New', monospace;
 }
