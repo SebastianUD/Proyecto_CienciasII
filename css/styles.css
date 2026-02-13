@@ -378,6 +378,8 @@ body {
 .config-group {
     display: flex;
     flex-direction: column;
+    flex: 1 1 0;
+    min-width: 120px;
     gap: 5px;
 }
 
@@ -391,6 +393,7 @@ body {
     .config-group label {
         min-width: fit-content;
         white-space: nowrap;
+        flex-shrink: 0;
     }
 }
 
@@ -413,7 +416,8 @@ body {
     background-color: var(--bg-card);
     color: var(--text-primary);
     transition: border-color 0.2s;
-    min-width: 100px;
+    min-width: 80px;
+    flex: 1;
 }
 
 .config-group select:focus,
@@ -591,9 +595,8 @@ body {
 }
 
 .table-container {
-    flex: 0 0 auto;
+    flex: 2 1 auto;
     min-width: 220px;
-    max-width: 320px;
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
