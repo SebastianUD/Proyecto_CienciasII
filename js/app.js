@@ -31,7 +31,9 @@
      */
     const views = {
         'busqueda-secuencial': BusquedaSecuencialView,
-        'busqueda-binaria': BusquedaBinariaView
+        'busqueda-binaria': BusquedaBinariaView,
+        'hash-mod': BusquedaHashModView,
+        'hash-cuadrado': BusquedaHashCuadradoView
     };
 
     /**

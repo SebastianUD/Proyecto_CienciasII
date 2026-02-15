@@ -33,6 +33,8 @@ class DataStructure {
         this.created = false;
         /** @type {number} Cantidad de claves insertadas */
         this.count = 0;
+        /** @type {string} Método hash: 'modulo' o 'cuadrado' */
+        this.hashMethod = 'modulo';
     }
 
     /**
@@ -41,12 +43,16 @@ class DataStructure {
      * @param {number} keyLength - Longitud de cada clave.
      * @param {string} dataType - Tipo de dato aceptado.
      * @param {boolean} allowDuplicates - Si se permiten claves repetidas.
+     * @param {string} collisionStrategy - Estrategia de colisión.
+     * @param {string} hashMethod - Método hash ('modulo' o 'cuadrado').
      */
-    create(size, keyLength, dataType, allowDuplicates) {
+    create(size, keyLength, dataType, allowDuplicates, collisionStrategy = null, hashMethod = 'modulo') {
         this.size = size;
         this.keyLength = keyLength;
         this.dataType = dataType;
         this.allowDuplicates = allowDuplicates;
+        this.collisionStrategy = collisionStrategy;
+        this.hashMethod = hashMethod;
         this.keys = new Array(size).fill(null);
         this.created = true;
         this.count = 0;
@@ -300,6 +306,83 @@ class DataStructure {
     }
 
     /**
+     * Convierte una clave a su equivalente numérico (entero o suma ASCII).
+     * @param {string} key - Clave a convertir.
+     * @returns {number}
+     */
+    getNumericValue(key) {
+        if (this.dataType === 'numerico') return parseInt(key, 10);
+        let sum = 0;
+        for (let i = 0; i < key.length; i++) sum += key.charCodeAt(i);
+        return sum;
+    }
+
+    /**
+     * Calcula la posición hash inicial (1-indexed) según el método configurado.
+     * @private
+     * @param {number} k - Valor numérico de la clave.
+     * @returns {{hash: number, k2: string|null}}
+     */
+    _getHashValue(k) {
+        if (this.hashMethod === 'modulo') {
+            return { hash: (k % this.size) + 1, k2: null };
+        }
+
+        // Método del cuadrado: extraer dígitos centrales de k^2
+        const k2 = (BigInt(k) ** 2n).toString();
+        const d = (this.size - 1).toString().length;
+        const start = Math.max(0, Math.floor((k2.length - d) / 2));
+        const val = parseInt(k2.substring(start, start + d), 10);
+        return { hash: (val % this.size) + 1, k2 };
+    }
+
+    /**
+     * Normaliza la clave con trim y padding si es numérico.
+     * @private
+     */
+    _prepareKey(rawKey) {
+        const key = rawKey.toString().trim();
+        return (this.dataType === 'numerico' && key.length < this.keyLength && /^\d+$/.test(key))
+            ? key.padStart(this.keyLength, '0') : key;
+    }
+
+    /**
+     * Inserta una clave usando la función hash activa y estrategia de colisión.
+     */
+    hashInsert(rawKey, strategyName) {
+        if (!this.created) return { success: false, error: 'Debe crear la estructura.' };
+        if (this.count >= this.size) return { success: false, error: 'Estructura llena.' };
+
+        const { valid, key, error } = this.validateKey(rawKey);
+        if (!valid) return { success: false, error };
+
+        const k = this.getNumericValue(key);
+        const { hash, k2 } = this._getHashValue(k);
+        const formula = this.hashMethod === 'cuadrado'
+            ? `h(${k}) = digCent(${k}²) = digCent(${k2}) + 1 = ${hash}`
+            : `h(${k}) = (${k} mod ${this.size}) + 1 = ${hash}`;
+
+        const result = CollisionStrategyFactory.create(strategyName, this).insert(key, hash);
+        return { ...result, hashValue: hash, formula };
+    }
+
+    /** Busca una clave usando la función hash activa. */
+    hashSearch(rawKey, strategyName) {
+        const key = this._prepareKey(rawKey);
+        const { hash } = this._getHashValue(this.getNumericValue(key));
+        return CollisionStrategyFactory.create(strategyName, this).search(key, hash);
+    }
+
+    /** Elimina una clave usando la función hash activa. */
+    hashDelete(rawKey, strategyName) {
+        if (!this.created) return { success: false, error: 'No hay estructura.' };
+        const key = this._prepareKey(rawKey);
+        if (key === '') return { success: false, error: 'Ingrese clave.' };
+        const { hash } = this._getHashValue(this.getNumericValue(key));
+        return CollisionStrategyFactory.create(strategyName, this).delete(key, hash);
+    }
+
+    /**
      * Serializa la estructura a un objeto JSON para guardar.
      * @returns {Object} Objeto con los campos de la estructura.
      */
@@ -310,7 +393,8 @@ class DataStructure {
             keyLength: this.keyLength,
             dataType: this.dataType,
             allowDuplicates: this.allowDuplicates,
-            count: this.count
+            count: this.count,
+            hashMethod: this.hashMethod
         };
     }
 
@@ -325,6 +409,7 @@ class DataStructure {
         this.dataType = data.dataType;
         this.allowDuplicates = data.allowDuplicates;
         this.count = data.count;
+        this.hashMethod = data.hashMethod || 'modulo';
         this.created = true;
     }
 

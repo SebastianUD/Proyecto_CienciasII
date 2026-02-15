@@ -301,11 +301,13 @@ class AlgorithmView {
         el.keyLength.disabled = false;
         el.range.value = '';
         el.range.disabled = false;
-        el.toggleDuplicates.classList.remove('off');
-        el.toggleDuplicates.style.pointerEvents = '';
-        el.toggleDuplicates.style.opacity = '';
-        el.toggleYes.classList.add('active');
-        el.toggleNo.classList.remove('active');
+        if (el.toggleDuplicates) {
+            el.toggleDuplicates.classList.remove('off');
+            el.toggleDuplicates.style.pointerEvents = '';
+            el.toggleDuplicates.style.opacity = '';
+        }
+        if (el.toggleYes) el.toggleYes.classList.add('active');
+        if (el.toggleNo) el.toggleNo.classList.remove('active');
         el.btnCreate.disabled = false;
         el.btnLoad.disabled = false;
 
