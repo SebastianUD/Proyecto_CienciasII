@@ -321,11 +321,46 @@ class DataStructure {
      * Calcula la posición hash inicial (1-indexed) según el método configurado.
      * @private
      * @param {number} k - Valor numérico de la clave.
-     * @returns {{hash: number, k2: string|null}}
+     * @returns {{hash: number, k2: string|null, pickedDigits: string|null}}
      */
     _getHashValue(k) {
         if (this.hashMethod === 'modulo') {
-            return { hash: (k % this.size) + 1, k2: null };
+            return { hash: (k % this.size) + 1, k2: null, pickedDigits: null, blocks: null };
+        }
+
+        if (this.hashMethod === 'truncamiento') {
+            const kStr = k.toString();
+            const d = (this.size - 1).toString().length;
+            // Seleccionar dígitos en posiciones impares (1, 3, 5, ...)
+            let pickedDigits = '';
+            for (let i = 0; i < kStr.length && pickedDigits.length < d; i++) {
+                if (i % 2 === 0) { // índice 0, 2, 4... = posiciones 1, 3, 5...
+                    pickedDigits += kStr[i];
+                }
+            }
+            const val = parseInt(pickedDigits, 10) || 0;
+            return { hash: (val % this.size) + 1, k2: null, pickedDigits, blocks: null };
+        }
+
+        if (this.hashMethod === 'plegamiento') {
+            const kStr = k.toString();
+            const d = (this.size - 1).toString().length;
+            const blocks = [];
+
+            // Dividir en bloques de tamaño d
+            for (let i = 0; i < kStr.length; i += d) {
+                blocks.push(kStr.substring(i, i + d));
+            }
+
+            // Sumar los bloques
+            const sum = blocks.reduce((acc, block) => acc + parseInt(block, 10), 0);
+            const sumStr = sum.toString();
+
+            // Tomar los últimos d dígitos (digmensig)
+            const lastDigits = sumStr.length > d ? sumStr.substring(sumStr.length - d) : sumStr;
+            const val = parseInt(lastDigits, 10);
+
+            return { hash: (val % this.size) + 1, k2: null, pickedDigits: null, blocks: blocks.join(' + '), sum, lastDigits };
         }
 
         // Método del cuadrado: extraer dígitos centrales de k^2
@@ -333,7 +368,7 @@ class DataStructure {
         const d = (this.size - 1).toString().length;
         const start = Math.max(0, Math.floor((k2.length - d) / 2));
         const val = parseInt(k2.substring(start, start + d), 10);
-        return { hash: (val % this.size) + 1, k2 };
+        return { hash: (val % this.size) + 1, k2, pickedDigits: null, blocks: null };
     }
 
     /**
@@ -357,10 +392,18 @@ class DataStructure {
         if (!valid) return { success: false, error };
 
         const k = this.getNumericValue(key);
-        const { hash, k2 } = this._getHashValue(k);
-        const formula = this.hashMethod === 'cuadrado'
-            ? `h(${k}) = digCent(${k}²) = digCent(${k2}) + 1 = ${hash}`
-            : `h(${k}) = (${k} mod ${this.size}) + 1 = ${hash}`;
+        const { hash, k2, pickedDigits, blocks, sum, lastDigits } = this._getHashValue(k);
+
+        let formula = '';
+        if (this.hashMethod === 'cuadrado') {
+            formula = `h(${k}) = digCent(${k}²) = digCent(${k2}) + 1 = ${hash}`;
+        } else if (this.hashMethod === 'truncamiento') {
+            formula = `h(${k}) = elegirdigitos impares(${pickedDigits}) + 1 = ${hash}`;
+        } else if (this.hashMethod === 'plegamiento') {
+            formula = `h(${k}) = digmensig(${blocks}) = digmensig(${sum}) = ${lastDigits} + 1 = ${hash}`;
+        } else {
+            formula = `h(${k}) = (${k} mod ${this.size}) + 1 = ${hash}`;
+        }
 
         const result = CollisionStrategyFactory.create(strategyName, this).insert(key, hash);
         return { ...result, hashValue: hash, formula };

@@ -33,7 +33,9 @@
         'busqueda-secuencial': BusquedaSecuencialView,
         'busqueda-binaria': BusquedaBinariaView,
         'hash-mod': BusquedaHashModView,
-        'hash-cuadrado': BusquedaHashCuadradoView
+        'hash-cuadrado': BusquedaHashCuadradoView,
+        'hash-truncamiento': BusquedaHashTruncamientoView,
+        'hash-plegamiento': BusquedaHashPlegamientoView
     };
 
     /**

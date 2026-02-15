@@ -33,8 +33,8 @@ const MenuModel = {
                                 children: [
                                     { id: 'hash-mod', label: 'Función Hash Mod', action: 'hash-mod', enabled: true },
                                     { id: 'hash-cuadrado', label: 'Función Hash Cuadrado', action: 'hash-cuadrado', enabled: true },
-                                    { id: 'hash-truncamiento', label: 'Función Hash Truncamiento', action: 'hash-truncamiento', enabled: false },
-                                    { id: 'hash-plegamiento', label: 'Función Hash Plegamiento', action: 'hash-plegamiento', enabled: false }
+                                    { id: 'hash-truncamiento', label: 'Función Hash Truncamiento', action: 'hash-truncamiento', enabled: true },
+                                    { id: 'hash-plegamiento', label: 'Función Hash Plegamiento', action: 'hash-plegamiento', enabled: true }
                                 ]
                             },
                             {

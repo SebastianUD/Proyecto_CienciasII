@@ -24,15 +24,82 @@ class CollisionResolver {
 
         if (this.ds.hashMethod === 'cuadrado') {
             const k2 = (BigInt(k) ** 2n).toString();
-            const h = this.ds._getHashValue(key).hash; // Ya optimizado en DataStructure
+            const h = this.ds._getHashValue(k).hash;
             return `h(${key}) = digCent(${k}²) = digCent(${k2}) + 1 = ${h}`;
+        } else if (this.ds.hashMethod === 'truncamiento') {
+            const { hash: h, pickedDigits } = this.ds._getHashValue(k);
+            return `h(${key}) = elegirdigitos impares(${pickedDigits}) + 1 = ${h}`;
+        } else if (this.ds.hashMethod === 'plegamiento') {
+            const { hash: h, blocks, sum, lastDigits } = this.ds._getHashValue(k);
+            return `h(${key}) = digmensig(${blocks}) = digmensig(${sum}) = ${lastDigits} + 1 = ${h}`;
         } else {
             const h = (k % n) + 1;
             return `h(${key}) = (${k} mod ${n}) + 1 = ${h}`;
         }
     }
 
-    // === MÉTODOS DE PRUEBA LINEAL (Linear Probing) ===
+
+
+    /**
+     * Aplica la función hash a una posición D para calcular la siguiente posición.
+     * Usado en Doble Función Hash: H'(D) = aplicar_hash(D+1)
+     * 
+     * Según el método hash:
+     * - Módulo: H'(D) = ((D + 1) mod size) + 1
+     * - Cuadrado: H'(D) = digCent((D+1)²) + 1
+     * - Truncamiento: H'(D) = elegirdigitos_impares(D+1) + 1
+     * - Plegamiento: H'(D) = digmensig(bloques de D+1) + 1
+     * 
+     * @param {number} position - Posición actual (1-indexed)
+     * @returns {number} Nueva posición calculada (1-indexed)
+     * @private
+     */
+    _applyHashToPosition(position) {
+        const input = position + 1; // D + 1
+        const { hash } = this.ds._getHashValue(input);
+        return hash;
+    }
+
+    /**
+     * Genera la fórmula de texto para mostrar en los logs de Doble Hash.
+     * 
+     * @param {number} prevPosition - Posición anterior (1-indexed)
+     * @param {number} newPosition - Nueva posición calculada (1-indexed)
+     * @returns {string} Fórmula formateada
+     * @private
+     */
+    _getDoubleHashFormula(prevPosition, newPosition) {
+        const input = prevPosition + 1;
+        const n = this.ds.size;
+
+        if (this.ds.hashMethod === 'modulo') {
+            return `H'(${prevPosition}) = ((${prevPosition} + 1) mod ${n}) + 1 = ${newPosition}`;
+        } else if (this.ds.hashMethod === 'cuadrado') {
+            const k2 = (BigInt(input) ** 2n).toString();
+            return `H'(${prevPosition}) = digCent((${prevPosition}+1)²) = digCent(${input}²) = digCent(${k2}) + 1 = ${newPosition}`;
+        } else if (this.ds.hashMethod === 'truncamiento') {
+            const kStr = input.toString();
+            const d = (n - 1).toString().length;
+            let pickedDigits = '';
+            for (let i = 0; i < kStr.length && pickedDigits.length < d; i++) {
+                if (i % 2 === 0) pickedDigits += kStr[i];
+            }
+            return `H'(${prevPosition}) = elegirdigitos_impares(${prevPosition}+1) = elegirdigitos_impares(${input}) = ${pickedDigits} + 1 = ${newPosition}`;
+        } else if (this.ds.hashMethod === 'plegamiento') {
+            const kStr = input.toString();
+            const d = (n - 1).toString().length;
+            const blocks = [];
+            for (let i = 0; i < kStr.length; i += d) {
+                blocks.push(kStr.substring(i, i + d));
+            }
+            const sum = blocks.reduce((acc, block) => acc + parseInt(block, 10), 0);
+            return `H'(${prevPosition}) = digmensig(${prevPosition}+1) = digmensig(${blocks.join(' + ')}) = digmensig(${sum}) + 1 = ${newPosition}`;
+        }
+
+        return `H'(${prevPosition}) = ${newPosition}`;
+    }
+
+    // === MÉTODOS DE PRUEBA LINEAL ===
 
     /**
      * Inserta una clave usando Prueba Lineal.
@@ -262,6 +329,15 @@ class CollisionResolver {
 
     /**
      * Inserta una clave usando Doble Hash.
+     * Para todos los métodos, se vuelve a aplicar la función hash usando D+1 como entrada,
+     * donde D es la posición (1-indexed) donde ocurrió la colisión.
+     * 
+     * Ejemplos:
+     * - Módulo: H'(D) = ((D + 1) mod size) + 1
+     * - Cuadrado: H'(D) = digCent((D+1)²) + 1
+     * - Truncamiento: H'(D) = elegirdigitos_impares(D+1) + 1
+     * - Plegamiento: H'(D) = digmensig(bloques de D+1) + 1
+     * 
      * @param {string} key - Clave a insertar.
      * @param {number} hashValue - Valor hash inicial (1-indexed).
      * @returns {Object} Resultado de la operación.
@@ -270,9 +346,6 @@ class CollisionResolver {
         let collisions = 0;
         const steps = [];
         const n = this.ds.size;
-
-        // El usuario pide H'(D) = ((D + 1) mod size) + 1
-        // D es la posición (1..N). Empezamos en hashValue.
         let currentPos = hashValue;
 
         for (let i = 0; i < n; i++) {
@@ -284,7 +357,7 @@ class CollisionResolver {
                 steps.push({
                     position: index,
                     action: 'inserted',
-                    formula: i === 0 ? null : `H'(${steps[i - 1].position + 1}) = ((${steps[i - 1].position + 1} + 1) mod ${n}) + 1 = ${currentPos}`
+                    formula: i === 0 ? null : this._getDoubleHashFormula(steps[i - 1].position + 1, currentPos)
                 });
                 return { success: true, position: index, collisions, error: null, steps };
             }
@@ -297,8 +370,8 @@ class CollisionResolver {
             });
             collisions++;
 
-            // Calcular siguiente posición usando la fórmula de Cairó
-            currentPos = ((currentPos + 1) % n) + 1;
+            // Calcular siguiente posición: aplicar la función hash a D+1
+            currentPos = this._applyHashToPosition(currentPos);
         }
 
         return { success: false, position: -1, collisions, error: 'No se encontró espacio disponible tras recorrer la tabla.', steps };
@@ -306,6 +379,8 @@ class CollisionResolver {
 
     /**
      * Busca una clave usando Doble Hash.
+     * Aplica la función hash a D+1 para calcular la siguiente posición.
+     * 
      * @param {string} key - Clave a buscar.
      * @param {number} hashValue - Valor hash inicial (1-indexed).
      * @returns {Object} Resultado de la búsqueda.
@@ -323,7 +398,7 @@ class CollisionResolver {
                 steps.push({
                     index,
                     action: 'vacio',
-                    formula: i === 0 ? null : `H'(${steps[i - 1].index + 1}) = ((${steps[i - 1].index + 1} + 1) mod ${n}) + 1 = ${currentPos}`
+                    formula: i === 0 ? null : this._getDoubleHashFormula(steps[i - 1].index + 1, currentPos)
                 });
                 return { found: false, position: -1, steps };
             }
@@ -334,7 +409,7 @@ class CollisionResolver {
                 key: currentKey,
                 action: isMatch ? 'encontrada' : 'colision',
                 formula: isMatch
-                    ? (i === 0 ? null : `H'(${steps[i - 1].index + 1}) = ((${steps[i - 1].index + 1} + 1) mod ${n}) + 1 = ${currentPos}`)
+                    ? (i === 0 ? null : this._getDoubleHashFormula(steps[i - 1].index + 1, currentPos))
                     : this._getExistingKeyFormula(currentKey)
             });
 
@@ -342,7 +417,8 @@ class CollisionResolver {
                 return { found: true, position: index, steps };
             }
 
-            currentPos = ((currentPos + 1) % n) + 1;
+            // Calcular siguiente posición: aplicar la función hash a D+1
+            currentPos = this._applyHashToPosition(currentPos);
         }
 
         return { found: false, position: -1, steps };

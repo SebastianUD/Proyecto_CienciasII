@@ -1,34 +1,33 @@
 /**
- * @fileoverview Vista de Búsqueda Hash - Método del Cuadrado (Mid-Square).
+ * @fileoverview Vista de Búsqueda Hash - Método de Plegamiento.
  * Extiende {@link HashView} para implementar la búsqueda hash
- * usando la función h(k) = digCent(k^2) + 1 con estrategias de resolución de colisiones.
- * @module views/BusquedaHashCuadradoView
+ * usando la función H(K) = digmensig((d₁...dₜ) + (dₜ₊₁...d₂ₜ) + ... + (dₖ₋ₜ...dₖ)) + 1.
+ * @module views/BusquedaHashPlegamientoView
  */
 
 /**
- * Vista del algoritmo de Búsqueda Hash con Método del Cuadrado.
+ * Vista del algoritmo de Búsqueda Hash con Método de Plegamiento.
  * @extends HashView
  */
-class BusquedaHashCuadradoView extends HashView {
+class BusquedaHashPlegamientoView extends HashView {
     /**
-     * Crea una instancia de BusquedaHashCuadradoView.
-     * @param {HTMLElement} containerEl - Elemento contenedor de la vista.
+     * Crea una instancia de BusquedaHashPlegamientoView.
+     * @param {HTMLElement} containerEl - Elemento contenedor.
      */
     constructor(containerEl) {
         super(containerEl);
-        /** @type {string} Identificador interno del algoritmo */
-        this._algorithmName = 'busqueda-hash-cuadrado';
+        this._algorithmName = 'hash-plegamiento';
     }
 
     /**
-     * Muestra la vista de búsqueda hash cuadrado.
+     * Muestra la vista de búsqueda hash por plegamiento.
      */
     show() {
-        this.render('Búsqueda Hash - Método del Cuadrado');
+        this.render('Búsqueda Hash - Método de Plegamiento');
     }
 
     /**
-     * Incluye todas las estrategias de colisión incluyendo Doble Función Hash.
+     * Filtra las estrategias de colisión para excluir Doble Función Hash.
      * @override
      * @protected
      * @returns {string}
@@ -66,19 +65,24 @@ class BusquedaHashCuadradoView extends HashView {
             return;
         }
 
-        const collisionStrategy = el.collisionStrategy.value;
-        if (!collisionStrategy || collisionStrategy === '') {
+        const collision = el.collisionStrategy.value;
+        if (!collision || collision === '') {
             Validation.showError('Debe seleccionar un método de resolución de colisiones.');
             return;
         }
 
-        const size = parseInt(el.range.value);
+        const range = parseInt(el.range.value);
         const keyLength = parseInt(el.keyLength.value);
         const dataType = el.dataType.value;
 
-        this._collisionStrategy = collisionStrategy;
-        // Crear con método hash 'cuadrado'
-        this.dataStructure.create(size, keyLength, dataType, false, collisionStrategy, 'cuadrado');
+        // Crear con método hash 'plegamiento'
+        this.dataStructure.create(range, keyLength, dataType, false, collision, 'plegamiento');
+
+        this._collisionStrategy = collision;
+
+        const strategyName = CollisionStrategyFactory.create(collision, this.dataStructure).getName();
+        this._onCreationSuccess(range, keyLength, dataType, strategyName);
+        this._renderTable();
 
         // Habilitar controles
         el.inputKey.disabled = false;
@@ -98,35 +102,29 @@ class BusquedaHashCuadradoView extends HashView {
 
         el.tableContainer.style.display = '';
         el.logContainer.style.display = '';
-
-        this._renderTable();
-
-        const strategyName = CollisionStrategyFactory.create(collisionStrategy, this.dataStructure).getName();
-        this._onCreationSuccess(size, keyLength, dataType, strategyName);
     }
 
     /**
-     * Gancho para personalizar el log de creación con la función hash específica.
+     * Log de creación específico para Plegamiento.
      * @override
      * @protected
      */
     _onCreationSuccess(size, keyLength, dataType, strategyName) {
-        let h1Text = `h(k) = digCent(k²) + 1`;
+        const d = (size - 1).toString().length;
+        const h1Text = `h(k) = digmensig(suma de bloques de ${d} dígitos) + 1`;
         let baseMsg = `Estructura hash creada: ${size} posiciones, clave de ${keyLength} carácter(es), tipo: ${dataType}, función: ${h1Text}, estrategia: ${strategyName}.`;
 
-        if (this._collisionStrategy === 'doble-hash') {
-            baseMsg += ` Lógica: H(pos) = ((pos + h2 - 1) mod ${size}) + 1.`;
-        } else if (this._collisionStrategy === 'prueba-cuadratica') {
-            baseMsg += `\nLógica: H(pos, i) = (h(k) + i²) mod ${size} + 1.`;
+        if (this._collisionStrategy === 'prueba-cuadratica') {
+            baseMsg += `\nLógica: H(D) = (h(k) + i²) mod ${size} + 1.`;
         } else if (this._collisionStrategy === 'prueba-lineal') {
-            baseMsg += `\nLógica: H(pos, i) = (h(k) + i) mod ${size} + 1.`;
+            baseMsg += `\nLógica: H(D) = (h(k) + i) mod ${size} + 1.`;
         }
 
         this._addLog(baseMsg, 'info');
     }
 
     /**
-     * Sobrescribe la inserción para usar la función hash cuadrado con estrategia.
+     * Sobrescribe la inserción para usar la función hash plegamiento con estrategia.
      * @override
      * @private
      */
@@ -166,12 +164,6 @@ class BusquedaHashCuadradoView extends HashView {
             message += ` (${result.collisions} colisión${result.collisions > 1 ? 'es' : ''})`;
         }
         message += '.';
-
-        // Mostrar conversión ASCII si no es numérico
-        if (this.dataStructure.dataType !== 'numerico') {
-            const k = this.dataStructure.getNumericValue(rawValue);
-            this._addLog(`Conversión ASCII: "${rawValue}" → k = ${k}`, 'info');
-        }
 
         this._addLog(message, 'success');
         el.inputKey.value = '';
@@ -219,13 +211,13 @@ class BusquedaHashCuadradoView extends HashView {
         el.btnDelete.disabled = true;
 
         const k = this.dataStructure.getNumericValue(displayKey);
-        const { hash: hashValue, k2 } = this.dataStructure._getHashValue(k);
+        const { hash: hashValue, blocks, sum, lastDigits } = this.dataStructure._getHashValue(k);
 
         if (this.dataStructure.dataType !== 'numerico') {
             this._addLog(`Conversión ASCII: "${displayKey}" → k = ${k}`, 'info');
         }
 
-        this._addLog(`Buscando clave "${displayKey}" usando h(${k}) = digCent(${k}²) = digCent(${k2}) + 1 = ${hashValue}...`, 'info');
+        this._addLog(`Buscando clave "${displayKey}" usando h(${k}) = digmensig(${blocks}) = digmensig(${sum}) = ${lastDigits} + 1 = ${hashValue}...`, 'info');
 
         this._animateSearch(result, displayKey).then(() => {
             this.isSearchAnimating = false;
