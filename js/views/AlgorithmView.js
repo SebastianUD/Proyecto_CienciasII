@@ -73,11 +73,11 @@ class AlgorithmView {
                         <div class="config-group">
                             <label>Claves Repetidas</label>
                             <div class="toggle-container">
-                                <span class="toggle-label active" id="toggle-yes">Sí</span>
-                                <div class="toggle-switch" id="toggle-duplicates" title="Permitir claves repetidas">
+                                <span class="toggle-label" id="toggle-yes">Sí</span>
+                                <div class="toggle-switch off" id="toggle-duplicates" title="Permitir claves repetidas">
                                     <div class="toggle-knob"></div>
                                 </div>
-                                <span class="toggle-label" id="toggle-no">No</span>
+                                <span class="toggle-label active" id="toggle-no">No</span>
                             </div>
                         </div>
                     </div>
@@ -164,7 +164,7 @@ class AlgorithmView {
         };
 
         /** @type {boolean} Estado del toggle de claves repetidas */
-        this._allowDuplicates = true;
+        this._allowDuplicates = false;
     }
 
     /**
@@ -290,7 +290,7 @@ class AlgorithmView {
 
         this.dataStructure.reset();
         this.logMessages = [];
-        this._allowDuplicates = true;
+        this._allowDuplicates = false;
 
         const el = this.elements;
 
@@ -302,12 +302,12 @@ class AlgorithmView {
         el.range.value = '';
         el.range.disabled = false;
         if (el.toggleDuplicates) {
-            el.toggleDuplicates.classList.remove('off');
+            el.toggleDuplicates.classList.add('off');
             el.toggleDuplicates.style.pointerEvents = '';
             el.toggleDuplicates.style.opacity = '';
         }
-        if (el.toggleYes) el.toggleYes.classList.add('active');
-        if (el.toggleNo) el.toggleNo.classList.remove('active');
+        if (el.toggleYes) el.toggleYes.classList.remove('active');
+        if (el.toggleNo) el.toggleNo.classList.add('active');
         el.btnCreate.disabled = false;
         el.btnLoad.disabled = false;
 
@@ -342,6 +342,12 @@ class AlgorithmView {
 
         const data = await FileManager.load();
         if (!data) return;
+
+        // Validar que el archivo corresponda a este algoritmo
+        if (data.algorithm && this._algorithmName && data.algorithm !== this._algorithmName) {
+            Validation.showError(`Este archivo fue creado para "${data.algorithm}" y no es compatible con la vista actual ("${this._algorithmName}").`);
+            return;
+        }
 
         this.dataStructure.fromJSON(data.structure);
         this._allowDuplicates = data.structure.allowDuplicates;
@@ -403,10 +409,11 @@ class AlgorithmView {
 
     /**
      * Maneja el evento de eliminación de una clave de la estructura.
-     * Realiza un corrimiento de los elementos restantes hacia la izquierda.
+     * Primero anima la búsqueda correspondiente y luego realiza la eliminación.
      * @private
+     * @async
      */
-    _onDelete() {
+    async _onDelete() {
         const el = this.elements;
         const key = el.inputKey.value.trim();
 
@@ -415,15 +422,70 @@ class AlgorithmView {
             return;
         }
 
-        const result = this.dataStructure.delete(key);
-
-        if (!result.success) {
-            Validation.showError(result.error, el.inputKey);
+        if (this.isSearchAnimating) {
+            Validation.showWarning('Espere a que la animación actual termine.');
             return;
         }
 
+        // Normalizar la clave para mostrar en los mensajes
+        let displayKey = key;
+        if (this.dataStructure.dataType === 'numerico' && /^\d+$/.test(key) && key.length < this.dataStructure.keyLength) {
+            displayKey = key.padStart(this.dataStructure.keyLength, '0');
+        }
+
+        // Ejecutar la búsqueda para obtener los pasos de animación
+        const searchResult = this.dataStructure.sequentialSearch(key);
+
+        this._clearHighlights();
+        this.isSearchAnimating = true;
+
+        // Deshabilitar botones durante la animación
+        el.btnSearch.disabled = true;
+        el.btnInsert.disabled = true;
+        el.btnDelete.disabled = true;
+
+        this._addLog(`Buscando clave "${displayKey}" para eliminar...`, 'info');
+
+        // Animar la búsqueda
+        await this._animateSearch(searchResult, displayKey);
+
+        // Ahora ejecutar la eliminación real
+        const deleteResult = this.dataStructure.delete(key);
+
+        if (!deleteResult.success) {
+            this.isSearchAnimating = false;
+            el.btnSearch.disabled = false;
+            el.btnInsert.disabled = false;
+            el.btnDelete.disabled = false;
+            this._addLog(`✘ No se pudo eliminar: ${deleteResult.error}`, 'error');
+            el.inputKey.value = '';
+            el.inputKey.focus();
+            return;
+        }
+
+        // Resaltar la fila en rojo antes de eliminar visualmente
+        const tbody = this.elements.tableBody;
+        const row = tbody.querySelector(`tr[data-index="${deleteResult.position}"]`);
+        if (row) {
+            this._clearHighlights();
+            row.classList.add('highlight-deleting');
+            this._addLog(`Clave "${displayKey}" encontrada en posición ${deleteResult.position + 1}. Eliminando...`, 'warning');
+
+            // Esperar para que se vea el rojo
+            await new Promise(r => setTimeout(r, 800));
+
+            // Fade out
+            row.classList.add('fade-out');
+            await new Promise(r => setTimeout(r, 500));
+        }
+
         this._renderTable();
-        this._addLog(`Clave borrada de la posición ${result.position + 1}. Se realizó corrimiento del arreglo.`, 'warning');
+        this._clearHighlights();
+        this.isSearchAnimating = false;
+        el.btnSearch.disabled = false;
+        el.btnInsert.disabled = false;
+        el.btnDelete.disabled = false;
+        this._addLog(`Clave "${displayKey}" borrada de la posición ${deleteResult.position + 1}. Se realizó corrimiento del arreglo.`, 'success');
         el.inputKey.value = '';
         el.inputKey.focus();
     }

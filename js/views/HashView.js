@@ -289,10 +289,15 @@ class HashView extends AlgorithmView {
         const data = await FileManager.load();
         if (!data) return;
 
+        // Validar que el archivo corresponda a este algoritmo
+        if (data.algorithm && this._algorithmName && data.algorithm !== this._algorithmName) {
+            Validation.showError(`Este archivo fue creado para "${data.algorithm}" y no es compatible con la vista actual ("${this._algorithmName}").`);
+            return;
+        }
+
         // Validar que el archivo cargado sea una tabla hash o compatible
         if (!data.structure || data.structure.collisionStrategy === undefined) {
             // Si no tiene estrategia, podría ser de una versión vieja o de otra vista
-            // Pero vamos a intentar cargarla si tiene los campos básicos
         }
 
         const structure = data.structure;
@@ -362,11 +367,12 @@ class HashView extends AlgorithmView {
     }
 
     /**
-     * Sobrescribe la eliminación para usar hashDelete con estrategia.
+     * Sobrescribe la eliminación para animar la búsqueda hash antes de borrar.
      * @override
      * @private
+     * @async
      */
-    _onDelete() {
+    async _onDelete() {
         const el = this.elements;
         const key = el.inputKey.value.trim();
 
@@ -375,15 +381,68 @@ class HashView extends AlgorithmView {
             return;
         }
 
-        const result = this.dataStructure.hashDelete(key, this._collisionStrategy);
-
-        if (!result.success) {
-            Validation.showError(result.error, el.inputKey);
+        if (this.isSearchAnimating) {
+            Validation.showWarning('Espere a que la animación actual termine.');
             return;
         }
 
+        // Normalizar la clave para mostrar en los mensajes
+        let displayKey = key;
+        if (this.dataStructure.dataType === 'numerico' && /^\d+$/.test(key) && key.length < this.dataStructure.keyLength) {
+            displayKey = key.padStart(this.dataStructure.keyLength, '0');
+        }
+
+        // Ejecutar la búsqueda hash para obtener los pasos de animación
+        const searchResult = this.dataStructure.hashSearch(key, this._collisionStrategy);
+
+        this._clearHighlights();
+        this.isSearchAnimating = true;
+
+        // Deshabilitar botones durante la animación
+        el.btnSearch.disabled = true;
+        el.btnInsert.disabled = true;
+        el.btnDelete.disabled = true;
+
+        this._addLog(`Buscando clave "${displayKey}" para eliminar...`, 'info');
+
+        // Animar la búsqueda hash
+        await this._animateSearch(searchResult, displayKey);
+
+        // Ahora ejecutar la eliminación real
+        const deleteResult = this.dataStructure.hashDelete(key, this._collisionStrategy);
+
+        if (!deleteResult.success) {
+            this.isSearchAnimating = false;
+            el.btnSearch.disabled = false;
+            el.btnInsert.disabled = false;
+            el.btnDelete.disabled = false;
+            this._addLog(`✘ No se pudo eliminar: ${deleteResult.error}`, 'error');
+            el.inputKey.value = '';
+            el.inputKey.focus();
+            return;
+        }
+
+        // Resaltar la fila en rojo antes de eliminar visualmente
+        const tbody = this.elements.tableBody;
+        const row = tbody.querySelector(`tr[data-index="${deleteResult.position}"]`);
+        if (row) {
+            this._clearHighlights();
+            row.classList.add('highlight-deleting');
+            this._addLog(`Clave "${displayKey}" encontrada en posición ${deleteResult.position + 1}. Eliminando...`, 'warning');
+
+            await new Promise(r => setTimeout(r, 800));
+
+            row.classList.add('fade-out');
+            await new Promise(r => setTimeout(r, 500));
+        }
+
         this._renderTable();
-        this._addLog(`Clave borrada de la posición ${result.position + 1}.`, 'warning');
+        this._clearHighlights();
+        this.isSearchAnimating = false;
+        el.btnSearch.disabled = false;
+        el.btnInsert.disabled = false;
+        el.btnDelete.disabled = false;
+        this._addLog(`Clave "${displayKey}" borrada de la posición ${deleteResult.position + 1}.`, 'success');
         el.inputKey.value = '';
         el.inputKey.focus();
     }
@@ -400,6 +459,7 @@ class HashView extends AlgorithmView {
 
     /**
      * Anima la búsqueda hash paso a paso según la estrategia.
+     * Inserta dinámicamente filas faltantes si la tabla compacta no las tiene.
      * @protected
      * @param {Object} result - Resultado de hashSearch.
      * @param {string} displayKey - Clave normalizada para mostrar en los logs.
@@ -419,11 +479,22 @@ class HashView extends AlgorithmView {
                 }
 
                 const step = steps[stepIndex];
-                const row = tbody.rows[step.index];
+                let row = tbody.querySelector(`tr[data-index="${step.index}"]`);
+
+                // Si la fila no existe en la tabla compacta, insertarla dinámicamente
+                if (!row) {
+                    row = this._insertDynamicRow(step.index);
+                }
 
                 if (row) {
                     row.classList.add('highlight-checking');
-                    row.scrollIntoView({ behavior: 'smooth', block: 'center' });
+                    const scrollContainer = document.getElementById('table-scroll');
+                    if (scrollContainer) {
+                        const rowTop = row.offsetTop;
+                        const rowHeight = row.offsetHeight;
+                        const containerHeight = scrollContainer.clientHeight;
+                        scrollContainer.scrollTop = rowTop - (containerHeight / 2) + (rowHeight / 2);
+                    }
                 }
 
                 if (step.action === 'encontrada') {
@@ -467,7 +538,57 @@ class HashView extends AlgorithmView {
     }
 
     /**
-     * Renderiza la tabla adaptada para mostrar arreglos anidados y listas enlazadas.
+     * Inserta una fila dinámica en la tabla compacta para una posición
+     * que no estaba visible previamente.
+     * @private
+     * @param {number} index - Índice (0-based) de la posición a insertar.
+     * @returns {HTMLTableRowElement|null} La fila insertada.
+     */
+    _insertDynamicRow(index) {
+        const tbody = this.elements.tableBody;
+        const rows = Array.from(tbody.querySelectorAll('tr[data-index]'));
+
+        const tr = document.createElement('tr');
+        tr.dataset.index = index;
+
+        const tdPos = document.createElement('td');
+        tdPos.textContent = index + 1;
+
+        const tdKey = document.createElement('td');
+        const value = this.dataStructure.keys[index];
+        if (value === null || value === undefined) {
+            tdKey.textContent = '-';
+            tdKey.classList.add('empty-cell');
+        } else {
+            tdKey.textContent = value;
+        }
+
+        tr.appendChild(tdPos);
+        tr.appendChild(tdKey);
+
+        // Encontrar la posición correcta para insertar la fila
+        let insertBefore = null;
+        for (const existingRow of tbody.rows) {
+            const existingIndex = parseInt(existingRow.dataset.index);
+            if (!isNaN(existingIndex) && existingIndex > index) {
+                insertBefore = existingRow;
+                break;
+            }
+        }
+
+        if (insertBefore) {
+            tbody.insertBefore(tr, insertBefore);
+        } else {
+            tbody.appendChild(tr);
+        }
+
+        return tr;
+    }
+
+    /**
+     * Renderiza la tabla compacta para hash: solo muestra la primera posición,
+     * la última posición, y las posiciones que tienen claves insertadas.
+     * Entre los huecos muestra filas separadoras "…".
      * @override
      * @private
      */
@@ -475,17 +596,46 @@ class HashView extends AlgorithmView {
         const tbody = this.elements.tableBody;
         tbody.innerHTML = '';
 
-        const maxRender = Math.min(this.dataStructure.size, 10000);
+        const size = this.dataStructure.size;
+        if (size === 0) return;
 
-        for (let i = 0; i < maxRender; i++) {
+        // Recopilar las posiciones que deben mostrarse:
+        // posición 0 (primera), posición size-1 (última), y todas las ocupadas
+        const visiblePositions = new Set();
+        visiblePositions.add(0);           // primera
+        visiblePositions.add(size - 1);    // última
+
+        for (let i = 0; i < size; i++) {
+            if (this.dataStructure.keys[i] !== null && this.dataStructure.keys[i] !== undefined) {
+                visiblePositions.add(i);
+            }
+        }
+
+        // Ordenar las posiciones visibles
+        const sorted = Array.from(visiblePositions).sort((a, b) => a - b);
+
+        let lastRendered = -1;
+
+        for (const pos of sorted) {
+            // Si hay un hueco entre la posición anterior y esta, insertar separador
+            if (lastRendered !== -1 && pos > lastRendered + 1) {
+                const ellipsisTr = document.createElement('tr');
+                ellipsisTr.classList.add('ellipsis-row');
+                const ellipsisTd = document.createElement('td');
+                ellipsisTd.colSpan = 2;
+                ellipsisTd.textContent = '…';
+                ellipsisTr.appendChild(ellipsisTd);
+                tbody.appendChild(ellipsisTr);
+            }
+
             const tr = document.createElement('tr');
-            tr.dataset.index = i;
+            tr.dataset.index = pos;
 
             const tdPos = document.createElement('td');
-            tdPos.textContent = i + 1;
+            tdPos.textContent = pos + 1;
 
             const tdKey = document.createElement('td');
-            const value = this.dataStructure.keys[i];
+            const value = this.dataStructure.keys[pos];
 
             if (value === null || value === undefined) {
                 tdKey.textContent = '-';
@@ -497,17 +647,27 @@ class HashView extends AlgorithmView {
             tr.appendChild(tdPos);
             tr.appendChild(tdKey);
             tbody.appendChild(tr);
-        }
 
-        if (this.dataStructure.size > maxRender) {
-            const tr = document.createElement('tr');
-            const td = document.createElement('td');
-            td.colSpan = 2;
-            td.textContent = `... ${(this.dataStructure.size - maxRender).toLocaleString()} posiciones más`;
-            td.style.fontStyle = 'italic';
-            td.style.color = '#888';
-            tr.appendChild(td);
-            tbody.appendChild(tr);
+            lastRendered = pos;
         }
+    }
+
+    /**
+     * Elimina todos los resaltados de búsqueda de las filas de la tabla.
+     * También elimina filas dinámicas insertadas durante la animación de búsqueda.
+     * @override
+     * @private
+     */
+    _clearHighlights() {
+        const rows = this.elements.tableBody.querySelectorAll('tr');
+        rows.forEach(row => {
+            row.classList.remove(
+                'highlight-checking',
+                'highlight-found',
+                'highlight-not-found',
+                'highlight-discarded',
+                'highlight-mid'
+            );
+        });
     }
 }

@@ -257,6 +257,41 @@ class DataStructure {
     }
 
     /**
+     * Búsqueda secuencial optimizada para arreglos ordenados.
+     * Se detiene al encontrar una clave mayor que la buscada,
+     * ya que las siguientes claves también serán mayores.
+     * @param {string} rawKey - Clave a buscar.
+     * @returns {{found: boolean, position: number, stoppedEarly: boolean, steps: Array<{index: number, key: string, match: boolean, greater: boolean}>}}
+     */
+    orderedSequentialSearch(rawKey) {
+        const key = rawKey.toString().trim();
+        let searchKey = key;
+        if (this.dataType === 'numerico' && /^\d+$/.test(key) && key.length < this.keyLength) {
+            searchKey = key.padStart(this.keyLength, '0');
+        }
+
+        const steps = [];
+        for (let i = 0; i < this.size; i++) {
+            if (this.keys[i] === null) break;
+
+            const isMatch = this.keys[i] === searchKey;
+            const isGreater = this.keys[i] > searchKey;
+
+            steps.push({ index: i, key: this.keys[i], match: isMatch, greater: isGreater });
+
+            if (isMatch) {
+                return { found: true, position: i, stoppedEarly: false, steps: steps };
+            }
+
+            // Si la clave actual es mayor, no vale la pena seguir buscando
+            if (isGreater) {
+                return { found: false, position: -1, stoppedEarly: true, steps: steps };
+            }
+        }
+        return { found: false, position: -1, stoppedEarly: false, steps: steps };
+    }
+
+    /**
      * Búsqueda binaria: requiere estructura ordenada.
      * La igualdad (==) se verifica al final, cuando el rango se reduce a un solo elemento,
      * para minimizar el costo computacional dentro del bucle.
@@ -437,7 +472,8 @@ class DataStructure {
             dataType: this.dataType,
             allowDuplicates: this.allowDuplicates,
             count: this.count,
-            hashMethod: this.hashMethod
+            hashMethod: this.hashMethod,
+            collisionStrategy: this.collisionStrategy || null
         };
     }
 
@@ -453,6 +489,7 @@ class DataStructure {
         this.allowDuplicates = data.allowDuplicates;
         this.count = data.count;
         this.hashMethod = data.hashMethod || 'modulo';
+        this.collisionStrategy = data.collisionStrategy || null;
         this.created = true;
     }
 

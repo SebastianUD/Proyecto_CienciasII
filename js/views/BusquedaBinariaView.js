@@ -77,6 +77,92 @@ class BusquedaBinariaView extends AlgorithmView {
     }
 
     /**
+     * Sobrescribe la eliminación para animar la búsqueda binaria antes de borrar.
+     * @override
+     * @private
+     * @async
+     */
+    async _onDelete() {
+        const el = this.elements;
+        const key = el.inputKey.value.trim();
+
+        if (key === '') {
+            Validation.showError('Debe ingresar la clave que desea borrar.', el.inputKey);
+            return;
+        }
+
+        if (this.isSearchAnimating) {
+            Validation.showWarning('Espere a que la animación actual termine.');
+            return;
+        }
+
+        if (this.dataStructure.count === 0) {
+            Validation.showWarning('La estructura está vacía.');
+            return;
+        }
+
+        // Normalizar la clave para mostrar en los mensajes
+        let displayKey = key;
+        if (this.dataStructure.dataType === 'numerico' && /^\d+$/.test(key) && key.length < this.dataStructure.keyLength) {
+            displayKey = key.padStart(this.dataStructure.keyLength, '0');
+        }
+
+        // Ejecutar la búsqueda binaria para obtener los pasos de animación
+        const searchResult = this.dataStructure.binarySearch(key);
+
+        this._clearHighlights();
+        this.isSearchAnimating = true;
+
+        // Deshabilitar botones durante la animación
+        el.btnSearch.disabled = true;
+        el.btnInsert.disabled = true;
+        el.btnDelete.disabled = true;
+
+        this._addLog(`Buscando clave "${displayKey}" (binaria) para eliminar...`, 'info');
+
+        // Animar la búsqueda binaria
+        await this._animateSearch(searchResult, displayKey);
+
+        // Ahora ejecutar la eliminación real
+        const deleteResult = this.dataStructure.delete(key);
+
+        if (!deleteResult.success) {
+            this.isSearchAnimating = false;
+            el.btnSearch.disabled = false;
+            el.btnInsert.disabled = false;
+            el.btnDelete.disabled = false;
+            this._addLog(`✘ No se pudo eliminar: ${deleteResult.error}`, 'error');
+            el.inputKey.value = '';
+            el.inputKey.focus();
+            return;
+        }
+
+        // Resaltar la fila en rojo antes de eliminar visualmente
+        const tbody = this.elements.tableBody;
+        const row = tbody.querySelector(`tr[data-index="${deleteResult.position}"]`);
+        if (row) {
+            this._clearHighlights();
+            row.classList.add('highlight-deleting');
+            this._addLog(`Clave "${displayKey}" encontrada en posición ${deleteResult.position + 1}. Eliminando...`, 'warning');
+
+            await new Promise(r => setTimeout(r, 800));
+
+            row.classList.add('fade-out');
+            await new Promise(r => setTimeout(r, 500));
+        }
+
+        this._renderTable();
+        this._clearHighlights();
+        this.isSearchAnimating = false;
+        el.btnSearch.disabled = false;
+        el.btnInsert.disabled = false;
+        el.btnDelete.disabled = false;
+        this._addLog(`Clave "${displayKey}" borrada de la posición ${deleteResult.position + 1}. Se realizó corrimiento del arreglo.`, 'success');
+        el.inputKey.value = '';
+        el.inputKey.focus();
+    }
+
+    /**
      * Sobrescribe el método de búsqueda con la búsqueda binaria animada.
      * @override
      * @private
@@ -173,7 +259,13 @@ class BusquedaBinariaView extends AlgorithmView {
                 const midRow = tbody.querySelector(`tr[data-index="${step.mid}"]`);
                 if (midRow) {
                     midRow.classList.add('highlight-mid');
-                    midRow.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+                    const scrollContainer = document.getElementById('table-scroll');
+                    if (scrollContainer) {
+                        const midRowTop = midRow.offsetTop;
+                        const midRowHeight = midRow.offsetHeight;
+                        const containerHeight = scrollContainer.clientHeight;
+                        scrollContainer.scrollTop = midRowTop - (containerHeight / 2) + (midRowHeight / 2);
+                    }
                 }
 
                 // Log del paso actual
