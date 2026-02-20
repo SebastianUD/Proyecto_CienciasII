@@ -247,7 +247,7 @@ class HashView extends AlgorithmView {
         }
 
         this._collisionStrategy = collisionStrategy;
-        this.dataStructure.create(size, keyLength, dataType, false); // Hash no usa allowDuplicates del base aquí
+        this.dataStructure.create(size, keyLength, dataType, false, collisionStrategy, this._getHashMethod());
 
         // Habilitar controles
         el.inputKey.disabled = false;
