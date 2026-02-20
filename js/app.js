@@ -35,7 +35,10 @@
         'hash-mod': BusquedaHashModView,
         'hash-cuadrado': BusquedaHashCuadradoView,
         'hash-truncamiento': BusquedaHashTruncamientoView,
-        'hash-plegamiento': BusquedaHashPlegamientoView
+        'hash-plegamiento': BusquedaHashPlegamientoView,
+        'arboles-digitales': ArbolesDigitalesView,
+        'arboles-residuos': ArbolesResiduosView,
+        'arboles-residuos-multiples': ArbolesResiduosMultiplesView
     };
 
     /**

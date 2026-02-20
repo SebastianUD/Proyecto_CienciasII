@@ -19,6 +19,9 @@ class BusquedaHashTruncamientoView extends HashView {
         this._algorithmName = 'hash-truncamiento';
     }
 
+    /** @override */
+    _getHashMethod() { return 'truncamiento'; }
+
     /**
      * Muestra la vista de búsqueda hash por truncamiento.
      */

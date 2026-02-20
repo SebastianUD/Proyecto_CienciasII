@@ -20,6 +20,9 @@ class BusquedaHashCuadradoView extends HashView {
         this._algorithmName = 'busqueda-hash-cuadrado';
     }
 
+    /** @override */
+    _getHashMethod() { return 'cuadrado'; }
+
     /**
      * Muestra la vista de búsqueda hash cuadrado.
      */

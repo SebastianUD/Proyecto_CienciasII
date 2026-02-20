@@ -289,58 +289,126 @@ class HashView extends AlgorithmView {
         const data = await FileManager.load();
         if (!data) return;
 
-        // Validar que el archivo corresponda a este algoritmo
-        if (data.algorithm && this._algorithmName && data.algorithm !== this._algorithmName) {
+        // Validar que el archivo corresponda a un algoritmo compatible
+        if (data.algorithm && this._algorithmName && !FileCompat.areCompatible(data.algorithm, this._algorithmName)) {
             Validation.showError(`Este archivo fue creado para "${data.algorithm}" y no es compatible con la vista actual ("${this._algorithmName}").`);
             return;
         }
 
-        // Validar que el archivo cargado sea una tabla hash o compatible
-        if (!data.structure || data.structure.collisionStrategy === undefined) {
-            // Si no tiene estrategia, podría ser de una versión vieja o de otra vista
-        }
-
         const structure = data.structure;
-        this.dataStructure.fromJSON(structure);
-
-        // Recuperar estrategia
-        this._collisionStrategy = structure.collisionStrategy || '';
-
         const el = this.elements;
-        el.dataType.value = structure.dataType;
-        el.keyLength.value = structure.keyLength;
-        el.range.value = structure.size;
 
-        if (el.collisionStrategy) {
-            el.collisionStrategy.value = this._collisionStrategy;
+        // Check if loading from a different hash algorithm
+        const isDifferentAlgo = data.algorithm && data.algorithm !== this._algorithmName;
+
+        if (isDifferentAlgo) {
+            // Cross-hash loading: extract keys and re-insert with this algorithm
+            const originalKeys = [];
+            if (structure.keys) {
+                for (const k of structure.keys) {
+                    if (k !== null && k !== undefined) originalKeys.push(k);
+                }
+            }
+
+            if (originalKeys.length === 0) {
+                Validation.showWarning('El archivo no contiene claves para cargar.');
+                return;
+            }
+
+            // User must select a collision strategy first
+            const collisionStrategy = el.collisionStrategy.value;
+            if (!collisionStrategy || collisionStrategy === '') {
+                Validation.showError('Seleccione un método de colisión antes de cargar un archivo de otro algoritmo hash.');
+                return;
+            }
+
+            this._collisionStrategy = collisionStrategy;
+
+            // Create fresh structure with this view's hash method
+            const hashMethod = this._getHashMethod();
+            this.dataStructure.create(
+                structure.size,
+                structure.keyLength,
+                structure.dataType,
+                false,
+                collisionStrategy,
+                hashMethod
+            );
+
+            // Re-insert all keys silently
+            let insertedCount = 0;
+            for (const key of originalKeys) {
+                const result = this.dataStructure.hashInsert(key, this._collisionStrategy);
+                if (result.success) insertedCount++;
+            }
+
+            // UI setup
+            el.dataType.value = structure.dataType;
+            el.keyLength.value = structure.keyLength;
+            el.range.value = structure.size;
             el.collisionStrategy.disabled = true;
+            el.dataType.disabled = true;
+            el.keyLength.disabled = true;
+            el.range.disabled = true;
+            el.btnCreate.disabled = true;
+            el.btnLoad.disabled = true;
+            el.inputKey.disabled = false;
+            el.btnInsert.disabled = false;
+            el.btnDelete.disabled = false;
+            el.btnSearch.disabled = false;
+            el.btnSave.disabled = false;
+            el.btnPrint.disabled = false;
+            el.tableContainer.style.display = '';
+            el.logContainer.style.display = '';
+
+            this._renderTable();
+            this._addLog(`Archivo de "${data.algorithm}" cargado y re-procesado con ${this._algorithmName}. ${insertedCount} clave(s) insertadas.`, 'success');
+
+        } else {
+            // Same algorithm — direct load
+            this.dataStructure.fromJSON(structure);
+            this._collisionStrategy = structure.collisionStrategy || '';
+
+            el.dataType.value = structure.dataType;
+            el.keyLength.value = structure.keyLength;
+            el.range.value = structure.size;
+
+            if (el.collisionStrategy) {
+                el.collisionStrategy.value = this._collisionStrategy;
+                el.collisionStrategy.disabled = true;
+            }
+
+            el.dataType.disabled = true;
+            el.keyLength.disabled = true;
+            el.range.disabled = true;
+            el.btnCreate.disabled = true;
+            el.btnLoad.disabled = true;
+            el.inputKey.disabled = false;
+            el.btnInsert.disabled = false;
+            el.btnDelete.disabled = false;
+            el.btnSearch.disabled = false;
+            el.btnSave.disabled = false;
+            el.btnPrint.disabled = false;
+            el.tableContainer.style.display = '';
+            el.logContainer.style.display = '';
+
+            this._renderTable();
+            this._addLog('Estructura hash cargada desde archivo.', 'success');
+
+            if (this._collisionStrategy) {
+                const strategyName = CollisionStrategyFactory.create(this._collisionStrategy, this.dataStructure).getName();
+                this._addLog(`Método de colisión recuperado: ${strategyName}.`, 'info');
+            }
         }
+    }
 
-        // Deshabilitar configuración
-        el.dataType.disabled = true;
-        el.keyLength.disabled = true;
-        el.range.disabled = true;
-        el.btnCreate.disabled = true;
-        el.btnLoad.disabled = true;
-
-        // Habilitar controles
-        el.inputKey.disabled = false;
-        el.btnInsert.disabled = false;
-        el.btnDelete.disabled = false;
-        el.btnSearch.disabled = false;
-        el.btnSave.disabled = false;
-        el.btnPrint.disabled = false;
-
-        el.tableContainer.style.display = '';
-        el.logContainer.style.display = '';
-
-        this._renderTable();
-        this._addLog('Estructura hash cargada desde archivo.', 'success');
-
-        if (this._collisionStrategy) {
-            const strategyName = CollisionStrategyFactory.create(this._collisionStrategy, this.dataStructure).getName();
-            this._addLog(`Método de colisión recuperado: ${strategyName}.`, 'info');
-        }
+    /**
+     * Returns the hash method for this view. Override in subclasses.
+     * @protected
+     * @returns {string}
+     */
+    _getHashMethod() {
+        return 'modulo'; // Default for HashModView
     }
 
     /**

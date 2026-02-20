@@ -343,8 +343,8 @@ class AlgorithmView {
         const data = await FileManager.load();
         if (!data) return;
 
-        // Validar que el archivo corresponda a este algoritmo
-        if (data.algorithm && this._algorithmName && data.algorithm !== this._algorithmName) {
+        // Validar que el archivo corresponda a un algoritmo compatible
+        if (data.algorithm && this._algorithmName && !FileCompat.areCompatible(data.algorithm, this._algorithmName)) {
             Validation.showError(`Este archivo fue creado para "${data.algorithm}" y no es compatible con la vista actual ("${this._algorithmName}").`);
             return;
         }

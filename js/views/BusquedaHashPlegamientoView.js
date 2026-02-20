@@ -19,6 +19,9 @@ class BusquedaHashPlegamientoView extends HashView {
         this._algorithmName = 'hash-plegamiento';
     }
 
+    /** @override */
+    _getHashMethod() { return 'plegamiento'; }
+
     /**
      * Muestra la vista de búsqueda hash por plegamiento.
      */
