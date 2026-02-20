@@ -315,10 +315,10 @@ class HashView extends AlgorithmView {
                 return;
             }
 
-            // User must select a collision strategy first
-            const collisionStrategy = el.collisionStrategy.value;
-            if (!collisionStrategy || collisionStrategy === '') {
-                Validation.showError('Seleccione un método de colisión antes de cargar un archivo de otro algoritmo hash.');
+            // Use the collision strategy saved in the file
+            const collisionStrategy = structure.collisionStrategy || '';
+            if (!collisionStrategy) {
+                Validation.showError('El archivo no contiene un método de colisión válido.');
                 return;
             }
 
@@ -346,7 +346,10 @@ class HashView extends AlgorithmView {
             el.dataType.value = structure.dataType;
             el.keyLength.value = structure.keyLength;
             el.range.value = structure.size;
-            el.collisionStrategy.disabled = true;
+            if (el.collisionStrategy) {
+                el.collisionStrategy.value = collisionStrategy;
+                el.collisionStrategy.disabled = true;
+            }
             el.dataType.disabled = true;
             el.keyLength.disabled = true;
             el.range.disabled = true;
@@ -363,6 +366,9 @@ class HashView extends AlgorithmView {
 
             this._renderTable();
             this._addLog(`Archivo de "${data.algorithm}" cargado y re-procesado con ${this._algorithmName}. ${insertedCount} clave(s) insertadas.`, 'success');
+
+            const strategyName = CollisionStrategyFactory.create(collisionStrategy, this.dataStructure).getName();
+            this._addLog(`Método de colisión recuperado: ${strategyName}.`, 'info');
 
         } else {
             // Same algorithm — direct load
