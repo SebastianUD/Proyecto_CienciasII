@@ -616,7 +616,8 @@ body {
     flex: 0 0 auto;
     width: fit-content;
     min-width: 220px;
-    max-width: 1000px;
+    max-width: 900px;
+    /* Increasied to delay scrollbar as requested (fits more elements) */
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
@@ -641,6 +642,9 @@ body {
 .table-scroll {
     max-height: 420px;
     overflow-y: auto;
+    overflow-x: auto;
+    /* Allow horizontal scroll here */
+    scrollbar-width: thin;
 }
 
 .data-table {
@@ -686,6 +690,7 @@ body {
 
 .data-table tr.highlight-found {
     background-color: var(--highlight-found) !important;
+    color: black !important;
     font-weight: 600;
 }
 
@@ -1087,4 +1092,188 @@ body {
     padding: 4px 14px !important;
     border-bottom: 1px solid var(--border-light);
     user-select: none;
+}
+
+/* Hash Table Scroll Refinement */
+.table-scroll {
+    overflow-x: auto;
+    overflow-y: auto;
+    max-height: 500px;
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    background: var(--bg-card);
+}
+
+.table-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+    /* Altura para el scroll horizontal */
+}
+
+.table-scroll::-webkit-scrollbar-thumb {
+    background: var(--primary-blue-pale);
+    border-radius: 6px;
+}
+
+/* Nested Arrays (Collisions) */
+.nested-container {
+    display: flex;
+    gap: 0;
+    align-items: stretch;
+    justify-content: flex-start;
+    flex-wrap: nowrap;
+    /* Forzar scroll horizontal del padre */
+    min-width: 100%;
+}
+
+.nested-column {
+    border-left: 1px solid var(--border-light);
+    padding: 8px 15px;
+    min-width: 100px;
+    /* Un poco más ancho para visibilidad */
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s, color 0.3s;
+    background-color: transparent;
+}
+
+.nested-column:first-child {
+    border-left: none;
+}
+
+.scrollable-collisions {
+    display: flex;
+    gap: 0;
+    max-width: 550px;
+    overflow-x: auto;
+    border-left: 1px solid var(--border-light);
+    scrollbar-width: thin;
+}
+
+.scrollable-collisions::-webkit-scrollbar {
+    height: 4px;
+}
+
+.scrollable-collisions::-webkit-scrollbar-thumb {
+    background: var(--primary-blue-pale);
+    border-radius: 4px;
+}
+
+.scrollable-collisions .nested-column {
+    flex-shrink: 0;
+}
+
+.data-table td.nested-cell {
+    padding: 0;
+    text-align: left;
+    /* The main table scrollbar handles overflow now */
+}
+
+/* Highlighting for nested columns */
+.nested-column.highlight-checking {
+    background-color: var(--highlight-checking) !important;
+    color: var(--primary-blue);
+    font-weight: bold;
+    border-color: var(--primary-blue);
+}
+
+/* Linked List Chaining in Cells (Horizontal) */
+.chaining-container {
+    display: flex;
+    align-items: center;
+    gap: 0;
+    padding: 2px 0;
+    min-height: 48px;
+    width: fit-content;
+}
+
+.node-item.horizontal-node {
+    min-width: 65px;
+    width: auto;
+    min-height: 36px;
+    padding: 4px 12px;
+    margin: 0;
+    border: 1.5px solid var(--border-color);
+    background-color: white;
+    border-radius: 6px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.85rem;
+    font-weight: 500;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.link-arrow.horizontal-arrow {
+    width: 30px;
+    height: 2px;
+    background-color: var(--text-muted);
+    position: relative;
+    margin: 0 4px;
+    opacity: 0.7;
+    transition: all 0.3s ease;
+}
+
+.link-arrow.horizontal-arrow::after {
+    content: '';
+    position: absolute;
+    right: -2px;
+    top: -4px;
+    width: 0;
+    height: 0;
+    border-top: 5px solid transparent;
+    border-bottom: 5px solid transparent;
+    border-left: 8px solid var(--text-muted);
+}
+
+/* Highlighting */
+.node-item.highlight-checking {
+    background-color: var(--highlight-checking) !important;
+    border-color: var(--primary-blue);
+    transform: scale(1.05);
+    z-index: 10;
+}
+
+.node-item.highlight-found {
+    background-color: var(--highlight-found) !important;
+    color: black !important;
+    /* contrast */
+    border-color: #2e7d32;
+    transform: scale(1.1);
+    z-index: 10;
+}
+
+.link-arrow.highlight-checking {
+    background-color: var(--primary-blue);
+}
+
+.link-arrow.highlight-checking::after {
+    border-left-color: var(--primary-blue);
+}
+
+.nested-column.highlight-found {
+    background-color: var(--highlight-found) !important;
+    color: black !important;
+    /* contrast */
+    font-weight: bold;
+}
+
+/* Individual Deletion Styling */
+.node-item.highlight-deleting,
+.nested-column.highlight-deleting {
+    background-color: var(--red-pale) !important;
+    border-color: var(--red) !important;
+    outline: 2px solid var(--red);
+    font-weight: 600;
+    color: var(--red) !important;
+    z-index: 10;
+}
+
+.node-item.highlight-deleting.fade-out,
+.nested-column.highlight-deleting.fade-out {
+    opacity: 0;
+    transform: scale(0.8);
+    transition: opacity 0.5s, transform 0.5s;
 }

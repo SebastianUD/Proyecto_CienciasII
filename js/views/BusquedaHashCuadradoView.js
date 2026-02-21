@@ -42,6 +42,8 @@ class BusquedaHashCuadradoView extends HashView {
             <option value="prueba-lineal">P. Lineal</option>
             <option value="prueba-cuadratica">P. Cuadrática</option>
             <option value="doble-hash">D. F. Hash</option>
+            <option value="arreglos-anidados">A. Anidados</option>
+            <option value="encadenamiento">Encadenamiento</option>
         `;
     }
 
@@ -123,6 +125,10 @@ class BusquedaHashCuadradoView extends HashView {
             baseMsg += `\nLógica: H(pos, i) = (h(k) + i²) mod ${size} + 1.`;
         } else if (this._collisionStrategy === 'prueba-lineal') {
             baseMsg += `\nLógica: H(pos, i) = (h(k) + i) mod ${size} + 1.`;
+        } else if (this._collisionStrategy === 'arreglos-anidados') {
+            baseMsg += `\nLógica: Las colisiones se almacenan en arreglos en la misma posición.`;
+        } else if (this._collisionStrategy === 'encadenamiento') {
+            baseMsg += `\nLógica: Las colisiones se almacenan en una lista enlazada vertical.`;
         }
 
         this._addLog(baseMsg, 'info');

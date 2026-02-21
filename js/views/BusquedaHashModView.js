@@ -42,6 +42,10 @@ class BusquedaHashModView extends HashView {
             baseMsg += `\nLógica: H(pos, i) = (h(k) + i²) mod ${size} + 1.`;
         } else if (this._collisionStrategy === 'prueba-lineal') {
             baseMsg += `\nLógica: H(pos, i) = (h(k) + i) mod ${size} + 1.`;
+        } else if (this._collisionStrategy === 'arreglos-anidados') {
+            baseMsg += `\nLógica: Las colisiones se almacenan en arreglos en la misma posición.`;
+        } else if (this._collisionStrategy === 'encadenamiento') {
+            baseMsg += `\nLógica: Las colisiones se almacenan en una lista enlazada vertical.`;
         }
 
         this._addLog(baseMsg, 'info');

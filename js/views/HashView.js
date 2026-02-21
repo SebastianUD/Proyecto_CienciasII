@@ -38,6 +38,8 @@ class HashView extends AlgorithmView {
             <option value="prueba-lineal">P. Lineal</option>
             <option value="prueba-cuadratica">P. Cuadrática</option>
             <option value="doble-hash">D. F. Hash</option>
+            <option value="arreglos-anidados">A. Anidados</option>
+            <option value="encadenamiento">Encadenamiento</option>
         `;
     }
 
@@ -152,6 +154,7 @@ class HashView extends AlgorithmView {
     _cacheElements() {
         super._cacheElements();
         this.elements.collisionStrategy = document.getElementById('cfg-collision');
+        this.elements.tableScroll = document.getElementById('table-scroll');
 
         // El toggle de duplicados no existe en esta vista
         delete this.elements.toggleDuplicates;
@@ -496,18 +499,39 @@ class HashView extends AlgorithmView {
             return;
         }
 
-        // Resaltar la fila en rojo antes de eliminar visualmente
         const tbody = this.elements.tableBody;
         const row = tbody.querySelector(`tr[data-index="${deleteResult.position}"]`);
+
         if (row) {
             this._clearHighlights();
-            row.classList.add('highlight-deleting');
-            this._addLog(`Clave "${displayKey}" encontrada en posición ${deleteResult.position + 1}. Eliminando...`, 'warning');
+            const logMsg = `Clave "${displayKey}" encontrada en posición ${deleteResult.position + 1}. Eliminando...`;
+            this._addLog(logMsg, 'warning');
 
-            await new Promise(r => setTimeout(r, 800));
+            // Determinar si es una eliminación granular (específica de un nodo/columna)
+            const isGranular = deleteResult.subIndex !== undefined &&
+                (this._collisionStrategy === 'encadenamiento' || this._collisionStrategy === 'arreglos-anidados');
 
-            row.classList.add('fade-out');
-            await new Promise(r => setTimeout(r, 500));
+            if (isGranular) {
+                const subElement = row.querySelector(`.node-item[data-sub-index="${deleteResult.subIndex}"], .nested-column[data-sub-index="${deleteResult.subIndex}"]`);
+                if (subElement) {
+                    subElement.classList.add('highlight-deleting');
+                    await new Promise(r => setTimeout(r, 800));
+                    subElement.classList.add('fade-out');
+                    await new Promise(r => setTimeout(r, 500));
+                } else {
+                    // Fallback a fila si no se encuentra el sub-elemento
+                    row.classList.add('highlight-deleting');
+                    await new Promise(r => setTimeout(r, 800));
+                    row.classList.add('fade-out');
+                    await new Promise(r => setTimeout(r, 500));
+                }
+            } else {
+                // Comportamiento estándar para prueba lineal/cuadrática/doble hash
+                row.classList.add('highlight-deleting');
+                await new Promise(r => setTimeout(r, 800));
+                row.classList.add('fade-out');
+                await new Promise(r => setTimeout(r, 500));
+            }
         }
 
         this._renderTable();
@@ -528,7 +552,20 @@ class HashView extends AlgorithmView {
      * @returns {string}
      */
     _getDisplayKey(position) {
-        return this.dataStructure.keys[position];
+        const item = this.dataStructure.keys[position];
+        if (item === null || item === undefined) return '-';
+        if (typeof item === 'object' && item.value !== undefined) {
+            // Para Encadenamiento (retornar valor del primer nodo para el log base, o el que se acaba de insertar)
+            // En _onInsert se usa para el mensaje final. El modelo inserta al final.
+            let last = item;
+            while (last.next !== null) last = last.next;
+            return last.value;
+        }
+        if (Array.isArray(item)) {
+            // Para Arreglos Anidados
+            return item[item.length - 1];
+        }
+        return item;
     }
 
     /**
@@ -562,12 +599,35 @@ class HashView extends AlgorithmView {
 
                 if (row) {
                     row.classList.add('highlight-checking');
-                    const scrollContainer = document.getElementById('table-scroll');
+                    const scrollContainer = this.elements.tableScroll; // Use this.elements.tableScroll
                     if (scrollContainer) {
                         const rowTop = row.offsetTop;
                         const rowHeight = row.offsetHeight;
                         const containerHeight = scrollContainer.clientHeight;
                         scrollContainer.scrollTop = rowTop - (containerHeight / 2) + (rowHeight / 2);
+                    }
+
+                    // Resaltar sub-elemento si existe (para Arreglos Anidados o Encadenamiento)
+                    if (step.subIndex !== undefined) {
+                        const subElement = row.querySelector(`.nested-column[data-sub-index="${step.subIndex}"], .node-item[data-sub-index="${step.subIndex}"]`);
+                        const arrow = row.querySelector(`.link-arrow[data-sub-index="${step.subIndex}"]`);
+
+                        if (subElement) {
+                            subElement.classList.add('highlight-checking');
+                            // Scroll horizontal del contenedor principal si el elemento está fuera de vista
+                            const subRect = subElement.getBoundingClientRect();
+                            const scrollRect = scrollContainer.getBoundingClientRect();
+
+                            const isLeftBound = subRect.left < scrollRect.left;
+                            const isRightBound = subRect.right > scrollRect.right;
+
+                            if (isLeftBound || isRightBound) {
+                                // Centrar horizontalmente en el scrollContainer
+                                const scrollOffset = (subRect.left - scrollRect.left) + scrollContainer.scrollLeft;
+                                scrollContainer.scrollLeft = scrollOffset - (scrollRect.width / 2) + (subRect.width / 2);
+                            }
+                        }
+                        if (arrow) arrow.classList.add('highlight-checking');
                     }
                 }
 
@@ -575,8 +635,20 @@ class HashView extends AlgorithmView {
                     if (row) {
                         row.classList.remove('highlight-checking');
                         row.classList.add('highlight-found');
+                        if (step.subIndex !== undefined) {
+                            const subElement = row.querySelector(`.nested-column[data-sub-index="${step.subIndex}"], .node-item[data-sub-index="${step.subIndex}"]`);
+                            if (subElement) {
+                                subElement.classList.remove('highlight-checking');
+                                subElement.classList.add('highlight-found');
+                                // Contrast is handled by CSS, but we ensure it's applied
+                            }
+                        }
                     }
                     let foundMsg = `✔ Posición ${step.index + 1}: ¡Clave encontrada!`;
+                    if (step.subIndex !== undefined) {
+                        const typeLabel = this._collisionStrategy === 'encadenamiento' ? 'nodo' : 'índice';
+                        foundMsg = `✔ Posición ${step.index + 1}, ${typeLabel} ${step.subIndex + 1}: ¡Clave encontrada!`;
+                    }
                     if (step.formula) foundMsg += ` (${step.formula})`;
                     this._addLog(foundMsg, 'success');
                     resolve();
@@ -596,12 +668,24 @@ class HashView extends AlgorithmView {
                     }, this.animationSpeed || 500);
                 } else {
                     let collMsg = `ℹ Posición ${step.index + 1}: Colisión con clave "${step.key}".`;
+                    if (step.subIndex !== undefined) {
+                        const typeLabel = this._collisionStrategy === 'encadenamiento' ? 'nodo' : 'índice';
+                        collMsg = `ℹ Posición ${step.index + 1}, ${typeLabel} ${step.subIndex + 1}: Colisión con clave "${step.key}".`;
+                    }
                     if (step.formula) collMsg += ` (${step.formula})`;
                     this._addLog(collMsg, 'info');
 
                     stepIndex++;
                     setTimeout(() => {
-                        if (row) row.classList.remove('highlight-checking');
+                        if (row) {
+                            row.classList.remove('highlight-checking');
+                            if (step.subIndex !== undefined) {
+                                const subElement = row.querySelector(`.nested-column[data-sub-index="${step.subIndex}"], .node-item[data-sub-index="${step.subIndex}"]`);
+                                const arrow = row.querySelector(`.link-arrow[data-sub-index="${step.subIndex}"]`);
+                                if (subElement) subElement.classList.remove('highlight-checking');
+                                if (arrow) arrow.classList.remove('highlight-checking');
+                            }
+                        }
                         animateStep();
                     }, this.animationSpeed || 500);
                 }
@@ -628,14 +712,8 @@ class HashView extends AlgorithmView {
         const tdPos = document.createElement('td');
         tdPos.textContent = index + 1;
 
-        const tdKey = document.createElement('td');
         const value = this.dataStructure.keys[index];
-        if (value === null || value === undefined) {
-            tdKey.textContent = '-';
-            tdKey.classList.add('empty-cell');
-        } else {
-            tdKey.textContent = value;
-        }
+        const tdKey = this._renderKeyCell(value);
 
         tr.appendChild(tdPos);
         tr.appendChild(tdKey);
@@ -669,6 +747,7 @@ class HashView extends AlgorithmView {
     _renderTable() {
         const tbody = this.elements.tableBody;
         tbody.innerHTML = '';
+        // ... rest of existing _renderTable logic
 
         const size = this.dataStructure.size;
         if (size === 0) return;
@@ -708,15 +787,8 @@ class HashView extends AlgorithmView {
             const tdPos = document.createElement('td');
             tdPos.textContent = pos + 1;
 
-            const tdKey = document.createElement('td');
             const value = this.dataStructure.keys[pos];
-
-            if (value === null || value === undefined) {
-                tdKey.textContent = '-';
-                tdKey.classList.add('empty-cell');
-            } else {
-                tdKey.textContent = value;
-            }
+            const tdKey = this._renderKeyCell(value);
 
             tr.appendChild(tdPos);
             tr.appendChild(tdKey);
@@ -739,9 +811,115 @@ class HashView extends AlgorithmView {
                 'highlight-checking',
                 'highlight-found',
                 'highlight-not-found',
+                'highlight-deleting',
+                'fade-out',
                 'highlight-discarded',
                 'highlight-mid'
             );
+            // También limpiar sub-elementos (para arreglos y listas)
+            const subItems = row.querySelectorAll('.nested-column, .node-item, .link-arrow');
+            subItems.forEach(item => {
+                item.classList.remove('highlight-checking', 'highlight-found');
+            });
         });
+
+        // Eliminar solo las filas dinámicas
+        this.elements.tableBody.querySelectorAll('tr[data-dynamic="true"]').forEach(row => row.remove());
+    }
+
+    /**
+     * Obtiene la clave a mostrar en una posición (maneja arreglos y listas).
+     * @protected
+     * @param {number} position - Posición en la tabla.
+     * @returns {string}
+     */
+    _getDisplayKey(position) {
+        const item = this.dataStructure.keys[position];
+        if (item === null || item === undefined) return '-';
+        if (typeof item === 'object' && item.value !== undefined) {
+            // Para Encadenamiento (retornar valor del último nodo insertado)
+            let last = item;
+            while (last.next !== null) last = last.next;
+            return last.value;
+        }
+        if (Array.isArray(item)) {
+            // Para Arreglos Anidados
+            return item[item.length - 1];
+        }
+        return item;
+    }
+
+
+    /**
+     * Renderiza el contenido de la celda de la clave, manejando colisiones.
+     * @private
+     * @param {any} value - Valor(es) a renderizar.
+     * @returns {HTMLTableCellElement} Celda renderizada.
+     */
+    _renderKeyCell(value) {
+        const tdKey = document.createElement('td');
+
+        if (this._collisionStrategy === 'arreglos-anidados') {
+            if (value === null || value === undefined) {
+                tdKey.textContent = '-';
+                tdKey.classList.add('empty-cell');
+            } else if (Array.isArray(value)) {
+                const container = document.createElement('div');
+                container.classList.add('nested-container');
+
+                value.forEach((val, i) => {
+                    const col = document.createElement('div');
+                    col.classList.add('nested-column');
+                    col.dataset.subIndex = i;
+                    col.textContent = val;
+                    container.appendChild(col);
+                });
+
+                tdKey.appendChild(container);
+                tdKey.classList.add('nested-cell');
+            } else {
+                tdKey.textContent = value;
+            }
+        } else if (this._collisionStrategy === 'encadenamiento') {
+            if (value === null || value === undefined) {
+                tdKey.textContent = '-';
+                tdKey.classList.add('empty-cell');
+            } else {
+                const container = document.createElement('div');
+                container.classList.add('nested-container', 'chaining-container');
+
+                let current = value;
+                let subIndex = 0;
+                while (current !== null) {
+                    if (subIndex > 0) {
+                        const arrow = document.createElement('div');
+                        arrow.classList.add('link-arrow', 'horizontal-arrow');
+                        arrow.dataset.subIndex = subIndex;
+                        container.appendChild(arrow);
+                    }
+
+                    const node = document.createElement('div');
+                    node.classList.add('node-item', 'horizontal-node');
+                    node.textContent = current.value;
+                    node.dataset.subIndex = subIndex;
+                    container.appendChild(node);
+
+                    current = current.next;
+                    subIndex++;
+                }
+
+                tdKey.appendChild(container);
+                tdKey.classList.add('nested-cell');
+            }
+        } else {
+            if (value === null || value === undefined) {
+                tdKey.textContent = '-';
+                tdKey.classList.add('empty-cell');
+            } else {
+                tdKey.textContent = value;
+            }
+        }
+
+        return tdKey;
     }
 }

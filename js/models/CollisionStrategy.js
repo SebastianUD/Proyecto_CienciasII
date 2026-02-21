@@ -440,6 +440,282 @@ class CollisionResolver {
         return { success: false, error: 'Clave no encontrada.' };
     }
 
+    // === MÉTODOS DE ARREGLOS ANIDADOS (Nested Arrays) ===
+
+    /**
+     * Inserta una clave usando Arreglos Anidados.
+     * @param {string} key - Clave a insertar.
+     * @param {number} hashValue - Valor hash inicial (1-indexed).
+     * @returns {Object} Resultado de la operación.
+     */
+    nestedArrayInsert(key, hashValue) {
+        const index = hashValue - 1;
+        const steps = [];
+
+        // Verificar si la clave ya existe en esta posición (Evitar duplicados)
+        const bucket = this.ds.keys[index];
+        if (bucket !== null) {
+            const exists = Array.isArray(bucket) ? bucket.includes(key) : bucket === key;
+            if (exists) {
+                return { success: false, error: 'La clave ya existe en esta posición.' };
+            }
+        }
+
+        if (this.ds.keys[index] === null) {
+            this.ds.keys[index] = [key];
+            this.ds.count++;
+            steps.push({
+                position: index,
+                action: 'inserted',
+                formula: null
+            });
+            return { success: true, position: index, collisions: 0, error: null, steps };
+        }
+
+        // Ya hay un arreglo (colisión)
+        steps.push({
+            position: index,
+            action: 'collision',
+            key: Array.isArray(this.ds.keys[index]) ? this.ds.keys[index][0] : this.ds.keys[index],
+            formula: this._getExistingKeyFormula(Array.isArray(this.ds.keys[index]) ? this.ds.keys[index][0] : this.ds.keys[index])
+        });
+
+        if (!Array.isArray(this.ds.keys[index])) {
+            this.ds.keys[index] = [this.ds.keys[index]];
+        }
+
+        this.ds.keys[index].push(key);
+        this.ds.count++;
+        steps.push({
+            position: index,
+            action: 'inserted',
+            formula: null
+        });
+
+        return { success: true, position: index, collisions: this.ds.keys[index].length - 1, error: null, steps };
+    }
+
+    /**
+     * Busca una clave en Arreglos Anidados.
+     * @param {string} key - Clave a buscar.
+     * @param {number} hashValue - Valor hash inicial (1-indexed).
+     * @returns {Object} Resultado de la búsqueda.
+     */
+    nestedArraySearch(key, hashValue) {
+        const index = hashValue - 1;
+        const steps = [];
+        const bucket = this.ds.keys[index];
+
+        if (bucket === null) {
+            steps.push({
+                index,
+                action: 'vacio',
+                formula: null
+            });
+            return { found: false, position: -1, steps };
+        }
+
+        if (Array.isArray(bucket)) {
+            let found = false;
+            for (let i = 0; i < bucket.length; i++) {
+                const isMatch = bucket[i] === key;
+                steps.push({
+                    index,
+                    subIndex: i,
+                    key: bucket[i],
+                    action: isMatch ? 'encontrada' : 'colision',
+                    formula: i === 0 ? this._getExistingKeyFormula(bucket[0]) : null
+                });
+                if (isMatch) {
+                    found = true;
+                    break;
+                }
+            }
+            return { found, position: index, steps };
+        } else {
+            const isMatch = bucket === key;
+            steps.push({
+                index,
+                key: bucket,
+                action: isMatch ? 'encontrada' : 'colision',
+                formula: this._getExistingKeyFormula(bucket)
+            });
+            return { found: isMatch, position: index, steps };
+        }
+    }
+
+    /**
+     * Elimina una clave de Arreglos Anidados.
+     * @param {string} key - Clave a eliminar.
+     * @param {number} hashValue - Valor hash inicial (1-indexed).
+     * @returns {Object} Resultado de la eliminación.
+     */
+    nestedArrayDelete(key, hashValue) {
+        const index = hashValue - 1;
+        const bucket = this.ds.keys[index];
+
+        if (bucket === null) {
+            return { success: false, error: 'Clave no encontrada.' };
+        }
+
+        if (Array.isArray(bucket)) {
+            const keyIndex = bucket.indexOf(key);
+            if (keyIndex !== -1) {
+                bucket.splice(keyIndex, 1);
+                if (bucket.length === 0) {
+                    this.ds.keys[index] = null;
+                }
+                this.ds.count--;
+                return { success: true, position: index, subIndex: keyIndex };
+            }
+        } else if (bucket === key) {
+            this.ds.keys[index] = null;
+            this.ds.count--;
+            return { success: true, position: index, subIndex: 0 };
+        }
+
+        return { success: false, error: 'Clave no encontrada.' };
+    }
+
+    // === MÉTODOS DE ENCADENAMIENTO (Linked List) ===
+
+    /**
+     * Inserta una clave usando Encadenamiento (Listas Enlazadas).
+     * @param {string} key - Clave a insertar.
+     * @param {number} hashValue - Valor hash inicial (1-indexed).
+     * @returns {Object} Resultado de la operación.
+     */
+    linkedListInsert(key, hashValue) {
+        const index = hashValue - 1;
+        const steps = [];
+
+        // Verificar duplicados
+        let current = this.ds.keys[index];
+        while (current !== null) {
+            if (current.value === key) {
+                return { success: false, error: 'La clave ya existe en esta posición.' };
+            }
+            current = current.next;
+        }
+
+        const newNode = { value: key, next: null };
+
+        if (this.ds.keys[index] === null) {
+            this.ds.keys[index] = newNode;
+            this.ds.count++;
+            steps.push({
+                position: index,
+                action: 'inserted',
+                formula: null
+            });
+            return { success: true, position: index, collisions: 0, error: null, steps };
+        }
+
+        // Colisión: insertar al final de la lista
+        current = this.ds.keys[index];
+        let collisions = 0;
+
+        while (current !== null) {
+            steps.push({
+                position: index,
+                subIndex: collisions,
+                action: 'collision',
+                key: current.value,
+                formula: collisions === 0 ? this._getExistingKeyFormula(current.value) : null
+            });
+
+            collisions++;
+            if (current.next === null) {
+                current.next = newNode;
+                break;
+            }
+            current = current.next;
+        }
+
+        this.ds.count++;
+
+        steps.push({
+            position: index,
+            subIndex: collisions,
+            action: 'inserted',
+            formula: null
+        });
+
+        return { success: true, position: index, collisions: collisions, error: null, steps };
+    }
+
+    /**
+     * Busca una clave en Encadenamiento (Listas Enlazadas).
+     * @param {string} key - Clave a buscar.
+     * @param {number} hashValue - Valor hash inicial (1-indexed).
+     * @returns {Object} Resultado de la búsqueda.
+     */
+    linkedListSearch(key, hashValue) {
+        const index = hashValue - 1;
+        const steps = [];
+        let current = this.ds.keys[index];
+
+        if (current === null) {
+            steps.push({
+                index,
+                action: 'vacio',
+                formula: null
+            });
+            return { found: false, position: -1, steps };
+        }
+
+        let nodeIndex = 0;
+        while (current !== null) {
+            const isMatch = current.value === key;
+            steps.push({
+                index,
+                subIndex: nodeIndex,
+                key: current.value,
+                action: isMatch ? 'encontrada' : 'colision',
+                formula: nodeIndex === 0 ? this._getExistingKeyFormula(current.value) : null
+            });
+
+            if (isMatch) {
+                return { found: true, position: index, steps };
+            }
+
+            current = current.next;
+            nodeIndex++;
+        }
+
+        return { found: false, position: -1, steps };
+    }
+
+    /**
+     * Elimina una clave de Encadenamiento (Listas Enlazadas).
+     * @param {string} key - Clave a eliminar.
+     * @param {number} hashValue - Valor hash inicial (1-indexed).
+     * @returns {Object} Resultado de la eliminación.
+     */
+    linkedListDelete(key, hashValue) {
+        const index = hashValue - 1;
+        let current = this.ds.keys[index];
+        let prev = null;
+
+        let nodeIndex = 0;
+        while (current !== null) {
+            if (current.value === key) {
+                if (prev === null) {
+                    this.ds.keys[index] = current.next;
+                } else {
+                    prev.next = current.next;
+                }
+                this.ds.count--;
+                return { success: true, position: index, subIndex: nodeIndex };
+            }
+            prev = current;
+            current = current.next;
+            nodeIndex++;
+        }
+
+        return { success: false, error: 'Clave no encontrada.' };
+    }
+
 }
 
 /**
@@ -479,8 +755,22 @@ class CollisionStrategyFactory {
                     delete: (k, h) => resolver.doubleHashDelete(k, h),
                     getName: () => 'Doble Función Hash'
                 };
+            case 'arreglos-anidados':
+                return {
+                    insert: (k, h) => resolver.nestedArrayInsert(k, h),
+                    search: (k, h) => resolver.nestedArraySearch(k, h),
+                    delete: (k, h) => resolver.nestedArrayDelete(k, h),
+                    getName: () => 'Arreglos Anidados'
+                };
+            case 'encadenamiento':
+                return {
+                    insert: (k, h) => resolver.linkedListInsert(k, h),
+                    search: (k, h) => resolver.linkedListSearch(k, h),
+                    delete: (k, h) => resolver.linkedListDelete(k, h),
+                    getName: () => 'Encadenamiento'
+                };
             default:
-                throw new Error(`Estrategia de colisión desconocida: "${strategyName}"`);
+                throw new Error(`Estrategia no soportada: ${strategyName}`);
         }
     }
 
@@ -492,7 +782,9 @@ class CollisionStrategyFactory {
         return [
             { value: 'prueba-lineal', label: 'Prueba Lineal' },
             { value: 'prueba-cuadratica', label: 'Prueba Cuadrática' },
-            { value: 'doble-hash', label: 'Doble Función Hash' }
+            { value: 'doble-hash', label: 'Doble Función Hash' },
+            { value: 'arreglos-anidados', label: 'Arreglos Anidados' },
+            { value: 'encadenamiento', label: 'Encadenamiento' }
         ];
     }
 }
