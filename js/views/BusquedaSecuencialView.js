@@ -279,7 +279,12 @@ class BusquedaSecuencialView extends AlgorithmView {
                 }
 
                 const step = steps[stepIndex];
-                const row = tbody.querySelector(`tr[data-index="${step.index}"]`);
+                let row = tbody.querySelector(`tr[data-index="${step.index}"]`);
+
+                // Si la fila no está en el renderizado compacto, insertarla dinámicamente
+                if (!row) {
+                    row = this._insertDynamicRow(step.index);
+                }
 
                 if (row) {
                     row.classList.add('highlight-checking');

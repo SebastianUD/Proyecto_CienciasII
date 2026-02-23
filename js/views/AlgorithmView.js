@@ -509,27 +509,53 @@ class AlgorithmView {
     }
 
     /**
-     * Renderiza la tabla de datos a partir del estado actual de la estructura.
-     * Para arreglos muy grandes (>10,000), limita el renderizado y muestra un indicador.
+     * Renderiza la tabla en modo compacto: muestra la primera posición,
+     * la última, todas las ocupadas, y separadores "…" entre huecos.
+     * Esto mantiene la tabla siempre dentro del alto máximo del contenedor.
      * @private
      */
     _renderTable() {
         const tbody = this.elements.tableBody;
         tbody.innerHTML = '';
 
-        // Limitar renderizado para arreglos grandes
-        const maxRender = Math.min(this.dataStructure.size, 10000);
+        const size = this.dataStructure.size;
+        if (size === 0) return;
 
-        for (let i = 0; i < maxRender; i++) {
+        // Posiciones que siempre deben mostrarse
+        const visiblePositions = new Set();
+        visiblePositions.add(0);         // primera
+        visiblePositions.add(size - 1);  // última
+
+        for (let i = 0; i < size; i++) {
+            if (this.dataStructure.keys[i] !== null) {
+                visiblePositions.add(i);
+            }
+        }
+
+        const sorted = Array.from(visiblePositions).sort((a, b) => a - b);
+        let lastRendered = -1;
+
+        for (const pos of sorted) {
+            // Separador si hay hueco
+            if (lastRendered !== -1 && pos > lastRendered + 1) {
+                const ellipsisTr = document.createElement('tr');
+                ellipsisTr.classList.add('ellipsis-row');
+                const ellipsisTd = document.createElement('td');
+                ellipsisTd.colSpan = 2;
+                ellipsisTd.textContent = '\u2026';
+                ellipsisTr.appendChild(ellipsisTd);
+                tbody.appendChild(ellipsisTr);
+            }
+
             const tr = document.createElement('tr');
-            tr.dataset.index = i;
+            tr.dataset.index = pos;
 
             const tdPos = document.createElement('td');
-            tdPos.textContent = i + 1;
+            tdPos.textContent = pos + 1;
 
             const tdKey = document.createElement('td');
-            if (this.dataStructure.keys[i] !== null) {
-                tdKey.textContent = this.dataStructure.keys[i];
+            if (this.dataStructure.keys[pos] !== null) {
+                tdKey.textContent = this.dataStructure.keys[pos];
             } else {
                 tdKey.textContent = '-';
                 tdKey.classList.add('empty-cell');
@@ -537,19 +563,73 @@ class AlgorithmView {
 
             tr.appendChild(tdPos);
             tr.appendChild(tdKey);
+            if (pos === size - 1) tr.classList.add('sticky-bottom');
+            tbody.appendChild(tr);
+
+            lastRendered = pos;
+        }
+
+        // Alinear el cuerpo de la tabla al fondo: el thead queda arriba, el tbody se empuja abajo
+        requestAnimationFrame(() => {
+            const tableScroll = document.getElementById('table-scroll');
+            const dataTable = document.getElementById('data-table');
+            if (tableScroll && dataTable) {
+                const tbodyEl = dataTable.querySelector('tbody');
+                if (tbodyEl) tbodyEl.style.marginTop = '';
+                const gap = tableScroll.clientHeight - dataTable.offsetHeight;
+                if (gap > 0 && tbodyEl) {
+                    tbodyEl.style.marginTop = gap + 'px';
+                }
+                tableScroll.scrollTop = tableScroll.scrollHeight;
+            }
+        });
+    }
+
+    /**
+     * Inserta dinámicamente una fila para un índice que no estaba en el
+     * renderizado compacto (necesario durante animaciones de búsqueda).
+     * @protected
+     * @param {number} index - Índice 0-based de la posición a insertar.
+     * @returns {HTMLTableRowElement|null}
+     */
+    _insertDynamicRow(index) {
+        const tbody = this.elements.tableBody;
+
+        const tr = document.createElement('tr');
+        tr.dataset.index = index;
+
+        const tdPos = document.createElement('td');
+        tdPos.textContent = index + 1;
+
+        const tdKey = document.createElement('td');
+        const value = this.dataStructure.keys[index];
+        if (value !== null && value !== undefined) {
+            tdKey.textContent = value;
+        } else {
+            tdKey.textContent = '-';
+            tdKey.classList.add('empty-cell');
+        }
+
+        tr.appendChild(tdPos);
+        tr.appendChild(tdKey);
+
+        // Insertar en posición correcta (ordenado por data-index)
+        let insertBefore = null;
+        for (const existingRow of tbody.rows) {
+            const existingIndex = parseInt(existingRow.dataset.index);
+            if (!isNaN(existingIndex) && existingIndex > index) {
+                insertBefore = existingRow;
+                break;
+            }
+        }
+
+        if (insertBefore) {
+            tbody.insertBefore(tr, insertBefore);
+        } else {
             tbody.appendChild(tr);
         }
 
-        if (this.dataStructure.size > maxRender) {
-            const tr = document.createElement('tr');
-            const td = document.createElement('td');
-            td.colSpan = 2;
-            td.textContent = `... ${(this.dataStructure.size - maxRender).toLocaleString()} posiciones más`;
-            td.style.fontStyle = 'italic';
-            td.style.color = '#888';
-            tr.appendChild(td);
-            tbody.appendChild(tr);
-        }
+        return tr;
     }
 
     /**

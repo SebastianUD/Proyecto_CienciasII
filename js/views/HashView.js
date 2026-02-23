@@ -792,10 +792,26 @@ class HashView extends AlgorithmView {
 
             tr.appendChild(tdPos);
             tr.appendChild(tdKey);
+            if (pos === size - 1) tr.classList.add('sticky-bottom');
             tbody.appendChild(tr);
 
             lastRendered = pos;
         }
+
+        // Alinear el cuerpo de la tabla al fondo: el thead queda arriba, el tbody se empuja abajo
+        requestAnimationFrame(() => {
+            const tableScroll = this.elements.tableScroll || document.getElementById('table-scroll');
+            const dataTable = document.getElementById('data-table');
+            if (tableScroll && dataTable) {
+                const tbodyEl = dataTable.querySelector('tbody');
+                if (tbodyEl) tbodyEl.style.marginTop = '';
+                const gap = tableScroll.clientHeight - dataTable.offsetHeight;
+                if (gap > 0 && tbodyEl) {
+                    tbodyEl.style.marginTop = gap + 'px';
+                }
+                tableScroll.scrollTop = tableScroll.scrollHeight;
+            }
+        });
     }
 
     /**

@@ -255,8 +255,11 @@ class BusquedaBinariaView extends AlgorithmView {
                     }
                 }
 
-                // Resaltar el punto medio
-                const midRow = tbody.querySelector(`tr[data-index="${step.mid}"]`);
+                // Resaltar el punto medio (insertar fila si no está en el render compacto)
+                let midRow = tbody.querySelector(`tr[data-index="${step.mid}"]`);
+                if (!midRow) {
+                    midRow = this._insertDynamicRow(step.mid);
+                }
                 if (midRow) {
                     midRow.classList.add('highlight-mid');
                     const scrollContainer = document.getElementById('table-scroll');
