@@ -38,7 +38,8 @@
         'hash-plegamiento': BusquedaHashPlegamientoView,
         'arboles-digitales': ArbolesDigitalesView,
         'arboles-residuos': ArbolesResiduosView,
-        'arboles-residuos-multiples': ArbolesResiduosMultiplesView
+        'arboles-residuos-multiples': ArbolesResiduosMultiplesView,
+        'arboles-huffman': HuffmanView
     };
 
     /**

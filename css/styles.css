@@ -899,6 +899,7 @@ body {
 .tree-log-content .log-entry {
     padding: 2px 0;
     border-bottom: 1px solid var(--border-light);
+    word-break: break-all;
 }
 
 .tree-log-content .log-entry:last-child {
@@ -1276,4 +1277,160 @@ body {
     opacity: 0;
     transform: scale(0.8);
     transition: opacity 0.5s, transform 0.5s;
+}
+
+/* ===========================
+   HUFFMAN VIEW
+   =========================== */
+
+.huffman-layout {
+    display: flex;
+    gap: 16px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.main-content:has(.huffman-layout) {
+    overflow: hidden;
+}
+
+/* Message input — taller with horizontal scroll */
+.huffman-input-wrapper {
+    width: 100%;
+}
+
+.huffman-message-input {
+    width: 100%;
+    padding: 10px 12px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.88rem;
+    outline: none;
+    transition: border-color 0.2s;
+    font-family: 'Consolas', 'Courier New', monospace;
+    letter-spacing: 1px;
+    min-height: 140px;
+    max-height: 140px;
+    overflow-y: auto;
+    word-wrap: break-word;
+    overflow-wrap: break-word;
+    white-space: pre-wrap;
+    resize: none;
+}
+
+.huffman-message-input:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 2px var(--primary-blue-pale);
+}
+
+/* Right panel */
+.huffman-right-panel {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    width: 260px;
+    min-width: 220px;
+    flex-shrink: 0;
+    min-height: 0;
+    overflow: hidden;
+}
+
+.huffman-encoding-section {
+    flex-shrink: 0;
+}
+
+.huffman-encoding-body {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    overflow: hidden;
+    max-height: 280px;
+    overflow-y: auto;
+}
+
+.huffman-enc-table {
+    width: 100%;
+    font-size: 0.82rem;
+}
+
+.huffman-enc-table th {
+    padding: 6px 10px;
+    font-size: 0.78rem;
+}
+
+.huffman-enc-table td {
+    padding: 5px 10px;
+    font-size: 0.82rem;
+    font-family: 'Consolas', 'Courier New', monospace;
+}
+
+/* Construction tables section */
+.huffman-construction-section {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.huffman-construction-scroll {
+    flex: 1;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    overflow-y: auto;
+    padding: 8px;
+    min-height: 0;
+    scrollbar-width: thin;
+}
+
+.huffman-construction-scroll>.huffman-step-table {
+    margin-bottom: 8px;
+}
+
+.huffman-construction-scroll>.huffman-step-table:last-child {
+    margin-bottom: 0;
+}
+
+.huffman-step-table {
+    border: 1px solid var(--border-light);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.huffman-ct-table {
+    width: 100%;
+    font-size: 0.78rem;
+}
+
+.huffman-ct-table th {
+    padding: 4px 8px;
+    font-size: 0.72rem;
+}
+
+.huffman-ct-table td {
+    padding: 3px 8px;
+    font-size: 0.78rem;
+    word-break: break-word;
+    max-width: 160px;
+}
+
+.huffman-combined-row {
+    background-color: #FFF8DC !important;
+    font-weight: 600;
+}
+
+.huffman-root-row {
+    background-color: #D4EDDA !important;
+    font-weight: 700;
+    color: #155724;
+}
+
+.huffman-empty-msg {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.82rem;
+    padding: 16px 10px;
+    font-style: italic;
 }

@@ -44,7 +44,7 @@ const MenuModel = {
                                     { id: 'arboles-digitales', label: 'Árboles Digitales', action: 'arboles-digitales', enabled: true },
                                     { id: 'arboles-residuos', label: 'Árboles por Residuos', action: 'arboles-residuos', enabled: true },
                                     { id: 'arboles-residuos-multiples', label: 'Árboles por Residuos Múltiples', action: 'arboles-residuos-multiples', enabled: true },
-                                    { id: 'arboles-huffman', label: 'Árboles de Huffman', action: 'arboles-huffman', enabled: false }
+                                    { id: 'arboles-huffman', label: 'Árboles de Huffman', action: 'arboles-huffman', enabled: true }
                                 ]
                             }
                         ]

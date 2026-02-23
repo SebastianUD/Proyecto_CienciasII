@@ -13,7 +13,8 @@ const FileCompat = {
     _groups: {
         linear: ['busqueda-secuencial', 'busqueda-binaria'],
         hash: ['busqueda-hash-mod', 'busqueda-hash-cuadrado', 'hash-truncamiento', 'hash-plegamiento'],
-        tree: ['arboles-digitales', 'arboles-residuos', 'arboles-residuos-multiples']
+        tree: ['arboles-digitales', 'arboles-residuos', 'arboles-residuos-multiples'],
+        huffman: ['arboles-huffman']
     },
 
     /**
