@@ -122,6 +122,7 @@ class BusquedaHashModView extends HashView {
             return;
         }
 
+        this._setOperation('search');
         const result = this.dataStructure.hashSearch(key, this._collisionStrategy);
 
         // Normalizar la clave para mostrar en los mensajes

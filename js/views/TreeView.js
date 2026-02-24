@@ -15,6 +15,8 @@ class TreeView {
         this.logMessages = [];
         this.isAnimating = false;
         this.elements = {};
+        this._lastOperation = null;
+        this._showFullHistory = false;
 
         // Canvas state
         this._offsetX = 0;
@@ -70,7 +72,10 @@ class TreeView {
                     </div>
                     <!-- Log -->
                     <div class="section-block tree-log-section">
-                        <div class="section-title">Mensajes y Resultados</div>
+                        <div class="section-title">
+                            Mensajes y Resultados
+                            <button class="log-history-toggle" id="tree-log-history-toggle" title="Ver historial completo">📋</button>
+                        </div>
                         <div class="tree-log-content" id="tree-log-content"></div>
                     </div>
                 </div>
@@ -112,7 +117,8 @@ class TreeView {
             btnPrint: document.getElementById('tree-btn-print'),
             btnFit: document.getElementById('tree-btn-fit'),
             canvas: document.getElementById('tree-canvas'),
-            logContent: document.getElementById('tree-log-content')
+            logContent: document.getElementById('tree-log-content'),
+            logHistoryToggle: document.getElementById('tree-log-history-toggle')
         };
     }
 
@@ -137,6 +143,8 @@ class TreeView {
                 setTimeout(() => el.btnInsert.click(), 10);
             }
         });
+
+        el.logHistoryToggle.addEventListener('click', () => this._toggleLogHistory());
 
         // Canvas pan & zoom
         const canvas = el.canvas;
@@ -431,6 +439,7 @@ class TreeView {
 
         const letter = el.inputKey.value.trim().toUpperCase();
         const binary = TreeUtils.letterToBinary(letter);
+        this._setOperation('insert');
         this._addLog(`Insertada "${letter}" (${binary}).`, 'success');
 
         // Fit view BEFORE animating so the user sees the animation properly
@@ -463,8 +472,11 @@ class TreeView {
             return;
         }
 
-        const binary = TreeUtils.letterToBinary(key);
-        this._addLog(`Buscando "${key}" (${binary}) para eliminar...`, 'info');
+        const letter = key;
+        const binary = TreeUtils.letterToBinary(letter);
+
+        this._setOperation('delete');
+        this._addLog(`Iniciando borrado de "${letter}" (${binary})...`, 'info');
 
         // Step 1: Search animation (tree still intact)
         const searchResult = this.model.search(key);
@@ -515,6 +527,7 @@ class TreeView {
         }
 
         const binary = TreeUtils.letterToBinary(key);
+        this._setOperation('search');
         this._addLog(`Buscando "${key}" (${binary})...`, 'info');
 
         const result = this.model.search(key);
@@ -595,11 +608,11 @@ class TreeView {
         }
 
         this.model.fromJSON(data.structure);
-        this._fitToView();
+        this._setOperation('load');
         this._addLog('Árbol cargado desde archivo.', 'success');
     }
 
-    _onSave() {
+    async _onSave() {
         if (!this.model || !this.model.created) {
             Validation.showError('No hay árbol para guardar.');
             return;
@@ -612,18 +625,9 @@ class TreeView {
         };
 
         const jsonString = JSON.stringify(data, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
+        const defaultName = `${this._algorithmName}_${Date.now()}.json`;
 
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${this._algorithmName}_${Date.now()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        Validation.showSuccess('Archivo guardado correctamente.');
+        await FileManager.saveJSON(jsonString, defaultName);
     }
 
     // ─── Animation ─────────────────────────────────────────────────────────────
@@ -725,8 +729,15 @@ class TreeView {
 
     // ─── Log ───────────────────────────────────────────────────────────────────
 
+    _setOperation(operation) {
+        if (operation !== this._lastOperation && !this._showFullHistory) {
+            this.elements.logContent.innerHTML = '';
+        }
+        this._lastOperation = operation;
+    }
+
     _addLog(message, type = 'info') {
-        this.logMessages.push({ message, type, time: new Date() });
+        this.logMessages.push({ message, type, time: new Date(), operation: this._lastOperation });
 
         const logContent = this.elements.logContent;
         const entry = document.createElement('div');
@@ -734,6 +745,41 @@ class TreeView {
         entry.textContent = message;
         logContent.appendChild(entry);
         logContent.scrollTop = logContent.scrollHeight;
+    }
+
+    _renderLogView() {
+        const logContent = this.elements.logContent;
+        logContent.innerHTML = '';
+
+        const messages = this._showFullHistory
+            ? this.logMessages
+            : this.logMessages.filter(m => m.operation === this._lastOperation);
+
+        for (const msg of messages) {
+            const entry = document.createElement('div');
+            entry.classList.add('log-entry', `log-${msg.type}`);
+            entry.textContent = msg.message;
+            logContent.appendChild(entry);
+        }
+
+        logContent.scrollTop = logContent.scrollHeight;
+    }
+
+    _toggleLogHistory() {
+        this._showFullHistory = !this._showFullHistory;
+        const toggleBtn = this.elements.logHistoryToggle;
+
+        if (this._showFullHistory) {
+            toggleBtn.textContent = '📖'; // Libro abierto
+            toggleBtn.title = 'Mostrar solo operación actual';
+            toggleBtn.classList.add('active');
+        } else {
+            toggleBtn.textContent = '📋'; // Portapapeles
+            toggleBtn.title = 'Ver historial completo';
+            toggleBtn.classList.remove('active');
+        }
+
+        this._renderLogView();
     }
 
     // ─── Print ──────────────────────────────────────────────────────────────────

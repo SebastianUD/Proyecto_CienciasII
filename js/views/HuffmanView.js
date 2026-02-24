@@ -12,6 +12,8 @@ class HuffmanView {
         this.logMessages = [];
         this.isAnimating = false;
         this.elements = {};
+        this._lastOperation = null;
+        this._showFullHistory = false;
 
         // Canvas state
         this._offsetX = 0;
@@ -68,7 +70,10 @@ class HuffmanView {
                     </div>
                     <!-- Log -->
                     <div class="section-block tree-log-section">
-                        <div class="section-title">Mensajes y Resultados</div>
+                        <div class="section-title">
+                            Mensajes y Resultados
+                            <button class="log-history-toggle" id="huffman-log-history-toggle" title="Ver historial completo">📋</button>
+                        </div>
                         <div class="tree-log-content" id="huffman-log-content"></div>
                     </div>
                 </div>
@@ -124,6 +129,7 @@ class HuffmanView {
             btnFit: document.getElementById('huffman-btn-fit'),
             canvas: document.getElementById('huffman-canvas'),
             logContent: document.getElementById('huffman-log-content'),
+            logHistoryToggle: document.getElementById('huffman-log-history-toggle'),
             encodingBody: document.getElementById('huffman-encoding-body'),
             constructionScroll: document.getElementById('huffman-construction-scroll')
         };
@@ -140,15 +146,16 @@ class HuffmanView {
         el.btnPrint.addEventListener('click', () => this._onPrint());
         el.btnFit.addEventListener('click', () => this._fitToView());
 
-        // Tecla Enter en el input de mensaje
-        // Se usa un pequeño retraso para que el keyup de Enter se procese
-        // antes de que aparezca cualquier diálogo SweetAlert2.
+        // Enter key in input
         el.inputMsg.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') {
+            if (e.key === 'Enter' && !e.shiftKey) {
                 e.preventDefault();
                 setTimeout(() => el.btnGenerate.click(), 10);
             }
         });
+
+        // Toggle history
+        el.logHistoryToggle.addEventListener('click', () => this._toggleLogHistory());
 
         // Canvas pan & zoom
         const canvas = el.canvas;
@@ -381,7 +388,7 @@ class HuffmanView {
             ctx.font = 'bold 10px "Segoe UI", sans-serif';
             ctx.fillText(node.freqLabel, x, y - 6);
             ctx.font = 'bold 14px "Segoe UI", sans-serif';
-            ctx.fillText(node.key, x, y + 8);
+            ctx.fillText(this._displayKey(node.key), x, y + 8);
         } else {
             // Single line: freq
             ctx.font = 'bold 12px "Segoe UI", sans-serif';
@@ -420,6 +427,7 @@ class HuffmanView {
             return;
         }
 
+        this._setOperation('generate');
         this._addLog(`Árbol generado para "${this.model.message}".`, 'success');
 
         const encoded = this.model.encodeMessage();
@@ -460,7 +468,8 @@ class HuffmanView {
         }
 
         const character = input;
-        this._addLog(`Buscando "${character}"...`, 'info');
+        this._setOperation('search');
+        this._addLog(`Buscando elemento "${character}"...`, 'info');
 
         const result = this.model.search(character);
 
@@ -492,7 +501,6 @@ class HuffmanView {
 
         this.model.reset();
         this.logMessages = [];
-        this.elements.logContent.innerHTML = '';
         this._highlights.clear();
         this._offsetX = 0;
         this._offsetY = 0;
@@ -503,6 +511,7 @@ class HuffmanView {
         this.elements.constructionScroll.innerHTML = '<div class="huffman-empty-msg">Genere un árbol para ver las tablas.</div>';
 
         this._drawTree();
+        this._setOperation('clear');
         this._addLog('Árbol limpiado.', 'info');
     }
 
@@ -553,10 +562,11 @@ class HuffmanView {
         this._renderConstructionTables();
 
         this._fitToView();
+        this._setOperation('load');
         this._addLog('Árbol cargado desde archivo.', 'success');
     }
 
-    _onSave() {
+    async _onSave() {
         if (!this.model || !this.model.created) {
             Validation.showError('No hay árbol para guardar.');
             return;
@@ -569,18 +579,9 @@ class HuffmanView {
         };
 
         const jsonString = JSON.stringify(data, null, 2);
-        const blob = new Blob([jsonString], { type: 'application/json' });
-        const url = URL.createObjectURL(blob);
+        const defaultName = `${this._algorithmName}_${Date.now()}.json`;
 
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `${this._algorithmName}_${Date.now()}.json`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
-        URL.revokeObjectURL(url);
-
-        Validation.showSuccess('Archivo guardado correctamente.');
+        await FileManager.saveJSON(jsonString, defaultName);
     }
 
     // ─── Right Panel Rendering ──────────────────────────────────────────────────
@@ -590,6 +591,20 @@ class HuffmanView {
         const div = document.createElement('div');
         div.textContent = str;
         return div.innerHTML.replace(/ /g, '&nbsp;');
+    }
+
+    /**
+     * Convierte claves para visualización: reemplaza el carácter espacio
+     * con "Esp." tanto en claves simples como en claves combinadas.
+     * Ej: " " → "Esp.", "( ) + (R)" → "(Esp.) + (R)"
+     * @param {string} key
+     * @returns {string}
+     */
+    _displayKey(key) {
+        if (key === ' ') return 'Esp.';
+        // En claves combinadas, reemplazar el espacio dentro de
+        // paréntesis/corchetes/llaves: "( )" → "(Esp.)"
+        return key.replace(/([({\[]) ([)\]}])/g, '$1Esp.$2');
     }
 
     _renderEncodingTable() {
@@ -604,7 +619,7 @@ class HuffmanView {
         let html = '<table class="data-table huffman-enc-table">';
         html += '<thead><tr><th>Clave</th><th>Binario</th></tr></thead><tbody>';
         for (const e of entries) {
-            html += `<tr><td>${this._escapeHtml(e.key)}</td><td>${e.code}</td></tr>`;
+            html += `<tr><td>${this._escapeHtml(this._displayKey(e.key))}</td><td>${e.code}</td></tr>`;
         }
         html += '</tbody></table>';
 
@@ -640,7 +655,7 @@ class HuffmanView {
                     // Estas dos se combinarán en el siguiente paso → amarillo
                     cls = ' class="huffman-combined-row"';
                 }
-                html += `<tr${cls}><td>${this._escapeHtml(row.key)}</td><td>${row.freqLabel}</td></tr>`;
+                html += `<tr${cls}><td>${this._escapeHtml(this._displayKey(row.key))}</td><td>${row.freqLabel}</td></tr>`;
             }
             html += '</tbody></table></div>';
         });
@@ -710,8 +725,15 @@ class HuffmanView {
 
     // ─── Log ────────────────────────────────────────────────────────────────────
 
+    _setOperation(operation) {
+        if (operation !== this._lastOperation && !this._showFullHistory) {
+            this.elements.logContent.innerHTML = '';
+        }
+        this._lastOperation = operation;
+    }
+
     _addLog(message, type = 'info') {
-        this.logMessages.push({ message, type, time: new Date() });
+        this.logMessages.push({ message, type, time: new Date(), operation: this._lastOperation });
 
         const logContent = this.elements.logContent;
         const entry = document.createElement('div');
@@ -719,6 +741,41 @@ class HuffmanView {
         entry.textContent = message;
         logContent.appendChild(entry);
         logContent.scrollTop = logContent.scrollHeight;
+    }
+
+    _renderLogView() {
+        const logContent = this.elements.logContent;
+        logContent.innerHTML = '';
+
+        const messages = this._showFullHistory
+            ? this.logMessages
+            : this.logMessages.filter(m => m.operation === this._lastOperation);
+
+        for (const msg of messages) {
+            const entry = document.createElement('div');
+            entry.classList.add('log-entry', `log-${msg.type}`);
+            entry.textContent = msg.message;
+            logContent.appendChild(entry);
+        }
+
+        logContent.scrollTop = logContent.scrollHeight;
+    }
+
+    _toggleLogHistory() {
+        this._showFullHistory = !this._showFullHistory;
+        const toggleBtn = this.elements.logHistoryToggle;
+
+        if (this._showFullHistory) {
+            toggleBtn.textContent = '📖';
+            toggleBtn.title = 'Mostrar solo operación actual';
+            toggleBtn.classList.add('active');
+        } else {
+            toggleBtn.textContent = '📋';
+            toggleBtn.title = 'Ver historial completo';
+            toggleBtn.classList.remove('active');
+        }
+
+        this._renderLogView();
     }
 
     // ─── Print ──────────────────────────────────────────────────────────────────

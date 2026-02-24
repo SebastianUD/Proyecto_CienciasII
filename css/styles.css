@@ -1382,6 +1382,7 @@ body {
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     overflow-y: auto;
     min-height: 0;
+    max-height: 280px;
     scrollbar-width: thin;
 }
 

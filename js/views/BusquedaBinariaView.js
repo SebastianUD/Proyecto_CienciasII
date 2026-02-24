@@ -186,6 +186,7 @@ class BusquedaBinariaView extends AlgorithmView {
             return;
         }
 
+        this._setOperation('search');
         const result = this.dataStructure.binarySearch(key);
 
         // Normalizar clave para mostrar

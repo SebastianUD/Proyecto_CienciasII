@@ -146,6 +146,7 @@ class BusquedaSecuencialView extends AlgorithmView {
             return;
         }
 
+        this._setOperation('search');
         const result = this._orderedKeys
             ? this.dataStructure.orderedSequentialSearch(key)
             : this.dataStructure.sequentialSearch(key);

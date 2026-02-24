@@ -130,7 +130,10 @@ class HashView extends AlgorithmView {
                     </div>
                 </div>
                 <div class="log-container" id="log-container" style="display:none;">
-                    <div class="log-header">Mensajes y Resultados</div>
+                    <div class="log-header">
+                        Mensajes y Resultados
+                        <button class="log-history-toggle" id="log-history-toggle" title="Ver historial completo">📋</button>
+                    </div>
                     <div class="log-content" id="log-content"></div>
                 </div>
             </div>
@@ -213,6 +216,9 @@ class HashView extends AlgorithmView {
                 setTimeout(() => el.btnInsert.click(), 10);
             }
         });
+
+        // Toggle historial del log
+        el.logHistoryToggle.addEventListener('click', () => this._toggleLogHistory());
     }
 
     /**
@@ -429,6 +435,7 @@ class HashView extends AlgorithmView {
      * @protected
      */
     _onCreationSuccess(size, keyLength, dataType, strategyName) {
+        this._setOperation('create');
         this._addLog(`Estructura hash creada: ${size} posiciones, clave de ${keyLength} carácter(es), tipo: ${dataType}, estrategia: ${strategyName}.`, 'info');
     }
 
@@ -484,6 +491,7 @@ class HashView extends AlgorithmView {
         el.btnInsert.disabled = true;
         el.btnDelete.disabled = true;
 
+        this._setOperation('delete');
         this._addLog(`Buscando clave "${displayKey}" para eliminar...`, 'info');
 
         // Animar la búsqueda hash

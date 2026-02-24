@@ -22,7 +22,7 @@ class AlgorithmView {
         /** @type {DataStructure} Modelo de la estructura de datos */
         this.dataStructure = new DataStructure();
 
-        /** @type {Array<{message: string, type: string, time: Date}>} Historial de mensajes del log */
+        /** @type {Array<{message: string, type: string, time: Date, operation: string}>} Historial de mensajes del log */
         this.logMessages = [];
 
         /** @type {boolean} Indica si hay una animación de búsqueda en curso */
@@ -30,6 +30,12 @@ class AlgorithmView {
 
         /** @type {Object} Referencias a los elementos DOM de la vista */
         this.elements = {};
+
+        /** @type {string|null} Última operación registrada en el log */
+        this._lastOperation = null;
+
+        /** @type {boolean} Si se muestra el historial completo del log */
+        this._showFullHistory = false;
     }
 
     /**
@@ -120,7 +126,10 @@ class AlgorithmView {
                     </div>
                 </div>
                 <div class="log-container" id="log-container" style="display:none;">
-                    <div class="log-header">Mensajes y Resultados</div>
+                    <div class="log-header">
+                        Mensajes y Resultados
+                        <button class="log-history-toggle" id="log-history-toggle" title="Ver historial completo">📋</button>
+                    </div>
                     <div class="log-content" id="log-content"></div>
                 </div>
             </div>
@@ -159,6 +168,7 @@ class AlgorithmView {
             tableBody: document.getElementById('table-body'),
             logContainer: document.getElementById('log-container'),
             logContent: document.getElementById('log-content'),
+            logHistoryToggle: document.getElementById('log-history-toggle'),
             btnSave: document.getElementById('btn-save'),
             btnPrint: document.getElementById('btn-print')
         };
@@ -216,6 +226,9 @@ class AlgorithmView {
                 setTimeout(() => el.btnInsert.click(), 10);
             }
         });
+
+        // Toggle historial del log
+        el.logHistoryToggle.addEventListener('click', () => this._toggleLogHistory());
     }
 
     /**
@@ -277,6 +290,7 @@ class AlgorithmView {
         el.logContainer.style.display = '';
 
         this._renderTable();
+        this._setOperation('create');
         this._addLog(`Estructura creada: ${size} posiciones, clave de ${keyLength} carácter(es), tipo: ${dataType}, repetidas: ${this._allowDuplicates ? 'Sí' : 'No'}.`, 'info');
     }
 
@@ -295,6 +309,8 @@ class AlgorithmView {
         this.dataStructure.reset();
         this.logMessages = [];
         this._allowDuplicates = false;
+        this._lastOperation = null; // Reset last operation
+        this._showFullHistory = false; // Reset full history view
 
         const el = this.elements;
 
@@ -388,6 +404,7 @@ class AlgorithmView {
         el.logContainer.style.display = '';
 
         this._renderTable();
+        this._setOperation('load');
         this._addLog('Estructura cargada desde archivo.', 'success');
     }
 
@@ -405,6 +422,7 @@ class AlgorithmView {
             return;
         }
 
+        this._setOperation('insert');
         this._renderTable();
         this._addLog(`Clave "${this.dataStructure.keys[result.position]}" insertada en la posición ${result.position + 1}.`, 'success');
         el.inputKey.value = '';
@@ -448,6 +466,7 @@ class AlgorithmView {
         el.btnInsert.disabled = true;
         el.btnDelete.disabled = true;
 
+        this._setOperation('delete');
         this._addLog(`Buscando clave "${displayKey}" para eliminar...`, 'info');
 
         // Animar la búsqueda
@@ -663,13 +682,26 @@ class AlgorithmView {
     }
 
     /**
+     * Establece la operación actual. Si cambia, limpia el log visible
+     * (salvo en modo historial completo).
+     * @private
+     * @param {string} operation - Tipo de operación: 'insert', 'delete', 'search', etc.
+     */
+    _setOperation(operation) {
+        if (operation !== this._lastOperation && !this._showFullHistory) {
+            this.elements.logContent.innerHTML = '';
+        }
+        this._lastOperation = operation;
+    }
+
+    /**
      * Agrega un mensaje al panel de log con el tipo especificado.
      * @private
      * @param {string} message - Texto del mensaje a mostrar.
      * @param {string} [type='info'] - Tipo del mensaje: 'info', 'success', 'error', 'warning'.
      */
     _addLog(message, type = 'info') {
-        this.logMessages.push({ message, type, time: new Date() });
+        this.logMessages.push({ message, type, time: new Date(), operation: this._lastOperation });
 
         const logContent = this.elements.logContent;
         const entry = document.createElement('div');
@@ -679,6 +711,47 @@ class AlgorithmView {
 
         // Auto-scroll al final del log
         logContent.scrollTop = logContent.scrollHeight;
+    }
+
+    /**
+     * Renderiza todo el historial de log o solo los mensajes de la operación actual.
+     * @private
+     */
+    _renderLogView() {
+        const logContent = this.elements.logContent;
+        logContent.innerHTML = '';
+
+        const messages = this._showFullHistory
+            ? this.logMessages
+            : this.logMessages.filter(m => m.operation === this._lastOperation);
+
+        for (const msg of messages) {
+            const entry = document.createElement('div');
+            entry.classList.add('log-entry', `log-${msg.type}`);
+            entry.textContent = msg.message;
+            logContent.appendChild(entry);
+        }
+
+        logContent.scrollTop = logContent.scrollHeight;
+    }
+
+    /**
+     * Alterna entre mostrar el historial completo y el modo normal de log.
+     * @private
+     */
+    _toggleLogHistory() {
+        this._showFullHistory = !this._showFullHistory;
+        const btn = this.elements.logHistoryToggle;
+        if (this._showFullHistory) {
+            btn.title = 'Volver al modo normal';
+            btn.textContent = '↩';
+            btn.classList.add('active');
+        } else {
+            btn.title = 'Ver historial completo';
+            btn.textContent = '📋';
+            btn.classList.remove('active');
+        }
+        this._renderLogView();
     }
 
     /**
