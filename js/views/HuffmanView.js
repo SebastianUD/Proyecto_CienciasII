@@ -140,8 +140,14 @@ class HuffmanView {
         el.btnPrint.addEventListener('click', () => this._onPrint());
         el.btnFit.addEventListener('click', () => this._fitToView());
 
+        // Tecla Enter en el input de mensaje
+        // Se usa un pequeño retraso para que el keyup de Enter se procese
+        // antes de que aparezca cualquier diálogo SweetAlert2.
         el.inputMsg.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') el.btnGenerate.click();
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                setTimeout(() => el.btnGenerate.click(), 10);
+            }
         });
 
         // Canvas pan & zoom
@@ -607,28 +613,31 @@ class HuffmanView {
 
     _renderConstructionTables() {
         const container = this.elements.constructionScroll;
-        const tables = this.model.getConstructionTablesReversed();
+        // Usar el orden original: la tabla con todas las frecuencias
+        // de cada carácter primero, y la tabla con frecuencia=1 al final.
+        const tables = this.model.constructionTables;
 
-        if (tables.length === 0) {
+        if (!tables || tables.length === 0) {
             container.innerHTML = '<div class="huffman-empty-msg">Sin datos.</div>';
             return;
         }
 
         let html = '';
+        const lastIdx = tables.length - 1;
         tables.forEach((tableObj, idx) => {
             const rows = tableObj.rows;
-            const mergeKeys = tableObj.mergeKeys; // two keys that will be combined next (or null)
+            const mergeKeys = tableObj.mergeKeys;
 
             html += `<div class="huffman-step-table">`;
             html += `<table class="data-table huffman-ct-table">`;
             html += '<thead><tr><th>Clave</th><th>Frecuencia</th></tr></thead><tbody>';
             for (const row of rows) {
                 let cls = '';
-                if (idx === 0 && rows.length === 1) {
-                    // Final table (root with freq=1) → green
+                if (idx === lastIdx && rows.length === 1) {
+                    // Tabla final (raíz con freq=1) → verde
                     cls = ' class="huffman-root-row"';
                 } else if (mergeKeys && mergeKeys.includes(row.key)) {
-                    // These two will be combined in the next step → yellow
+                    // Estas dos se combinarán en el siguiente paso → amarillo
                     cls = ' class="huffman-combined-row"';
                 }
                 html += `<tr${cls}><td>${this._escapeHtml(row.key)}</td><td>${row.freqLabel}</td></tr>`;

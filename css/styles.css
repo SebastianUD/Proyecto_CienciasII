@@ -834,11 +834,14 @@ body {
     gap: 16px;
     flex: 1;
     min-height: 0;
+    height: 0;
     overflow: hidden;
 }
 
 /* When tree is shown, prevent main-content from scrolling */
 .main-content:has(.tree-layout) {
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 
@@ -1315,10 +1318,13 @@ body {
     gap: 16px;
     flex: 1;
     min-height: 0;
+    height: 0;
     overflow: hidden;
 }
 
 .main-content:has(.huffman-layout) {
+    display: flex;
+    flex-direction: column;
     overflow: hidden;
 }
 
@@ -1364,16 +1370,19 @@ body {
 }
 
 .huffman-encoding-section {
-    flex-shrink: 0;
+    flex-shrink: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
 }
 
 .huffman-encoding-body {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: 0 0 var(--border-radius) var(--border-radius);
-    overflow: hidden;
-    max-height: 280px;
     overflow-y: auto;
+    min-height: 0;
+    scrollbar-width: thin;
 }
 
 .huffman-enc-table {
