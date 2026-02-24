@@ -132,7 +132,7 @@ class HashView extends AlgorithmView {
                 <div class="log-container" id="log-container" style="display:none;">
                     <div class="log-header">
                         Mensajes y Resultados
-                        <button class="log-history-toggle" id="log-history-toggle" title="Ver historial completo">📋</button>
+                        <button class="log-history-toggle" id="log-history-toggle" title="Ver historial completo">📋 Historial</button>
                     </div>
                     <div class="log-content" id="log-content"></div>
                 </div>
@@ -378,6 +378,7 @@ class HashView extends AlgorithmView {
             el.logContainer.style.display = '';
 
             this._renderTable();
+            this._setOperation('load');
             this._addLog(`Archivo de "${data.algorithm}" cargado y re-procesado con ${this._algorithmName}. ${insertedCount} clave(s) insertadas.`, 'success');
 
             const strategyName = CollisionStrategyFactory.create(collisionStrategy, this.dataStructure).getName();
@@ -412,6 +413,7 @@ class HashView extends AlgorithmView {
             el.logContainer.style.display = '';
 
             this._renderTable();
+            this._setOperation('load');
             this._addLog('Estructura hash cargada desde archivo.', 'success');
 
             if (this._collisionStrategy) {

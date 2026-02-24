@@ -185,166 +185,26 @@ class DigitalTreeModel {
     }
 
     /**
-     * Elimina una letra del árbol.
+     * Elimina una letra reconstruyendo el árbol sin ella.
      * @param {string} letter
      * @returns {{success: boolean, steps: Array, error: string|null}}
      */
     delete(letter) {
         const v = TreeUtils.validateLetter(letter);
         if (!v.valid) return { success: false, steps: [], error: v.error };
-
         letter = v.letter;
+
         if (!this.keys.has(letter)) {
             return { success: false, steps: [], error: `La clave "${letter}" no existe en el árbol.` };
         }
 
-        const binary = TreeUtils.letterToBinary(letter);
-        const steps = [];
+        const newOrder = this.insertionOrder.filter(l => l !== letter);
+        this.root = null;
+        this.keys = new Set();
+        this.insertionOrder = [];
+        for (const l of newOrder) this.insert(l);
 
-        // Localizar el nodo y su padre
-        let current = this.root;
-        let parent = null;
-        let parentDir = null; // 'left' | 'right'
-        let bitIndex = 0;
-
-        while (current) {
-            if (current.key === letter) {
-                steps.push({ node: current, action: 'found', bitIndex });
-                break;
-            }
-            steps.push({ node: current, action: 'visit', bitIndex, bit: binary[bitIndex] });
-            parent = current;
-            if (bitIndex < binary.length) {
-                const bit = binary[bitIndex];
-                parentDir = bit === '0' ? 'left' : 'right';
-                current = bit === '0' ? current.left : current.right;
-            } else {
-                current = null;
-            }
-            bitIndex++;
-        }
-
-        if (!current || current.key !== letter) {
-            return { success: false, steps, error: `La clave "${letter}" no se encontró.` };
-        }
-
-        // Caso 1: Nodo hoja (sin hijos)
-        if (!current.left && !current.right) {
-            if (parent) {
-                parent[parentDir] = null;
-            } else {
-                this.root = null;
-            }
-            steps.push({ node: current, action: 'delete-leaf', bitIndex });
-        }
-        // Caso 2: Nodo con hijos — reemplazar con el nodo más profundo
-        else {
-            const replacement = this._findDeepestLeaf(current);
-            const replacementKey = replacement.key;
-            // Delete the replacement from its position
-            this._removeNode(current, replacement);
-            current.key = replacementKey;
-            steps.push({ node: current, action: 'replace', newKey: replacementKey, bitIndex });
-        }
-
-        this.keys.delete(letter);
-        this.insertionOrder = this.insertionOrder.filter(l => l !== letter);
-
-        // Limpiar ramas vacías (nodos sin clave y sin hijos)
-        this._pruneEmpty(this.root, null, null);
-
-        return { success: true, steps, error: null };
-    }
-
-    /**
-     * Encuentra la hoja más profunda en un subárbol para reemplazar un nodo eliminado.
-     * @private
-     */
-    _findDeepestLeaf(node) {
-        let deepest = null;
-        let maxDepth = -1;
-
-        const dfs = (n, depth) => {
-            if (!n) return;
-            if (n.key !== null && !n.left && !n.right && n !== node) {
-                if (depth > maxDepth) {
-                    maxDepth = depth;
-                    deepest = n;
-                }
-            }
-            // Preferir subárbol que tenga hojas
-            if (n.left) dfs(n.left, depth + 1);
-            if (n.right) dfs(n.right, depth + 1);
-        };
-
-        // Buscar en los hijos del nodo
-        dfs(node.left, 1);
-        dfs(node.right, 1);
-
-        // Si no se encontró hoja sin clave, buscar cualquier nodo con clave
-        if (!deepest) {
-            const dfs2 = (n, depth) => {
-                if (!n || n === node) return;
-                if (n.key !== null) {
-                    if (depth > maxDepth) {
-                        maxDepth = depth;
-                        deepest = n;
-                    }
-                }
-                if (n.left) dfs2(n.left, depth + 1);
-                if (n.right) dfs2(n.right, depth + 1);
-            };
-            dfs2(node.left, 1);
-            dfs2(node.right, 1);
-        }
-
-        return deepest;
-    }
-
-    /**
-     * Elimina un nodo específico del subárbol.
-     * @private
-     */
-    _removeNode(subtreeRoot, targetNode) {
-        const dfs = (n) => {
-            if (!n) return false;
-            if (n.left === targetNode) {
-                if (!targetNode.left && !targetNode.right) {
-                    n.left = null;
-                } else {
-                    targetNode.key = null;
-                }
-                return true;
-            }
-            if (n.right === targetNode) {
-                if (!targetNode.left && !targetNode.right) {
-                    n.right = null;
-                } else {
-                    targetNode.key = null;
-                }
-                return true;
-            }
-            return dfs(n.left) || dfs(n.right);
-        };
-        dfs(subtreeRoot);
-    }
-
-    /**
-     * Elimina nodos vacíos (sin clave ni hijos) del árbol.
-     * @private
-     */
-    _pruneEmpty(node, parent, dir) {
-        if (!node) return;
-        this._pruneEmpty(node.left, node, 'left');
-        this._pruneEmpty(node.right, node, 'right');
-
-        if (node.key === null && !node.left && !node.right) {
-            if (parent) {
-                parent[dir] = null;
-            } else if (node === this.root) {
-                this.root = null;
-            }
-        }
+        return { success: true, steps: [], error: null };
     }
 
     // ─── Serialización ─────────────────────────────────────────────────────────
@@ -388,14 +248,8 @@ class DigitalTreeModel {
         const hGap = 60;
         const vGap = 70;
 
-        // Count leaves in subtree
-        const leafCount = (node) => {
-            if (!node) return 0;
-            if (!node.left && !node.right) return 1;
-            return leafCount(node.left) + leafCount(node.right);
-        };
+        const ghost = () => ({ key: null, isGhost: true, left: null, right: null });
 
-        // Assign positions: each leaf gets a slot, parents are centered
         let slotIndex = 0;
 
         const assignPositions = (node, depth) => {
@@ -403,15 +257,17 @@ class DigitalTreeModel {
 
             const y = depth * vGap;
 
-            // Leaf node — assign the next horizontal slot
             if (!node.left && !node.right) {
                 const x = slotIndex * hGap;
                 slotIndex++;
                 return { node, x, y };
             }
 
-            const leftInfo = assignPositions(node.left, depth + 1);
-            const rightInfo = assignPositions(node.right, depth + 1);
+            const hasLeft = !!node.left;
+            const hasRight = !!node.right;
+
+            const leftInfo = assignPositions(hasLeft ? node.left : ghost(), depth + 1);
+            const rightInfo = assignPositions(hasRight ? node.right : ghost(), depth + 1);
 
             let x;
             if (leftInfo && rightInfo) {
@@ -427,7 +283,6 @@ class DigitalTreeModel {
 
         const tree = assignPositions(this.root, 0);
 
-        // Flatten into array with parent info
         const flatten = (info, parentX, parentY, edgeLabel) => {
             if (!info) return;
             nodes.push({
@@ -444,7 +299,6 @@ class DigitalTreeModel {
 
         flatten(tree, null, null, null);
 
-        // Center the tree horizontally around 0
         if (nodes.length > 0) {
             const minX = Math.min(...nodes.map(n => n.x));
             const maxX = Math.max(...nodes.map(n => n.x));

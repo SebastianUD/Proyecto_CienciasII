@@ -74,7 +74,7 @@ class TreeView {
                     <div class="section-block tree-log-section">
                         <div class="section-title">
                             Mensajes y Resultados
-                            <button class="log-history-toggle" id="tree-log-history-toggle" title="Ver historial completo">📋</button>
+                            <button class="log-history-toggle" id="tree-log-history-toggle" title="Ver historial completo">📋 Historial</button>
                         </div>
                         <div class="tree-log-content" id="tree-log-content"></div>
                     </div>
@@ -296,7 +296,7 @@ class TreeView {
         // Draw edges first
         for (const n of layoutNodes) {
             if (n.parentX !== null && n.parentY !== null) {
-                this._drawEdge(ctx, n.parentX, n.parentY, n.x, n.y, n.edgeLabel);
+                this._drawEdge(ctx, n.parentX, n.parentY, n.x, n.y, n.edgeLabel, n.node && n.node.isGhost);
             }
         }
 
@@ -311,10 +311,10 @@ class TreeView {
     /**
      * Dibuja una arista entre dos nodos.
      */
-    _drawEdge(ctx, x1, y1, x2, y2, label) {
+    _drawEdge(ctx, x1, y1, x2, y2, label, isGhost = false) {
         const r = this._nodeRadius;
 
-        // Calcular puntos en el borde del círculo
+        const endR = isGhost ? r * 0.65 : r;
         const dx = x2 - x1;
         const dy = y2 - y1;
         const dist = Math.sqrt(dx * dx + dy * dy);
@@ -322,31 +322,34 @@ class TreeView {
 
         const sx = x1 + (dx / dist) * r;
         const sy = y1 + (dy / dist) * r;
-        const ex = x2 - (dx / dist) * r;
-        const ey = y2 - (dy / dist) * r;
-
-        // Check if edge is highlighted
-        const edgeKey = `${x1},${y1}-${x2},${y2}`;
-        const highlight = this._highlights.get(edgeKey);
+        const ex = x2 - (dx / dist) * endR;
+        const ey = y2 - (dy / dist) * endR;
 
         ctx.beginPath();
         ctx.moveTo(sx, sy);
         ctx.lineTo(ex, ey);
-        ctx.strokeStyle = highlight || '#8494AB';
-        ctx.lineWidth = highlight ? 2.5 : 1.5;
-        ctx.stroke();
 
-        // Edge label
+        if (isGhost) {
+            ctx.strokeStyle = 'rgba(180, 192, 206, 0.35)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 3]);
+        } else {
+            const edgeKey = `${x1},${y1}-${x2},${y2}`;
+            const highlight = this._highlights.get(edgeKey);
+            ctx.strokeStyle = highlight || '#8494AB';
+            ctx.lineWidth = highlight ? 2.5 : 1.5;
+        }
+        ctx.stroke();
+        ctx.setLineDash([]);
+
         if (label) {
             const midX = (sx + ex) / 2;
             const midY = (sy + ey) / 2;
-
-            // Offset label to the side based on direction
             const perpX = -(ey - sy) / dist * 12;
             const perpY = (ex - sx) / dist * 12;
 
             ctx.font = 'bold 11px "Segoe UI", sans-serif';
-            ctx.fillStyle = highlight || '#5A6880';
+            ctx.fillStyle = isGhost ? 'rgba(160, 168, 184, 0.4)' : '#5A6880';
             ctx.textAlign = 'center';
             ctx.textBaseline = 'middle';
             ctx.fillText(label, midX + perpX, midY + perpY);
@@ -361,13 +364,24 @@ class TreeView {
         const { node, x, y } = layoutNode;
         const r = this._nodeRadius;
 
-        // Check highlight
-        const highlight = this._highlights.get(node);
+        if (node.isGhost) {
+            const gr = r * 0.65;
+            ctx.beginPath();
+            ctx.arc(x, y, gr, 0, Math.PI * 2);
+            ctx.fillStyle = 'rgba(220, 228, 236, 0.25)';
+            ctx.fill();
+            ctx.strokeStyle = 'rgba(180, 192, 206, 0.4)';
+            ctx.lineWidth = 1;
+            ctx.setLineDash([4, 3]);
+            ctx.stroke();
+            ctx.setLineDash([]);
+            return;
+        }
 
+        const highlight = this._highlights.get(node);
         const isLink = node.isLink === true;
         const hasKey = node.key !== null && node.key !== undefined;
 
-        // Node circle
         ctx.beginPath();
         ctx.arc(x, y, r, 0, Math.PI * 2);
 
@@ -377,19 +391,16 @@ class TreeView {
             ctx.strokeStyle = this._darken(highlight);
             ctx.lineWidth = 2.5;
         } else if (isLink) {
-            // Link node — empty circle
             ctx.fillStyle = '#FFFFFF';
             ctx.fill();
             ctx.strokeStyle = '#8494AB';
             ctx.lineWidth = 2;
         } else if (hasKey) {
-            // Data node — filled
             ctx.fillStyle = '#D6E4F0';
             ctx.fill();
             ctx.strokeStyle = '#2B579A';
             ctx.lineWidth = 2;
         } else {
-            // Empty node
             ctx.fillStyle = '#F0F2F5';
             ctx.fill();
             ctx.strokeStyle = '#C0C8D4';
@@ -397,7 +408,6 @@ class TreeView {
         }
         ctx.stroke();
 
-        // Text
         if (hasKey) {
             ctx.font = `bold 14px "Segoe UI", sans-serif`;
             ctx.fillStyle = highlight ? '#FFFFFF' : '#2B579A';
@@ -558,11 +568,21 @@ class TreeView {
 
         this.model.reset();
         this.logMessages = [];
+        this._lastOperation = null;
+        this._showFullHistory = false;
         this.elements.logContent.innerHTML = '';
         this._highlights.clear();
         this._offsetX = 0;
         this._offsetY = 0;
         this._scale = 1;
+
+        const toggleBtn = this.elements.logHistoryToggle;
+        if (toggleBtn) {
+            toggleBtn.textContent = '📋 Historial';
+            toggleBtn.title = 'Ver historial completo';
+            toggleBtn.classList.remove('active');
+        }
+
         this._drawTree();
         this._addLog('Árbol limpiado.', 'info');
     }
@@ -730,7 +750,8 @@ class TreeView {
     // ─── Log ───────────────────────────────────────────────────────────────────
 
     _setOperation(operation) {
-        if (operation !== this._lastOperation && !this._showFullHistory) {
+        const keepLog = operation === 'insert' && this._lastOperation === 'insert';
+        if (!keepLog && !this._showFullHistory) {
             this.elements.logContent.innerHTML = '';
         }
         this._lastOperation = operation;
@@ -770,13 +791,13 @@ class TreeView {
         const toggleBtn = this.elements.logHistoryToggle;
 
         if (this._showFullHistory) {
-            toggleBtn.textContent = '📖'; // Libro abierto
-            toggleBtn.title = 'Mostrar solo operación actual';
-            toggleBtn.classList.add('active');
+            toggleBtn.textContent = '↩ Atrás';
+            toggleBtn.title = 'Volver al modo normal';
         } else {
-            toggleBtn.textContent = '📋'; // Portapapeles
+            toggleBtn.textContent = '📋 Historial';
             toggleBtn.title = 'Ver historial completo';
-            toggleBtn.classList.remove('active');
+            this.elements.logContent.innerHTML = '';
+            return;
         }
 
         this._renderLogView();
@@ -831,7 +852,7 @@ class TreeView {
         // Draw edges
         for (const n of layoutNodes) {
             if (n.parentX !== null && n.parentY !== null) {
-                this._drawEdge(ctx, n.parentX, n.parentY, n.x, n.y, n.edgeLabel);
+                this._drawEdge(ctx, n.parentX, n.parentY, n.x, n.y, n.edgeLabel, n.node && n.node.isGhost);
             }
         }
         // Draw nodes

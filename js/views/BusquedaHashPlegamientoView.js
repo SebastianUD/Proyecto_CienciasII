@@ -115,6 +115,7 @@ class BusquedaHashPlegamientoView extends HashView {
      * @protected
      */
     _onCreationSuccess(size, keyLength, dataType, strategyName) {
+        this._setOperation('create');
         const d = (size - 1).toString().length;
         const h1Text = `h(k) = digmensig(suma de bloques de ${d} dígitos) + 1`;
         let baseMsg = `Estructura hash creada: ${size} posiciones, clave de ${keyLength} carácter(es), tipo: ${dataType}, función: ${h1Text}, estrategia: ${strategyName}.`;
@@ -147,6 +148,7 @@ class BusquedaHashPlegamientoView extends HashView {
             return;
         }
 
+        this._setOperation('insert');
         this._renderTable();
 
         // Mostrar pasos de colisión y fórmulas

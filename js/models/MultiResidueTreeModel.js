@@ -231,7 +231,7 @@ class MultiResidueTreeModel {
     }
 
     /**
-     * Elimina una letra.
+     * Elimina una letra reconstruyendo el árbol sin ella.
      * @param {string} letter
      * @returns {{success: boolean, steps: Array, error: string|null}}
      */
@@ -244,89 +244,13 @@ class MultiResidueTreeModel {
             return { success: false, steps: [], error: `La clave "${letter}" no existe en el árbol.` };
         }
 
-        const binary = TreeUtils.letterToBinary(letter);
-        const blocks = this._getBlocks(binary);
-        const steps = [];
+        const newOrder = this.insertionOrder.filter(l => l !== letter);
+        this.root = null;
+        this.keys = new Set();
+        this.insertionOrder = [];
+        for (const l of newOrder) this.insert(l);
 
-        // Construir camino
-        const path = []; // {node, childIdx}
-        let current = this.root;
-        let blockIndex = 0;
-
-        while (current) {
-            if (current.isLeaf && current.key === letter) {
-                steps.push({ node: current, action: 'found', blockIndex });
-                break;
-            }
-
-            if (blockIndex >= blocks.length) break;
-
-            const block = blocks[blockIndex];
-            const idx = this._blockToIndex(block);
-            steps.push({ node: current, action: 'visit-link', blockIndex, block });
-            path.push({ node: current, childIdx: idx });
-            current = current.children[idx];
-            blockIndex++;
-        }
-
-        if (!current || !current.isLeaf || current.key !== letter) {
-            return { success: false, steps, error: `No se encontró la clave "${letter}".` };
-        }
-
-        // Eliminar la hoja
-        if (path.length > 0) {
-            const parentInfo = path[path.length - 1];
-            parentInfo.node.children[parentInfo.childIdx] = null;
-            steps.push({ node: current, action: 'delete-leaf', blockIndex });
-
-            // Simplificar cadena
-            this._simplifyChain(path, steps);
-        } else {
-            this.root = null;
-        }
-
-        this.keys.delete(letter);
-        this.insertionOrder = this.insertionOrder.filter(l => l !== letter);
-        return { success: true, steps, error: null };
-    }
-
-    /**
-     * Simplifica nodos enlace vacíos subiendo por el camino.
-     * @private
-     */
-    _simplifyChain(path, steps) {
-        for (let i = path.length - 1; i >= 0; i--) {
-            const { node } = path[i];
-            if (!node.isLink) continue;
-
-            const activeChildren = [];
-            for (let c = 0; c < node.children.length; c++) {
-                if (node.children[c] !== null) activeChildren.push(c);
-            }
-
-            // Sin hijos → eliminar
-            if (activeChildren.length === 0) {
-                if (i > 0) {
-                    path[i - 1].node.children[path[i - 1].childIdx] = null;
-                } else {
-                    this.root = null;
-                }
-                steps.push({ node, action: 'remove-link' });
-                continue;
-            }
-
-            // Un solo hijo que es hoja → promover, excepto si es raíz
-            if (activeChildren.length === 1) {
-                const onlyChild = node.children[activeChildren[0]];
-                if (onlyChild.isLeaf && i > 0) {
-                    path[i - 1].node.children[path[i - 1].childIdx] = onlyChild;
-                    steps.push({ node, action: 'simplify', promoted: onlyChild.key });
-                    continue;
-                }
-            }
-
-            break;
-        }
+        return { success: true, steps: [], error: null };
     }
 
     // ─── Serialización ─────────────────────────────────────────────────────────

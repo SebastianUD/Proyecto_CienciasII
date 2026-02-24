@@ -128,7 +128,7 @@ class AlgorithmView {
                 <div class="log-container" id="log-container" style="display:none;">
                     <div class="log-header">
                         Mensajes y Resultados
-                        <button class="log-history-toggle" id="log-history-toggle" title="Ver historial completo">📋</button>
+                        <button class="log-history-toggle" id="log-history-toggle" title="Ver historial completo">📋 Historial</button>
                     </div>
                     <div class="log-content" id="log-content"></div>
                 </div>
@@ -309,10 +309,16 @@ class AlgorithmView {
         this.dataStructure.reset();
         this.logMessages = [];
         this._allowDuplicates = false;
-        this._lastOperation = null; // Reset last operation
-        this._showFullHistory = false; // Reset full history view
+        this._lastOperation = null;
+        this._showFullHistory = false;
 
         const el = this.elements;
+
+        if (el.logHistoryToggle) {
+            el.logHistoryToggle.textContent = '📋 Historial';
+            el.logHistoryToggle.title = 'Ver historial completo';
+            el.logHistoryToggle.classList.remove('active');
+        }
 
         // Reiniciar configuración
         el.dataType.value = '';
@@ -688,7 +694,8 @@ class AlgorithmView {
      * @param {string} operation - Tipo de operación: 'insert', 'delete', 'search', etc.
      */
     _setOperation(operation) {
-        if (operation !== this._lastOperation && !this._showFullHistory) {
+        const keepLog = operation === 'insert' && this._lastOperation === 'insert';
+        if (!keepLog && !this._showFullHistory) {
             this.elements.logContent.innerHTML = '';
         }
         this._lastOperation = operation;
@@ -744,12 +751,12 @@ class AlgorithmView {
         const btn = this.elements.logHistoryToggle;
         if (this._showFullHistory) {
             btn.title = 'Volver al modo normal';
-            btn.textContent = '↩';
-            btn.classList.add('active');
+            btn.textContent = '↩ Atrás';
         } else {
             btn.title = 'Ver historial completo';
-            btn.textContent = '📋';
-            btn.classList.remove('active');
+            btn.textContent = '📋 Historial';
+            this.elements.logContent.innerHTML = '';
+            return;
         }
         this._renderLogView();
     }

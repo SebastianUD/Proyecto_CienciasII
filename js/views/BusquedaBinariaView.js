@@ -70,6 +70,7 @@ class BusquedaBinariaView extends AlgorithmView {
             return;
         }
 
+        this._setOperation('insert');
         this._renderTable();
         this._addLog(`Clave "${this.dataStructure.keys[result.position]}" insertada en la posición ${result.position + 1} (ordenada).`, 'success');
         el.inputKey.value = '';
@@ -118,6 +119,7 @@ class BusquedaBinariaView extends AlgorithmView {
         el.btnInsert.disabled = true;
         el.btnDelete.disabled = true;
 
+        this._setOperation('delete');
         this._addLog(`Buscando clave "${displayKey}" (binaria) para eliminar...`, 'info');
 
         // Animar la búsqueda binaria

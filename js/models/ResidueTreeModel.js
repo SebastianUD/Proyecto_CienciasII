@@ -200,7 +200,7 @@ class ResidueTreeModel {
     }
 
     /**
-     * Elimina una letra.
+     * Elimina una letra reconstruyendo el árbol sin ella.
      * @param {string} letter
      * @returns {{success: boolean, steps: Array, error: string|null}}
      */
@@ -213,103 +213,13 @@ class ResidueTreeModel {
             return { success: false, steps: [], error: `La clave "${letter}" no existe en el árbol.` };
         }
 
-        const binary = TreeUtils.letterToBinary(letter);
-        const steps = [];
+        const newOrder = this.insertionOrder.filter(l => l !== letter);
+        this.root = null;
+        this.keys = new Set();
+        this.insertionOrder = [];
+        for (const l of newOrder) this.insert(l);
 
-        // Construir camino al nodo
-        const path = []; // {node, parent, dir}
-        let current = this.root;
-        let bitIndex = 0;
-
-        while (current) {
-            if (current.isLeaf && current.key === letter) {
-                steps.push({ node: current, action: 'found', bitIndex });
-                break;
-            }
-
-            if (bitIndex >= binary.length) break;
-            const bit = binary[bitIndex];
-            steps.push({ node: current, action: 'visit-link', bitIndex, bit });
-
-            const dir = bit === '0' ? 'left' : 'right';
-            path.push({ node: current, dir });
-            current = current[dir];
-            bitIndex++;
-        }
-
-        if (!current || !current.isLeaf || current.key !== letter) {
-            return { success: false, steps, error: `No se encontró la clave "${letter}".` };
-        }
-
-        // Eliminar la hoja
-        if (path.length === 0) {
-            // Era la raíz — no debería pasar porque raíz siempre es enlace
-            this.root = null;
-        } else {
-            const parentInfo = path[path.length - 1];
-            parentInfo.node[parentInfo.dir] = null;
-            steps.push({ node: current, action: 'delete-leaf', bitIndex });
-
-            // Simplificar: si el padre enlace tiene solo un hijo ahora,
-            // y ese hijo es hoja, eliminar el enlace y subir la hoja
-            this._simplifyChain(path, steps);
-        }
-
-        this.keys.delete(letter);
-        this.insertionOrder = this.insertionOrder.filter(l => l !== letter);
-        return { success: true, steps, error: null };
-    }
-
-    /**
-     * Simplifica cadena de nodos enlace redundantes.
-     * @private
-     */
-    _simplifyChain(path, steps) {
-        for (let i = path.length - 1; i >= 0; i--) {
-            const { node } = path[i];
-            if (!node.isLink) continue;
-
-            const leftChild = node.left;
-            const rightChild = node.right;
-
-            // Si ambos hijos son null, eliminar este enlace
-            if (!leftChild && !rightChild) {
-                if (i > 0) {
-                    path[i - 1].node[path[i - 1].dir] = null;
-                } else {
-                    // Es la raíz
-                    this.root = null;
-                }
-                steps.push({ node, action: 'remove-link' });
-                continue;
-            }
-
-            // Si solo tiene un hijo y ese hijo es hoja, promoverlo
-            if (!leftChild && rightChild && rightChild.isLeaf) {
-                if (i > 0) {
-                    path[i - 1].node[path[i - 1].dir] = rightChild;
-                } else {
-                    // Nodo raíz no se reemplaza por hoja, se mantiene como enlace
-                    // pero si es raíz, dejamos la hoja como hijo
-                    break;
-                }
-                steps.push({ node, action: 'simplify', promoted: rightChild.key });
-                continue;
-            }
-
-            if (leftChild && !rightChild && leftChild.isLeaf) {
-                if (i > 0) {
-                    path[i - 1].node[path[i - 1].dir] = leftChild;
-                } else {
-                    break;
-                }
-                steps.push({ node, action: 'simplify', promoted: leftChild.key });
-                continue;
-            }
-
-            // Si tiene dos hijos o un hijo interno, no se puede simplificar más
-            break;
-        }
+        return { success: true, steps: [], error: null };
     }
 
     // ─── Serialización ─────────────────────────────────────────────────────────
@@ -339,6 +249,8 @@ class ResidueTreeModel {
         const hGap = 60;
         const vGap = 70;
 
+        const ghost = () => ({ key: null, isGhost: true, isLink: false, left: null, right: null });
+
         let slotIndex = 0;
 
         const assignPositions = (node, depth) => {
@@ -352,8 +264,11 @@ class ResidueTreeModel {
                 return { node, x, y };
             }
 
-            const leftInfo = assignPositions(node.left, depth + 1);
-            const rightInfo = assignPositions(node.right, depth + 1);
+            const hasLeft = !!node.left;
+            const hasRight = !!node.right;
+
+            const leftInfo = assignPositions(hasLeft ? node.left : ghost(), depth + 1);
+            const rightInfo = assignPositions(hasRight ? node.right : ghost(), depth + 1);
 
             let x;
             if (leftInfo && rightInfo) {

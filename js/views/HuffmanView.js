@@ -72,7 +72,7 @@ class HuffmanView {
                     <div class="section-block tree-log-section">
                         <div class="section-title">
                             Mensajes y Resultados
-                            <button class="log-history-toggle" id="huffman-log-history-toggle" title="Ver historial completo">📋</button>
+                            <button class="log-history-toggle" id="huffman-log-history-toggle" title="Ver historial completo">📋 Historial</button>
                         </div>
                         <div class="tree-log-content" id="huffman-log-content"></div>
                     </div>
@@ -501,6 +501,8 @@ class HuffmanView {
 
         this.model.reset();
         this.logMessages = [];
+        this._lastOperation = null;
+        this._showFullHistory = false;
         this._highlights.clear();
         this._offsetX = 0;
         this._offsetY = 0;
@@ -510,8 +512,15 @@ class HuffmanView {
         this.elements.encodingBody.innerHTML = '<div class="huffman-empty-msg">Genere un árbol para ver la codificación.</div>';
         this.elements.constructionScroll.innerHTML = '<div class="huffman-empty-msg">Genere un árbol para ver las tablas.</div>';
 
+        const toggleBtn = this.elements.logHistoryToggle;
+        if (toggleBtn) {
+            toggleBtn.textContent = '📋 Historial';
+            toggleBtn.title = 'Ver historial completo';
+            toggleBtn.classList.remove('active');
+        }
+
+        this.elements.logContent.innerHTML = '';
         this._drawTree();
-        this._setOperation('clear');
         this._addLog('Árbol limpiado.', 'info');
     }
 
@@ -726,7 +735,8 @@ class HuffmanView {
     // ─── Log ────────────────────────────────────────────────────────────────────
 
     _setOperation(operation) {
-        if (operation !== this._lastOperation && !this._showFullHistory) {
+        const keepLog = operation === 'insert' && this._lastOperation === 'insert';
+        if (!keepLog && !this._showFullHistory) {
             this.elements.logContent.innerHTML = '';
         }
         this._lastOperation = operation;
@@ -766,13 +776,13 @@ class HuffmanView {
         const toggleBtn = this.elements.logHistoryToggle;
 
         if (this._showFullHistory) {
-            toggleBtn.textContent = '📖';
-            toggleBtn.title = 'Mostrar solo operación actual';
-            toggleBtn.classList.add('active');
+            toggleBtn.textContent = '↩ Atrás';
+            toggleBtn.title = 'Volver al modo normal';
         } else {
-            toggleBtn.textContent = '📋';
+            toggleBtn.textContent = '📋 Historial';
             toggleBtn.title = 'Ver historial completo';
-            toggleBtn.classList.remove('active');
+            this.elements.logContent.innerHTML = '';
+            return;
         }
 
         this._renderLogView();
