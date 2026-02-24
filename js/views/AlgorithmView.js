@@ -207,9 +207,13 @@ class AlgorithmView {
         el.btnPrint.addEventListener('click', () => FileManager.print());
 
         // Tecla Enter en el input de clave
+        // Se usa un pequeño retraso para que el keyup de Enter se procese
+        // antes de que aparezca cualquier diálogo SweetAlert2, evitando
+        // que el mismo Enter cierre el aviso inmediatamente.
         el.inputKey.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                el.btnInsert.click();
+                e.preventDefault();
+                setTimeout(() => el.btnInsert.click(), 10);
             }
         });
     }
@@ -509,9 +513,10 @@ class AlgorithmView {
     }
 
     /**
-     * Renderiza la tabla en modo compacto: muestra la primera posición,
-     * la última, todas las ocupadas, y separadores "…" entre huecos.
-     * Esto mantiene la tabla siempre dentro del alto máximo del contenedor.
+     * Renderiza la tabla. Si el rango de la estructura es mayor a 11
+     * usa modo compacto: muestra la primera posición, la última,
+     * todas las ocupadas, y separadores "…" entre huecos.
+     * Con rango de 11 o menos muestra todas las posiciones normalmente.
      * @private
      */
     _renderTable() {
@@ -521,55 +526,80 @@ class AlgorithmView {
         const size = this.dataStructure.size;
         if (size === 0) return;
 
-        // Posiciones que siempre deben mostrarse
-        const visiblePositions = new Set();
-        visiblePositions.add(0);         // primera
-        visiblePositions.add(size - 1);  // última
+        // Determinar si usar modo compacto (rango mayor a 11)
+        const useCompact = size > 11;
 
-        for (let i = 0; i < size; i++) {
-            if (this.dataStructure.keys[i] !== null) {
-                visiblePositions.add(i);
+        if (!useCompact) {
+            // Modo normal: mostrar todas las posiciones
+            for (let i = 0; i < size; i++) {
+                const tr = document.createElement('tr');
+                tr.dataset.index = i;
+
+                const tdPos = document.createElement('td');
+                tdPos.textContent = i + 1;
+
+                const tdKey = document.createElement('td');
+                if (this.dataStructure.keys[i] !== null) {
+                    tdKey.textContent = this.dataStructure.keys[i];
+                } else {
+                    tdKey.textContent = '-';
+                    tdKey.classList.add('empty-cell');
+                }
+
+                tr.appendChild(tdPos);
+                tr.appendChild(tdKey);
+                tbody.appendChild(tr);
+            }
+        } else {
+            // Modo compacto: solo posiciones relevantes con separadores
+            const visiblePositions = new Set();
+            visiblePositions.add(0);         // primera
+            visiblePositions.add(size - 1);  // última
+
+            for (let i = 0; i < size; i++) {
+                if (this.dataStructure.keys[i] !== null) {
+                    visiblePositions.add(i);
+                }
+            }
+
+            const sorted = Array.from(visiblePositions).sort((a, b) => a - b);
+            let lastRendered = -1;
+
+            for (const pos of sorted) {
+                // Separador si hay hueco
+                if (lastRendered !== -1 && pos > lastRendered + 1) {
+                    const ellipsisTr = document.createElement('tr');
+                    ellipsisTr.classList.add('ellipsis-row');
+                    const ellipsisTd = document.createElement('td');
+                    ellipsisTd.colSpan = 2;
+                    ellipsisTd.textContent = '\u2026';
+                    ellipsisTr.appendChild(ellipsisTd);
+                    tbody.appendChild(ellipsisTr);
+                }
+
+                const tr = document.createElement('tr');
+                tr.dataset.index = pos;
+
+                const tdPos = document.createElement('td');
+                tdPos.textContent = pos + 1;
+
+                const tdKey = document.createElement('td');
+                if (this.dataStructure.keys[pos] !== null) {
+                    tdKey.textContent = this.dataStructure.keys[pos];
+                } else {
+                    tdKey.textContent = '-';
+                    tdKey.classList.add('empty-cell');
+                }
+
+                tr.appendChild(tdPos);
+                tr.appendChild(tdKey);
+                tbody.appendChild(tr);
+
+                lastRendered = pos;
             }
         }
 
-        const sorted = Array.from(visiblePositions).sort((a, b) => a - b);
-        let lastRendered = -1;
-
-        for (const pos of sorted) {
-            // Separador si hay hueco
-            if (lastRendered !== -1 && pos > lastRendered + 1) {
-                const ellipsisTr = document.createElement('tr');
-                ellipsisTr.classList.add('ellipsis-row');
-                const ellipsisTd = document.createElement('td');
-                ellipsisTd.colSpan = 2;
-                ellipsisTd.textContent = '\u2026';
-                ellipsisTr.appendChild(ellipsisTd);
-                tbody.appendChild(ellipsisTr);
-            }
-
-            const tr = document.createElement('tr');
-            tr.dataset.index = pos;
-
-            const tdPos = document.createElement('td');
-            tdPos.textContent = pos + 1;
-
-            const tdKey = document.createElement('td');
-            if (this.dataStructure.keys[pos] !== null) {
-                tdKey.textContent = this.dataStructure.keys[pos];
-            } else {
-                tdKey.textContent = '-';
-                tdKey.classList.add('empty-cell');
-            }
-
-            tr.appendChild(tdPos);
-            tr.appendChild(tdKey);
-            if (pos === size - 1) tr.classList.add('sticky-bottom');
-            tbody.appendChild(tr);
-
-            lastRendered = pos;
-        }
-
-        // Alinear el cuerpo de la tabla al fondo: el thead queda arriba, el tbody se empuja abajo
+        // Alinear el cuerpo de la tabla al fondo si hay espacio sobrante
         requestAnimationFrame(() => {
             const tableScroll = document.getElementById('table-scroll');
             const dataTable = document.getElementById('data-table');

@@ -128,8 +128,14 @@ class TreeView {
         el.btnPrint.addEventListener('click', () => this._onPrint());
         el.btnFit.addEventListener('click', () => this._fitToView());
 
+        // Tecla Enter en el input de clave
+        // Se usa un pequeño retraso para que el keyup de Enter se procese
+        // antes de que aparezca cualquier diálogo SweetAlert2.
         el.inputKey.addEventListener('keydown', (e) => {
-            if (e.key === 'Enter') el.btnInsert.click();
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                setTimeout(() => el.btnInsert.click(), 10);
+            }
         });
 
         // Canvas pan & zoom

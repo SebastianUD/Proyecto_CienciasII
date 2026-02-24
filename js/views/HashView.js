@@ -204,9 +204,13 @@ class HashView extends AlgorithmView {
         el.btnPrint.addEventListener('click', () => FileManager.print());
 
         // Tecla Enter en el input de clave
+        // Se usa un pequeño retraso para que el keyup de Enter se procese
+        // antes de que aparezca cualquier diálogo SweetAlert2, evitando
+        // que el mismo Enter cierre el aviso inmediatamente.
         el.inputKey.addEventListener('keydown', (e) => {
             if (e.key === 'Enter') {
-                el.btnInsert.click();
+                e.preventDefault();
+                setTimeout(() => el.btnInsert.click(), 10);
             }
         });
     }
@@ -738,67 +742,84 @@ class HashView extends AlgorithmView {
     }
 
     /**
-     * Renderiza la tabla compacta para hash: solo muestra la primera posición,
-     * la última posición, y las posiciones que tienen claves insertadas.
-     * Entre los huecos muestra filas separadoras "…".
+     * Renderiza la tabla hash. Si el rango de la estructura es mayor a 11
+     * usa modo compacto: solo muestra la primera posición, la última posición,
+     * y las posiciones que tienen claves insertadas, con separadores "…".
+     * Con rango de 11 o menos muestra todas las posiciones normalmente.
      * @override
      * @private
      */
     _renderTable() {
         const tbody = this.elements.tableBody;
         tbody.innerHTML = '';
-        // ... rest of existing _renderTable logic
 
         const size = this.dataStructure.size;
         if (size === 0) return;
 
-        // Recopilar las posiciones que deben mostrarse:
-        // posición 0 (primera), posición size-1 (última), y todas las ocupadas
-        const visiblePositions = new Set();
-        visiblePositions.add(0);           // primera
-        visiblePositions.add(size - 1);    // última
+        // Determinar si usar modo compacto (rango mayor a 11)
+        const useCompact = size > 11;
 
-        for (let i = 0; i < size; i++) {
-            if (this.dataStructure.keys[i] !== null && this.dataStructure.keys[i] !== undefined) {
-                visiblePositions.add(i);
+        if (!useCompact) {
+            // Modo normal: mostrar todas las posiciones
+            for (let i = 0; i < size; i++) {
+                const tr = document.createElement('tr');
+                tr.dataset.index = i;
+
+                const tdPos = document.createElement('td');
+                tdPos.textContent = i + 1;
+
+                const value = this.dataStructure.keys[i];
+                const tdKey = this._renderKeyCell(value);
+
+                tr.appendChild(tdPos);
+                tr.appendChild(tdKey);
+                tbody.appendChild(tr);
+            }
+        } else {
+            // Modo compacto: solo posiciones relevantes con separadores
+            const visiblePositions = new Set();
+            visiblePositions.add(0);           // primera
+            visiblePositions.add(size - 1);    // última
+
+            for (let i = 0; i < size; i++) {
+                if (this.dataStructure.keys[i] !== null && this.dataStructure.keys[i] !== undefined) {
+                    visiblePositions.add(i);
+                }
+            }
+
+            const sorted = Array.from(visiblePositions).sort((a, b) => a - b);
+            let lastRendered = -1;
+
+            for (const pos of sorted) {
+                // Si hay un hueco entre la posición anterior y esta, insertar separador
+                if (lastRendered !== -1 && pos > lastRendered + 1) {
+                    const ellipsisTr = document.createElement('tr');
+                    ellipsisTr.classList.add('ellipsis-row');
+                    const ellipsisTd = document.createElement('td');
+                    ellipsisTd.colSpan = 2;
+                    ellipsisTd.textContent = '…';
+                    ellipsisTr.appendChild(ellipsisTd);
+                    tbody.appendChild(ellipsisTr);
+                }
+
+                const tr = document.createElement('tr');
+                tr.dataset.index = pos;
+
+                const tdPos = document.createElement('td');
+                tdPos.textContent = pos + 1;
+
+                const value = this.dataStructure.keys[pos];
+                const tdKey = this._renderKeyCell(value);
+
+                tr.appendChild(tdPos);
+                tr.appendChild(tdKey);
+                tbody.appendChild(tr);
+
+                lastRendered = pos;
             }
         }
 
-        // Ordenar las posiciones visibles
-        const sorted = Array.from(visiblePositions).sort((a, b) => a - b);
-
-        let lastRendered = -1;
-
-        for (const pos of sorted) {
-            // Si hay un hueco entre la posición anterior y esta, insertar separador
-            if (lastRendered !== -1 && pos > lastRendered + 1) {
-                const ellipsisTr = document.createElement('tr');
-                ellipsisTr.classList.add('ellipsis-row');
-                const ellipsisTd = document.createElement('td');
-                ellipsisTd.colSpan = 2;
-                ellipsisTd.textContent = '…';
-                ellipsisTr.appendChild(ellipsisTd);
-                tbody.appendChild(ellipsisTr);
-            }
-
-            const tr = document.createElement('tr');
-            tr.dataset.index = pos;
-
-            const tdPos = document.createElement('td');
-            tdPos.textContent = pos + 1;
-
-            const value = this.dataStructure.keys[pos];
-            const tdKey = this._renderKeyCell(value);
-
-            tr.appendChild(tdPos);
-            tr.appendChild(tdKey);
-            if (pos === size - 1) tr.classList.add('sticky-bottom');
-            tbody.appendChild(tr);
-
-            lastRendered = pos;
-        }
-
-        // Alinear el cuerpo de la tabla al fondo: el thead queda arriba, el tbody se empuja abajo
+        // Alinear el cuerpo de la tabla al fondo si hay espacio sobrante
         requestAnimationFrame(() => {
             const tableScroll = this.elements.tableScroll || document.getElementById('table-scroll');
             const dataTable = document.getElementById('data-table');

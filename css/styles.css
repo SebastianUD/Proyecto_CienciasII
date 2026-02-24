@@ -318,8 +318,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    height: 100%;
-    overflow: hidden;
+    min-height: 100%;
+    overflow: visible;
 }
 
 .algorithm-view.hidden {
@@ -609,7 +609,7 @@ body {
     display: flex;
     gap: 20px;
     flex-wrap: wrap;
-    align-items: stretch;
+    align-items: center;
 }
 
 .table-container {
@@ -617,7 +617,6 @@ body {
     width: fit-content;
     min-width: 220px;
     max-width: 900px;
-    min-height: 454px;
     max-height: 454px;
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
