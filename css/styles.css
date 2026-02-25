@@ -1381,8 +1381,7 @@ body {
     transition: border-color 0.2s;
     font-family: 'Consolas', 'Courier New', monospace;
     letter-spacing: 1px;
-    min-height: 140px;
-    max-height: 140px;
+    max-height: 100px;
     overflow-y: auto;
     word-wrap: break-word;
     overflow-wrap: break-word;
@@ -1420,7 +1419,7 @@ body {
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     overflow-y: auto;
     min-height: 0;
-    max-height: 280px;
+    max-height: 213px;
     scrollbar-width: thin;
 }
 
