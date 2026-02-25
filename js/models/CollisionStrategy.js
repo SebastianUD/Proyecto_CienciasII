@@ -151,7 +151,6 @@ class CollisionResolver {
     linearSearch(key, hashValue) {
         let position = hashValue - 1;
         let attempts = 0;
-        let emptyCount = 0;
         const steps = [];
 
         while (attempts < this.ds.size) {
@@ -161,7 +160,6 @@ class CollisionResolver {
             const isMatch = currentKey === key;
 
             if (currentKey === null) {
-                emptyCount++;
                 steps.push({
                     index: position,
                     key: null,
@@ -169,10 +167,7 @@ class CollisionResolver {
                     action: 'vacio',
                     formula: attempts === 0 ? null : `${hashValue} + ${attempts} = ${currentPosLabel}`
                 });
-
-                if (emptyCount >= 2) {
-                    return { found: false, position: -1, steps };
-                }
+                return { found: false, position: -1, steps };
             } else {
                 steps.push({
                     index: position,
@@ -189,7 +184,7 @@ class CollisionResolver {
                 }
             }
 
-            position = (hashValue - 1 + (attempts + 1)) % this.ds.size;
+            position = (position + 1) % this.ds.size;
             attempts++;
         }
 
@@ -208,8 +203,46 @@ class CollisionResolver {
             return { success: false, position: -1, error: `La clave "${key}" no fue encontrada.` };
         }
 
-        this.ds.keys[result.position] = null;
+        const n = this.ds.size;
+        let holeIdx = result.position;
+        this.ds.keys[holeIdx] = null;
         this.ds.count--;
+
+        // Reordenamiento para Prueba Lineal
+        let currentIdx = (holeIdx + 1) % n;
+
+        for (let i = 0; i < n - 1; i++) {
+            const targetKey = this.ds.keys[currentIdx];
+            if (targetKey === null) break;
+
+            const k = this.ds.getNumericValue(targetKey);
+            const { hash: startPosLabel } = this.ds._getHashValue(k);
+            const startIdx = startPosLabel - 1;
+
+            // Verificar si el hueco está en el camino circular desde startIdx hasta currentIdx
+            // En Prueba Lineal el camino es secuencial.
+            let inPath = false;
+            let checkIdx = startIdx;
+            for (let j = 0; j < n; j++) {
+                if (checkIdx === holeIdx) {
+                    inPath = true;
+                    break;
+                }
+                if (checkIdx === currentIdx) {
+                    break;
+                }
+                checkIdx = (checkIdx + 1) % n;
+            }
+
+            if (inPath) {
+                this.ds.keys[holeIdx] = targetKey;
+                this.ds.keys[currentIdx] = null;
+                holeIdx = currentIdx;
+            }
+
+            currentIdx = (currentIdx + 1) % n;
+        }
+
         return { success: true, position: result.position, error: null };
     }
 
@@ -262,7 +295,6 @@ class CollisionResolver {
      */
     quadraticSearch(key, hashValue) {
         const steps = [];
-        let emptyCount = 0;
 
         for (let i = 0; i < this.ds.size; i++) {
             const position = (hashValue - 1 + i * i) % this.ds.size;
@@ -272,7 +304,6 @@ class CollisionResolver {
             const isMatch = currentKey === key;
 
             if (currentKey === null) {
-                emptyCount++;
                 steps.push({
                     index: position,
                     key: null,
@@ -281,10 +312,7 @@ class CollisionResolver {
                     offset: i,
                     formula: i === 0 ? null : `${hashValue} + ${i}² = ${currentPosLabel}`
                 });
-
-                if (emptyCount >= 2) {
-                    return { found: false, position: -1, steps };
-                }
+                return { found: false, position: -1, steps };
             } else {
                 steps.push({
                     index: position,
@@ -318,8 +346,44 @@ class CollisionResolver {
             return { success: false, position: -1, error: `La clave "${key}" no fue encontrada.` };
         }
 
-        this.ds.keys[result.position] = null;
+        const n = this.ds.size;
+        let holeIdx = result.position;
+        this.ds.keys[holeIdx] = null;
         this.ds.count--;
+
+        // Reordenamiento para Prueba Cuadrática
+        // Escaneamos toda la tabla para encontrar elementos que deban moverse
+        for (let i = 0; i < n; i++) {
+            const targetKey = this.ds.keys[i];
+            if (targetKey === null) continue;
+
+            const k = this.ds.getNumericValue(targetKey);
+            const { hash: startPosLabel } = this.ds._getHashValue(k);
+            const startPos = startPosLabel - 1;
+
+            // Verificar si el hueco está en la secuencia cuadrática de targetKey antes de su posición actual i
+            let inPath = false;
+            let j_hole = -1;
+            let j_curr = -1;
+
+            for (let j = 0; j < n; j++) {
+                const pos = (startPos + j * j) % n;
+                if (pos === holeIdx) j_hole = j;
+                if (pos === i) {
+                    j_curr = j;
+                    break;
+                }
+            }
+
+            if (j_hole !== -1 && j_hole < j_curr) {
+                this.ds.keys[holeIdx] = targetKey;
+                this.ds.keys[i] = null;
+                holeIdx = i; // El nuevo hueco es la posición que acabamos de vaciar
+                // Reiniciar el bucle para asegurar que no queden huecos intermedios
+                i = -1;
+            }
+        }
+
         return { success: true, position: result.position, error: null };
     }
 
@@ -425,19 +489,65 @@ class CollisionResolver {
     }
 
     /**
-     * Elimina una clave usando Doble Hash.
+     * Elimina una clave usando Doble Hash y reordena la secuencia de colisiones.
+     * Al eliminar, se debe asegurar que los elementos posteriores en la secuencia
+     * que dependen de la posición liberada sean movidos para no romper la cadena de búsqueda.
+     * 
      * @param {string} key - Clave a eliminar.
      * @param {number} hashValue - Valor hash inicial (1-indexed).
      * @returns {Object} Resultado de la eliminación.
      */
     doubleHashDelete(key, hashValue) {
         const result = this.doubleHashSearch(key, hashValue);
-        if (result.found) {
-            this.ds.keys[result.position] = null;
-            this.ds.count--;
-            return { success: true, position: result.position };
+        if (!result.found) {
+            return { success: false, error: 'Clave no encontrada.' };
         }
-        return { success: false, error: 'Clave no encontrada.' };
+
+        const n = this.ds.size;
+        let holeIdx = result.position; // 0-indexed
+        this.ds.keys[holeIdx] = null;
+        this.ds.count--;
+
+        // Reordenamiento para mantener la consistencia de la secuencia
+        let currentPos = holeIdx + 1; // 1-indexed para usar _applyHashToPosition
+        currentPos = this._applyHashToPosition(currentPos);
+
+        for (let i = 0; i < n - 1; i++) {
+            const index = currentPos - 1;
+            const targetKey = this.ds.keys[index];
+
+            if (targetKey === null) break;
+
+            // Calcular dónde empezaría la búsqueda de targetKey
+            const k = this.ds.getNumericValue(targetKey);
+            const { hash: startPos } = this.ds._getHashValue(k);
+
+            // Verificar si el "hueco" está en el camino de startPos a currentPos
+            // Si recorremos desde startPos y encontramos holeIdx+1 antes de currentPos,
+            // significa que targetKey debe ser movida al hueco.
+            let inPath = false;
+            let checkPos = startPos;
+            for (let j = 0; j < n; j++) {
+                if (checkPos === holeIdx + 1) {
+                    inPath = true;
+                    break;
+                }
+                if (checkPos === currentPos) {
+                    break;
+                }
+                checkPos = this._applyHashToPosition(checkPos);
+            }
+
+            if (inPath) {
+                this.ds.keys[holeIdx] = targetKey;
+                this.ds.keys[index] = null;
+                holeIdx = index;
+            }
+
+            currentPos = this._applyHashToPosition(currentPos);
+        }
+
+        return { success: true, position: result.position };
     }
 
     // === MÉTODOS DE ARREGLOS ANIDADOS (Nested Arrays) ===

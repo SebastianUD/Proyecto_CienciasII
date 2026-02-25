@@ -17,7 +17,6 @@ class HashView extends AlgorithmView {
      */
     constructor(containerEl) {
         super(containerEl);
-        console.log("Entrando al algoritmo")
         /** @type {string} Estrategia de colisión seleccionada */
         this._collisionStrategy = '';
         /** @type {boolean} No permitir duplicados en tablas hash por defecto */
@@ -51,7 +50,6 @@ class HashView extends AlgorithmView {
      */
     render(title) {
         // Ocultar pantalla de bienvenida
-        console.log("Esta entrando al render con ", title)
         const welcome = document.getElementById('welcome-screen');
         if (welcome) welcome.classList.add('hidden');
 
