@@ -628,6 +628,7 @@ class TreeView {
         }
 
         this.model.fromJSON(data.structure);
+        this._fitToView();
         this._setOperation('load');
         this._addLog('Árbol cargado desde archivo.', 'success');
     }

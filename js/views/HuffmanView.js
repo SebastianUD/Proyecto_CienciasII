@@ -553,26 +553,58 @@ class HuffmanView {
 
         if (!data) return;
 
-        // Only accept files saved by Huffman (not compatible with other tree types)
-        if (data.algorithm && data.algorithm !== this._algorithmName) {
+        // Determine if the file comes from a tree-group algorithm (digital, residuos, residuos múltiples)
+        const isTreeGroup = data.algorithm && FileCompat.getGroup(data.algorithm) === 'tree';
+        const isHuffman = !data.algorithm || data.algorithm === this._algorithmName;
+
+        if (!isHuffman && !isTreeGroup) {
             Validation.showError(`Este archivo fue creado para "${data.algorithm}" y no es compatible con Árboles de Huffman.`);
             return;
         }
 
-        if (!data.structure || !data.structure.message) {
-            Validation.showError('El archivo no tiene un formato válido para Árboles de Huffman.');
-            return;
+        if (isTreeGroup) {
+            // Convert tree insertionOrder (array of letters) into a Huffman message
+            if (!data.structure || !data.structure.insertionOrder || data.structure.insertionOrder.length === 0) {
+                Validation.showError('El archivo de árbol no contiene datos válidos para convertir.');
+                return;
+            }
+
+            const message = data.structure.insertionOrder.join('');
+            const result = this.model.buildTree(message);
+
+            if (!result.success) {
+                Validation.showError(result.error || 'Error al generar el árbol de Huffman desde el archivo.');
+                return;
+            }
+
+            // Update right panel
+            this._renderEncodingTable();
+            this._renderConstructionTables();
+
+            this._fitToView();
+            this._setOperation('load');
+            this._addLog(`Árbol cargado desde archivo de "${data.algorithm}".`, 'success');
+            this._addLog(`Mensaje generado: "${message}"`, 'info');
+
+            const encoded = this.model.encodeMessage();
+            this._addLog(`Mensaje codificado: ${encoded}`, 'info');
+        } else {
+            // Native Huffman file
+            if (!data.structure || !data.structure.message) {
+                Validation.showError('El archivo no tiene un formato válido para Árboles de Huffman.');
+                return;
+            }
+
+            this.model.fromJSON(data.structure);
+
+            // Update right panel
+            this._renderEncodingTable();
+            this._renderConstructionTables();
+
+            this._fitToView();
+            this._setOperation('load');
+            this._addLog('Árbol cargado desde archivo.', 'success');
         }
-
-        this.model.fromJSON(data.structure);
-
-        // Update right panel
-        this._renderEncodingTable();
-        this._renderConstructionTables();
-
-        this._fitToView();
-        this._setOperation('load');
-        this._addLog('Árbol cargado desde archivo.', 'success');
     }
 
     async _onSave() {
