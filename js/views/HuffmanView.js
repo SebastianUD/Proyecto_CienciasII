@@ -63,7 +63,7 @@ class HuffmanView {
                                 <button class="btn btn-success" id="huffman-btn-search">Buscar</button>
                             </div>
                             <div class="tree-mod-buttons">
-                                <button class="btn btn-success" id="huffman-btn-load">Cargar</button>
+                                <button class="btn btn-info" id="huffman-btn-load">Cargar</button>
                                 <button class="btn btn-secondary" id="huffman-btn-clear">Limpiar</button>
                             </div>
                         </div>

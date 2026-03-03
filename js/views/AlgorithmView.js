@@ -89,7 +89,7 @@ class AlgorithmView {
                     </div>
                     <div class="config-buttons">
                         <button class="btn btn-primary" id="btn-create">Crear</button>
-                        <button class="btn btn-success" id="btn-load">Cargar</button>
+                        <button class="btn btn-info" id="btn-load">Cargar</button>
                         <button class="btn btn-secondary" id="btn-clear">Limpiar</button>
                     </div>
                 </div>
@@ -229,6 +229,18 @@ class AlgorithmView {
 
         // Toggle historial del log
         el.logHistoryToggle.addEventListener('click', () => this._toggleLogHistory());
+
+        // Resize listener — recalcular tabla al cambiar tamaño de ventana
+        this._resizeTimer = null;
+        this._onResizeBound = () => {
+            clearTimeout(this._resizeTimer);
+            this._resizeTimer = setTimeout(() => {
+                if (this.dataStructure.created) {
+                    this._renderTable();
+                }
+            }, 150);
+        };
+        window.addEventListener('resize', this._onResizeBound);
     }
 
     /**
@@ -544,6 +556,29 @@ class AlgorithmView {
      * Con rango de 11 o menos muestra todas las posiciones normalmente.
      * @private
      */
+    /**
+     * Determina si la tabla debería usar modo compacto.
+     * Compara la altura estimada de todas las filas contra la altura
+     * disponible en el contenedor de scroll.
+     * @private
+     * @param {number} size - Número total de posiciones.
+     * @returns {boolean}
+     */
+    _shouldUseCompact(size) {
+        // Use the content-area (which fills available space) as reference
+        const contentArea = this.container.querySelector('.content-area');
+        const headerLabelHeight = 36; // table-header-label + thead
+        const rowHeight = 35;
+        const totalNeeded = size * rowHeight + headerLabelHeight;
+
+        if (contentArea && contentArea.clientHeight > 0) {
+            return totalNeeded > contentArea.clientHeight;
+        }
+        // Fallback: estimate from viewport
+        const estimatedAvailable = window.innerHeight * 0.45;
+        return totalNeeded > estimatedAvailable;
+    }
+
     _renderTable() {
         const tbody = this.elements.tableBody;
         tbody.innerHTML = '';
@@ -551,8 +586,8 @@ class AlgorithmView {
         const size = this.dataStructure.size;
         if (size === 0) return;
 
-        // Determinar si usar modo compacto (rango mayor a 11)
-        const useCompact = size > 11;
+        // Determinar modo dinámico
+        const useCompact = this._shouldUseCompact(size);
 
         if (!useCompact) {
             // Modo normal: mostrar todas las posiciones

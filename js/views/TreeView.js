@@ -58,15 +58,15 @@ class TreeView {
                         <div class="section-title">Modificación de la Estructura</div>
                         <div class="tree-mod-panel">
                             <label for="tree-input-key">Ingrese la Clave (letra)</label>
-                            <input type="text" id="tree-input-key" placeholder="A-Z" maxlength="1">
+                            <div class="tree-input-row">
+                                <input type="text" id="tree-input-key" placeholder="A-Z" maxlength="1">
+                                <button class="btn btn-info" id="tree-btn-load">Cargar</button>
+                                <button class="btn btn-secondary" id="tree-btn-clear">Limpiar</button>
+                            </div>
                             <div class="tree-mod-buttons">
                                 <button class="btn btn-primary" id="tree-btn-insert">Insertar</button>
                                 <button class="btn btn-danger" id="tree-btn-delete">Borrar</button>
                                 <button class="btn btn-success" id="tree-btn-search">Buscar</button>
-                            </div>
-                            <div class="tree-mod-buttons">
-                                <button class="btn btn-success" id="tree-btn-load">Cargar</button>
-                                <button class="btn btn-secondary" id="tree-btn-clear">Limpiar</button>
                             </div>
                         </div>
                     </div>

@@ -1,6 +1,7 @@
 /**
  * @fileoverview Modelo del Árbol por Residuos Múltiples.
- * Consume bits en bloques de m (por defecto m=2 → 4 salidas por nodo).
+ * Consume bits en bloques de m (m=2..5 → 4..32 salidas por nodo).
+ * Las claves siempre llegan a nodos hoja (profundidad máxima según m).
  * @module models/MultiResidueTreeModel
  */
 
@@ -13,6 +14,8 @@ class MultiResidueTreeNode {
         this.key = null;
         /** @type {boolean} */
         this.isLink = false;
+        /** @type {boolean} */
+        this.isGhost = false;
         /** @type {number} Bits por bloque */
         this.m = m;
         /** @type {(MultiResidueTreeNode|null)[]} Hijos indexados por valor del bloque */
@@ -44,6 +47,11 @@ class MultiResidueTreeModel {
 
     get created() { return this.keys.size > 0; }
 
+    /** Total de niveles internos (link levels) en el árbol */
+    get _totalDepth() {
+        return Math.ceil(5 / this.m);
+    }
+
     reset() {
         this.root = null;
         this.keys = new Set();
@@ -52,7 +60,8 @@ class MultiResidueTreeModel {
 
     /**
      * Divide el binario en bloques de m bits.
-     * El último bloque puede tener menos de m bits (ej: 1 bit para claves de 5 bits con m=2).
+     * El último bloque se rellena con ceros a la derecha si es necesario
+     * para tener exactamente m bits, garantizando profundidad uniforme.
      * @param {string} binary
      * @returns {string[]}
      */
@@ -60,8 +69,10 @@ class MultiResidueTreeModel {
         const blocks = [];
         for (let i = 0; i < binary.length; i += this.m) {
             let block = binary.substring(i, i + this.m);
-            // Do NOT pad the last block — with 5-bit keys and m=2,
-            // the last block is just 1 bit (0 or 1).
+            // Pad the last block to m bits for uniform depth
+            if (block.length < this.m) {
+                block = block.padEnd(this.m, '0');
+            }
             blocks.push(block);
         }
         return blocks;
@@ -77,7 +88,8 @@ class MultiResidueTreeModel {
     }
 
     /**
-     * Inserta una letra.
+     * Inserta una letra. La clave siempre llega a la profundidad máxima (nodo hoja).
+     * Se crean nodos de enlace intermedios según sea necesario.
      * @param {string} letter
      * @returns {{success: boolean, steps: Array, error: string|null}}
      */
@@ -94,97 +106,91 @@ class MultiResidueTreeModel {
         const blocks = this._getBlocks(binary);
         const steps = [];
 
-        // Primer nodo
+        // Create root if needed
         if (!this.root) {
             this.root = new MultiResidueTreeNode(this.m);
             this.root.isLink = true;
-
-            const idx = this._blockToIndex(blocks[0]);
-            const leaf = new MultiResidueTreeNode(this.m);
-            leaf.key = letter;
-            this.root.children[idx] = leaf;
-
-            steps.push({ node: this.root, action: 'visit-link', blockIndex: 0, block: blocks[0] });
-            steps.push({ node: leaf, action: 'insert', blockIndex: 0 });
-
-            this.keys.add(letter);
-            this.insertionOrder.push(letter);
-            return { success: true, steps, error: null };
         }
 
         let current = this.root;
-        let blockIndex = 0;
 
-        while (blockIndex < blocks.length) {
+        // Traverse all blocks — keys always go to the deepest level
+        for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
             const block = blocks[blockIndex];
             const idx = this._blockToIndex(block);
+            const isLastBlock = blockIndex === blocks.length - 1;
+
             steps.push({ node: current, action: 'visit-link', blockIndex, block });
 
             const child = current.children[idx];
 
-            // Vacío → crear hoja
-            if (!child) {
-                const leaf = new MultiResidueTreeNode(this.m);
-                leaf.key = letter;
-                current.children[idx] = leaf;
-                steps.push({ node: leaf, action: 'insert', blockIndex });
-                this.keys.add(letter);
-                this.insertionOrder.push(letter);
-                return { success: true, steps, error: null };
-            }
-
-            // Colisión con hoja
-            if (child.isLeaf) {
-                steps.push({ node: child, action: 'collision', blockIndex });
-                const existingKey = child.key;
-                const existingBinary = TreeUtils.letterToBinary(existingKey);
-                const existingBlocks = this._getBlocks(existingBinary);
-
-                // Transformar en enlace
-                child.key = null;
-                child.isLink = true;
-
-                let splitNode = child;
-                let splitIdx = blockIndex + 1;
-
-                // Compartir bloques iguales
-                while (splitIdx < blocks.length && splitIdx < existingBlocks.length &&
-                    blocks[splitIdx] === existingBlocks[splitIdx]) {
-                    const sharedBlock = blocks[splitIdx];
-                    const sharedChildIdx = this._blockToIndex(sharedBlock);
+            if (isLastBlock) {
+                // Last block — place the key here as a leaf
+                if (!child) {
+                    const leaf = new MultiResidueTreeNode(this.m);
+                    leaf.key = letter;
+                    current.children[idx] = leaf;
+                    steps.push({ node: leaf, action: 'insert', blockIndex });
+                } else if (child.isLeaf && child.key === null) {
+                    // Ghost node — fill it with the key
+                    child.key = letter;
+                    child.isGhost = false;
+                    steps.push({ node: child, action: 'insert', blockIndex });
+                } else {
+                    // Should not happen with valid 5-bit unique keys
+                    return { success: false, steps, error: 'Conflicto en posición hoja.' };
+                }
+            } else {
+                // Not the last block — need a link node here
+                if (!child) {
                     const linkNode = new MultiResidueTreeNode(this.m);
                     linkNode.isLink = true;
-                    splitNode.children[sharedChildIdx] = linkNode;
-                    steps.push({ node: linkNode, action: 'create-link', blockIndex: splitIdx, block: sharedBlock });
-                    splitNode = linkNode;
-                    splitIdx++;
+                    current.children[idx] = linkNode;
+                    steps.push({ node: linkNode, action: 'create-link', blockIndex, block });
+                    current = linkNode;
+                } else if (child.isLeaf) {
+                    // There's a leaf here but we need to go deeper
+                    // This shouldn't happen since all keys go to max depth
+                    // But handle gracefully: convert to link and push existing key down
+                    const existingKey = child.key;
+                    child.key = null;
+                    child.isLink = true;
+                    child.isGhost = false;
+                    steps.push({ node: child, action: 'collision', blockIndex });
+
+                    // Re-insert the existing key from this point down
+                    if (existingKey) {
+                        const existingBinary = TreeUtils.letterToBinary(existingKey);
+                        const existingBlocks = this._getBlocks(existingBinary);
+                        let reinsertNode = child;
+                        for (let ri = blockIndex + 1; ri < existingBlocks.length; ri++) {
+                            const reBlock = existingBlocks[ri];
+                            const reIdx = this._blockToIndex(reBlock);
+                            const isReLast = ri === existingBlocks.length - 1;
+                            if (isReLast) {
+                                const reLeaf = new MultiResidueTreeNode(this.m);
+                                reLeaf.key = existingKey;
+                                reinsertNode.children[reIdx] = reLeaf;
+                                steps.push({ node: reLeaf, action: 'reinsert', blockIndex: ri, key: existingKey });
+                            } else {
+                                const reLinkNode = new MultiResidueTreeNode(this.m);
+                                reLinkNode.isLink = true;
+                                reinsertNode.children[reIdx] = reLinkNode;
+                                reinsertNode = reLinkNode;
+                            }
+                        }
+                    }
+                    current = child;
+                } else {
+                    // It's already a link node — just descend
+                    current = child;
                 }
-
-                // Bifurcar
-                if (splitIdx < blocks.length && splitIdx < existingBlocks.length) {
-                    const newLeaf = new MultiResidueTreeNode(this.m);
-                    newLeaf.key = letter;
-                    const oldLeaf = new MultiResidueTreeNode(this.m);
-                    oldLeaf.key = existingKey;
-
-                    splitNode.children[this._blockToIndex(blocks[splitIdx])] = newLeaf;
-                    splitNode.children[this._blockToIndex(existingBlocks[splitIdx])] = oldLeaf;
-
-                    steps.push({ node: newLeaf, action: 'insert', blockIndex: splitIdx });
-                    steps.push({ node: oldLeaf, action: 'reinsert', blockIndex: splitIdx, key: existingKey });
-                }
-
-                this.keys.add(letter);
-                this.insertionOrder.push(letter);
-                return { success: true, steps, error: null };
             }
-
-            // Enlace → bajar
-            current = child;
-            blockIndex++;
         }
 
-        return { success: false, steps, error: 'No se pudo insertar: bloques agotados.' };
+        this.keys.add(letter);
+        this.insertionOrder.push(letter);
+        return { success: true, steps, error: null };
     }
 
     /**
@@ -204,26 +210,37 @@ class MultiResidueTreeModel {
         if (!this.root) return { found: false, steps, error: null };
 
         let current = this.root;
-        let blockIndex = 0;
 
-        while (current && blockIndex <= blocks.length) {
-            if (current.isLeaf) {
-                if (current.key === letter) {
-                    steps.push({ node: current, action: 'found', blockIndex });
+        for (let blockIndex = 0; blockIndex < blocks.length; blockIndex++) {
+            const block = blocks[blockIndex];
+            const idx = this._blockToIndex(block);
+
+            steps.push({ node: current, action: 'visit-link', blockIndex, block });
+
+            const child = current.children[idx];
+
+            if (!child) {
+                steps[steps.length - 1].action = 'not-found';
+                return { found: false, steps, error: null };
+            }
+
+            if (child.isLeaf) {
+                if (child.key === letter) {
+                    steps.push({ node: child, action: 'found', blockIndex });
                     return { found: true, steps, error: null };
                 } else {
-                    steps.push({ node: current, action: 'not-found', blockIndex });
+                    steps.push({ node: child, action: 'not-found', blockIndex });
                     return { found: false, steps, error: null };
                 }
             }
 
-            if (blockIndex >= blocks.length) break;
+            // Ghost node check
+            if (child.isGhost) {
+                steps.push({ node: child, action: 'not-found', blockIndex });
+                return { found: false, steps, error: null };
+            }
 
-            const block = blocks[blockIndex];
-            const idx = this._blockToIndex(block);
-            steps.push({ node: current, action: 'visit-link', blockIndex, block });
-            current = current.children[idx];
-            blockIndex++;
+            current = child;
         }
 
         if (steps.length > 0) steps[steps.length - 1].action = 'not-found';
@@ -293,25 +310,8 @@ class MultiResidueTreeModel {
         const nodes = [];
         const hGap = 60;
         const vGap = 80;
-        const totalBits = 5; // Letters A-Z use 5-bit codes
 
-        // Compute the block size and edge labels at each depth
-        const getBlockSizeAtDepth = (depth) => {
-            const bitStart = depth * this.m;
-            const remaining = totalBits - bitStart;
-            if (remaining <= 0) return 0;
-            return Math.min(this.m, remaining);
-        };
-
-        const getEdgeLabelsAtDepth = (depth) => {
-            const blockSize = getBlockSizeAtDepth(depth);
-            const count = Math.pow(2, blockSize);
-            const labels = [];
-            for (let i = 0; i < count; i++) {
-                labels.push(i.toString(2).padStart(blockSize, '0'));
-            }
-            return labels;
-        };
+        const edgeLabels = this._getEdgeLabels();
 
         let slotIndex = 0;
 
@@ -327,13 +327,14 @@ class MultiResidueTreeModel {
                 return { node, x, y, childInfos: [] };
             }
 
-            const depthLabels = getEdgeLabelsAtDepth(depth);
             const childInfos = [];
             for (let i = 0; i < node.children.length; i++) {
-                childInfos.push({
-                    info: assignPositions(node.children[i], depth + 1),
-                    label: depthLabels[i] || i.toString(2)
-                });
+                if (node.children[i]) {
+                    childInfos.push({
+                        info: assignPositions(node.children[i], depth + 1),
+                        label: edgeLabels[i] || i.toString(2)
+                    });
+                }
             }
 
             const validChildren = childInfos.filter(c => c.info !== null);

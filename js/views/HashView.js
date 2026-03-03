@@ -91,7 +91,7 @@ class HashView extends AlgorithmView {
                     </div>
                     <div class="config-buttons">
                         <button class="btn btn-primary" id="btn-create">Crear</button>
-                        <button class="btn btn-success" id="btn-load">Cargar</button>
+                        <button class="btn btn-info" id="btn-load">Cargar</button>
                         <button class="btn btn-secondary" id="btn-clear">Limpiar</button>
                     </div>
                 </div>
@@ -217,6 +217,18 @@ class HashView extends AlgorithmView {
 
         // Toggle historial del log
         el.logHistoryToggle.addEventListener('click', () => this._toggleLogHistory());
+
+        // Resize listener — recalcular tabla al cambiar tamaño de ventana
+        this._resizeTimer = null;
+        this._onResizeBound = () => {
+            clearTimeout(this._resizeTimer);
+            this._resizeTimer = setTimeout(() => {
+                if (this.dataStructure.created) {
+                    this._renderTable();
+                }
+            }, 150);
+        };
+        window.addEventListener('resize', this._onResizeBound);
     }
 
     /**
@@ -764,8 +776,8 @@ class HashView extends AlgorithmView {
         const size = this.dataStructure.size;
         if (size === 0) return;
 
-        // Determinar si usar modo compacto (rango mayor a 11)
-        const useCompact = size > 11;
+        // Determinar modo dinámico
+        const useCompact = this._shouldUseCompact(size);
 
         if (!useCompact) {
             // Modo normal: mostrar todas las posiciones

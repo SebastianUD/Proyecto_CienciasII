@@ -288,6 +288,12 @@ body {
     transition: margin-left var(--transition-speed);
 }
 
+.main-content:has(.content-area) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
 .welcome-screen {
     display: flex;
     flex-direction: column;
@@ -318,8 +324,9 @@ body {
     display: flex;
     flex-direction: column;
     gap: 20px;
-    min-height: 100%;
-    overflow: visible;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
 }
 
 .algorithm-view.hidden {
@@ -398,26 +405,6 @@ body {
     flex: 0 0 auto;
     min-width: auto;
     align-items: center;
-}
-
-@media (min-width: 1100px) {
-    .config-group {
-        flex-direction: row;
-        align-items: center;
-        gap: 6px;
-    }
-
-    .config-group:has(.toggle-container) {
-        flex-direction: column;
-        align-items: center;
-        gap: 3px;
-    }
-
-    .config-group label {
-        min-width: fit-content;
-        white-space: nowrap;
-        flex-shrink: 0;
-    }
 }
 
 .config-group label {
@@ -566,6 +553,16 @@ body {
     background-color: var(--border-light);
 }
 
+.btn-info {
+    background-color: #e7862a;
+    color: white;
+}
+
+.btn-info:hover {
+    background-color: #E99B55;
+    box-shadow: 0 2px 6px rgba(224, 138, 60, 0.3);
+}
+
 .btn:disabled {
     opacity: 0.5;
     cursor: not-allowed;
@@ -616,16 +613,18 @@ body {
 .content-area {
     display: flex;
     gap: 20px;
-    flex-wrap: wrap;
-    align-items: center;
+    flex: 1;
+    min-height: 0;
+    align-items: stretch;
 }
 
 .table-container {
     flex: 0 0 auto;
+    align-self: center;
     width: fit-content;
     min-width: 220px;
     max-width: 900px;
-    max-height: 454px;
+    max-height: 100%;
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
@@ -761,6 +760,7 @@ body {
 .log-container {
     flex: 1;
     min-width: 280px;
+    min-height: 0;
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
@@ -768,8 +768,6 @@ body {
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
     display: flex;
     flex-direction: column;
-    min-height: 454px;
-    max-height: 454px;
 }
 
 .log-header {
@@ -923,6 +921,27 @@ body {
     box-shadow: 0 0 0 2px var(--primary-blue-pale);
 }
 
+.tree-input-row {
+    display: flex;
+    gap: 6px;
+    align-items: center;
+}
+
+.tree-input-row input[type="text"] {
+    flex: 1;
+    min-width: 40px;
+    text-align: center;
+    padding: 7px 10px;
+    font-size: 0.82rem;
+}
+
+.tree-input-row .btn {
+    flex: 0 0 auto;
+    justify-content: center;
+    padding: 7px 10px;
+    font-size: 0.82rem;
+}
+
 .tree-mod-buttons {
     display: flex;
     gap: 6px;
@@ -934,6 +953,37 @@ body {
     justify-content: center;
     padding: 7px 10px;
     font-size: 0.82rem;
+}
+
+.tree-m-selector-row {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+}
+
+.tree-m-selector-row label {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+}
+
+.tree-m-selector-row select {
+    padding: 7px 10px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.82rem;
+    outline: none;
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    transition: border-color 0.2s;
+    cursor: pointer;
+}
+
+.tree-m-selector-row select:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 2px var(--primary-blue-pale);
 }
 
 .tree-log-section {
@@ -1167,7 +1217,6 @@ body {
 .table-scroll {
     overflow-x: auto;
     overflow-y: auto;
-    max-height: 500px;
     border: 1px solid var(--border-light);
     border-radius: 4px;
     background: var(--bg-card);
