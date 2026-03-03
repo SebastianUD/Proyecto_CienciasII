@@ -35,10 +35,10 @@ class ArbolesResiduosMultiplesView extends TreeView {
         selectorRow.innerHTML = `
             <label for="tree-m-select">Bits por Bloque (m)</label>
             <select id="tree-m-select">
-                <option value="2" selected>m = 2 (4 hijos)</option>
-                <option value="3">m = 3 (8 hijos)</option>
-                <option value="4">m = 4 (16 hijos)</option>
-                <option value="5">m = 5 (32 hijos)</option>
+                <option value="2" selected>m = 2 (4 hijos por nodo)</option>
+                <option value="3">m = 3 (8 hijos por nodo)</option>
+                <option value="4">m = 4 (16 hijos por nodo)</option>
+                <option value="5">m = 5 (32 hijos por nodo)</option>
             </select>
         `;
 

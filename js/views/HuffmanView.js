@@ -113,6 +113,7 @@ class HuffmanView {
         this._bindEvents();
         this._resizeCanvas();
         this._drawTree();
+        this._syncEncodingHeight();
     }
 
     // ─── Cache & Events ─────────────────────────────────────────────────────────
@@ -131,7 +132,9 @@ class HuffmanView {
             logContent: document.getElementById('huffman-log-content'),
             logHistoryToggle: document.getElementById('huffman-log-history-toggle'),
             encodingBody: document.getElementById('huffman-encoding-body'),
-            constructionScroll: document.getElementById('huffman-construction-scroll')
+            constructionScroll: document.getElementById('huffman-construction-scroll'),
+            modSection: this.container.querySelector('.tree-mod-section'),
+            encodingSection: this.container.querySelector('.huffman-encoding-section')
         };
     }
 
@@ -169,8 +172,24 @@ class HuffmanView {
         this._resizeObserver = new ResizeObserver(() => {
             this._resizeCanvas();
             this._drawTree();
+            this._syncEncodingHeight();
         });
         this._resizeObserver.observe(canvas.parentElement);
+    }
+
+    /**
+     * Sincroniza la altura máxima de la sección de codificación con la
+     * altura real de la sección de modificación.
+     */
+    _syncEncodingHeight() {
+        const { modSection, encodingSection } = this.elements;
+        if (!modSection || !encodingSection) return;
+        requestAnimationFrame(() => {
+            const modHeight = modSection.offsetHeight;
+            if (modHeight > 0) {
+                encodingSection.style.maxHeight = modHeight + 'px';
+            }
+        });
     }
 
     // ─── Canvas Pan & Zoom ──────────────────────────────────────────────────────

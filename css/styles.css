@@ -887,6 +887,40 @@ body {
     flex-shrink: 0;
 }
 
+/* Inside Huffman layout, mod section takes 30% and encoding matches */
+.huffman-layout .tree-left-panel {
+    min-height: 0;
+}
+
+.huffman-layout .tree-mod-section {
+    flex: 0 0 30%;
+    max-height: 30%;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.huffman-layout .tree-mod-panel {
+    flex: 1;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.huffman-layout .huffman-input-wrapper {
+    flex: 1;
+    min-height: 50px;
+    display: flex;
+    flex-direction: column;
+}
+
+.huffman-layout .huffman-message-input {
+    flex: 1;
+    min-height: 50px;
+    max-height: none;
+}
+
 .tree-mod-panel {
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
@@ -1456,10 +1490,11 @@ body {
 }
 
 .huffman-encoding-section {
-    flex-shrink: 1;
+    flex: 0 0 auto;
     min-height: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
 }
 
 .huffman-encoding-body {
@@ -1467,8 +1502,8 @@ body {
     border: 1px solid var(--border-color);
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     overflow-y: auto;
+    flex: 1;
     min-height: 0;
-    max-height: 213px;
     scrollbar-width: thin;
 }
 
