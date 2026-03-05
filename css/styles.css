@@ -284,7 +284,7 @@ body {
 .main-content {
     flex: 1;
     overflow-y: auto;
-    padding: 24px 28px;
+    padding: 20px 20px;
     transition: margin-left var(--transition-speed);
 }
 
@@ -393,9 +393,8 @@ body {
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     padding: 14px 16px;
     display: flex;
-    align-items: center;
-    gap: 20px;
-    flex-wrap: wrap;
+    flex-direction: column;
+    gap: 12px;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
 
@@ -512,9 +511,13 @@ body {
 
 .config-buttons {
     display: flex;
-    gap: 5px;
-    margin-left: auto;
+    gap: 16px;
     flex-wrap: wrap;
+}
+
+.config-buttons .btn {
+    flex: 1;
+    justify-content: center;
 }
 
 /* Buttons */
@@ -630,7 +633,7 @@ body {
 
 .insert-buttons {
     display: flex;
-    gap: 5px;
+    gap: 16px;
 }
 
 /* Content Area */
@@ -1630,7 +1633,7 @@ body {
 }
 
 .block-panel-creation {
-    flex: 1;
+    flex: 7;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -1642,7 +1645,8 @@ body {
 }
 
 .block-panel-modification {
-    flex: 0 0 auto;
+    flex: 3;
+    min-width: 0;
     display: flex;
     flex-direction: column;
 }
@@ -1653,9 +1657,8 @@ body {
     border-radius: 0 0 var(--border-radius) var(--border-radius);
     padding: 14px 16px;
     display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 20px;
+    flex-direction: column;
+    gap: 12px;
     flex: 1;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
@@ -1676,13 +1679,14 @@ body {
 }
 
 .block-mod-body input[type="text"] {
-    width: 150px;
+    width: 100%;
     padding: 5px 8px;
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
     font-size: 0.82rem;
     outline: none;
     transition: border-color 0.2s;
+    box-sizing: border-box;
 }
 
 .block-mod-body input[type="text"]:focus {
@@ -1692,7 +1696,11 @@ body {
 
 .block-mod-body .insert-buttons {
     display: flex;
-    gap: 5px;
+}
+
+.block-mod-body .insert-buttons .btn {
+    flex: 1;
+    justify-content: center;
 }
 
 .block-mod-body .insert-buttons .btn,
