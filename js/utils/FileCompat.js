@@ -14,7 +14,8 @@ const FileCompat = {
         linear: ['busqueda-secuencial', 'busqueda-binaria'],
         hash: ['busqueda-hash-mod', 'busqueda-hash-cuadrado', 'hash-truncamiento', 'hash-plegamiento'],
         tree: ['arboles-digitales', 'arboles-residuos', 'arboles-residuos-multiples'],
-        huffman: ['arboles-huffman']
+        huffman: ['arboles-huffman'],
+        blockSearch: ['ext-secuencial-bloques', 'ext-binaria-bloques']
     },
 
     /**

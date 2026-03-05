@@ -39,7 +39,9 @@
         'arboles-digitales': ArbolesDigitalesView,
         'arboles-residuos': ArbolesResiduosView,
         'arboles-residuos-multiples': ArbolesResiduosMultiplesView,
-        'arboles-huffman': HuffmanView
+        'arboles-huffman': HuffmanView,
+        'ext-secuencial-bloques': BusquedaSecuencialBloquesView,
+        'ext-binaria-bloques': BusquedaBinariaBloquesView
     };
 
     /**

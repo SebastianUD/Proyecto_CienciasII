@@ -53,7 +53,19 @@ const MenuModel = {
                         id: 'externas',
                         label: 'Externas',
                         children: [
-                            { id: 'ext-placeholder', label: '...', enabled: false }
+                            { id: 'ext-secuencial-bloques', label: 'Secuencial (Bloques)', action: 'ext-secuencial-bloques', enabled: true },
+                            { id: 'ext-binaria-bloques', label: 'Binaria (Bloques)', action: 'ext-binaria-bloques', enabled: true },
+                            {
+                                id: 'ext-transformacion',
+                                label: 'Transformación de Claves',
+                                children: [
+                                    { id: 'ext-hash-mod', label: 'Función Hash Mod', enabled: false },
+                                    { id: 'ext-hash-cuadrado', label: 'Función Hash Cuadrado', enabled: false },
+                                    { id: 'ext-hash-truncamiento', label: 'Función Hash Truncamiento', enabled: false },
+                                    { id: 'ext-hash-plegamiento', label: 'Función Hash Plegamiento', enabled: false },
+                                    { id: 'ext-conversion-base', label: 'Conversión de Base', enabled: false }
+                                ]
+                            }
                         ]
                     }
                 ]

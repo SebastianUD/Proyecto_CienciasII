@@ -461,6 +461,159 @@ class DataStructure {
     }
 
     /**
+     * Búsqueda secuencial por bloques (externa).
+     * Compara la clave con el último registro de cada bloque.
+     * Si la clave es menor o igual, busca secuencialmente dentro de ese bloque.
+     * Requiere arreglo ordenado.
+     * @param {string} rawKey - Clave a buscar.
+     * @param {number} blockSize - Tamaño de cada bloque.
+     * @returns {{found: boolean, position: number, steps: Array}}
+     */
+    blockSequentialSearch(rawKey, blockSize) {
+        const key = this._prepareKey(rawKey);
+        const steps = [];
+        const n = this.count;
+
+        if (n === 0) return { found: false, position: -1, steps };
+
+        const numBlocks = Math.ceil(n / blockSize);
+        let targetBlock = -1;
+
+        // Fase 1: Comparar con el último elemento de cada bloque
+        for (let b = 0; b < numBlocks; b++) {
+            const lastIdx = Math.min((b + 1) * blockSize - 1, n - 1);
+            const lastKey = this.keys[lastIdx];
+            const cmp = this._compareKeys(key, lastKey);
+
+            if (cmp === 0) {
+                // Key matches last record of block — found immediately
+                steps.push({ type: 'block-compare', blockIndex: b, index: lastIdx, lastKey, action: 'enter-block' });
+                steps.push({ type: 'sequential', blockIndex: b, index: lastIdx, key: lastKey, action: 'found' });
+                return { found: true, position: lastIdx, steps };
+            } else if (cmp < 0) {
+                steps.push({ type: 'block-compare', blockIndex: b, index: lastIdx, lastKey, action: 'enter-block' });
+                targetBlock = b;
+                break;
+            } else {
+                steps.push({ type: 'block-compare', blockIndex: b, index: lastIdx, lastKey, action: 'skip-block' });
+            }
+        }
+
+        if (targetBlock === -1) return { found: false, position: -1, steps };
+
+        // Fase 2: Búsqueda secuencial dentro del bloque encontrado
+        const bStart = targetBlock * blockSize;
+        const bEnd = Math.min(bStart + blockSize, n);
+
+        for (let i = bStart; i < bEnd; i++) {
+            const curKey = this.keys[i];
+            const isMatch = curKey === key;
+            steps.push({ type: 'sequential', blockIndex: targetBlock, index: i, key: curKey, action: isMatch ? 'found' : 'compare' });
+
+            if (isMatch) return { found: true, position: i, steps };
+            if (this._compareKeys(curKey, key) > 0) break;
+        }
+
+        return { found: false, position: -1, steps };
+    }
+
+    /**
+     * Búsqueda binaria por bloques (externa).
+     * Fase 1: Búsqueda binaria sobre los últimos elementos de cada bloque
+     *         para determinar en qué bloque podría estar la clave.
+     * Fase 2: Búsqueda binaria dentro del bloque encontrado.
+     * Requiere arreglo ordenado.
+     * @param {string} rawKey - Clave a buscar.
+     * @param {number} blockSize - Tamaño de cada bloque.
+     * @returns {{found: boolean, position: number, steps: Array}}
+     */
+    blockBinarySearch(rawKey, blockSize) {
+        const key = this._prepareKey(rawKey);
+        const steps = [];
+        const n = this.count;
+
+        if (n === 0) return { found: false, position: -1, steps };
+
+        const numBlocks = Math.ceil(n / blockSize);
+
+        // ─── Phase 1: Binary search on last elements of each block ───
+        let lowBlock = 0;
+        let highBlock = numBlocks - 1;
+        let targetBlock = -1;
+
+        while (lowBlock <= highBlock) {
+            const midBlock = Math.floor((lowBlock + highBlock) / 2);
+            const lastIdx = Math.min((midBlock + 1) * blockSize - 1, n - 1);
+            const lastKey = this.keys[lastIdx];
+            const cmp = this._compareKeys(key, lastKey);
+
+            if (cmp === 0) {
+                // Key matches last element of this block — found immediately
+                steps.push({
+                    type: 'block-binary', lowBlock, highBlock, midBlock,
+                    index: lastIdx, lastKey, action: 'found-at-boundary'
+                });
+                return { found: true, position: lastIdx, steps };
+            } else if (cmp < 0) {
+                // Key is less — could be in this block or a lower block
+                steps.push({
+                    type: 'block-binary', lowBlock, highBlock, midBlock,
+                    index: lastIdx, lastKey, action: 'discard-right'
+                });
+                targetBlock = midBlock;
+                highBlock = midBlock - 1;
+            } else {
+                // Key is greater — must be in a higher block
+                steps.push({
+                    type: 'block-binary', lowBlock, highBlock, midBlock,
+                    index: lastIdx, lastKey, action: 'discard-left'
+                });
+                lowBlock = midBlock + 1;
+            }
+        }
+
+        if (targetBlock === -1) {
+            // Key is greater than all elements
+            return { found: false, position: -1, steps };
+        }
+
+        // ─── Phase 2: Binary search within the target block ───
+        const bStart = targetBlock * blockSize;
+        const bEnd = Math.min(bStart + blockSize, n) - 1;
+        let low = bStart;
+        let high = bEnd;
+
+        while (low <= high) {
+            const mid = Math.floor((low + high) / 2);
+            const midKey = this.keys[mid];
+            const cmp = this._compareKeys(key, midKey);
+
+            if (cmp === 0) {
+                steps.push({
+                    type: 'inner-binary', blockIndex: targetBlock,
+                    low, high, mid, midKey, action: 'found'
+                });
+                return { found: true, position: mid, steps };
+            } else if (cmp < 0) {
+                steps.push({
+                    type: 'inner-binary', blockIndex: targetBlock,
+                    low, high, mid, midKey, action: 'discard-right'
+                });
+                high = mid - 1;
+            } else {
+                steps.push({
+                    type: 'inner-binary', blockIndex: targetBlock,
+                    low, high, mid, midKey, action: 'discard-left'
+                });
+                low = mid + 1;
+            }
+        }
+
+        // Not found within the block
+        return { found: false, position: -1, steps };
+    }
+
+    /**
      * Serializa la estructura a un objeto JSON para guardar.
      * @returns {Object} Objeto con los campos de la estructura.
      */

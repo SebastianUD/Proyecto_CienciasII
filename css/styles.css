@@ -294,6 +294,20 @@ body {
     overflow: hidden;
 }
 
+.main-content:has(.block-log-wrapper) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.main-content:has(.block-log-wrapper)>#algorithm-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
 .welcome-screen {
     display: flex;
     flex-direction: column;
@@ -380,7 +394,7 @@ body {
     padding: 14px 16px;
     display: flex;
     align-items: center;
-    gap: 40px;
+    gap: 20px;
     flex-wrap: wrap;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
 }
@@ -582,10 +596,11 @@ body {
 }
 
 .insert-panel label {
-    font-size: 0.88rem;
+    font-size: 0.82rem;
     font-weight: 600;
     color: var(--text-secondary);
     white-space: nowrap;
+    text-transform: uppercase;
 }
 
 .insert-panel input[type="text"] {
@@ -1591,4 +1606,318 @@ body {
     font-size: 0.82rem;
     padding: 16px 10px;
     font-style: italic;
+}
+
+/* ===========================
+   BLOCK SEARCH VIEW — Externas
+   =========================== */
+
+/* Top row: Creación (left) + Modificación (right) — same horizontal line */
+.block-top-row {
+    display: flex;
+    gap: 12px;
+    align-items: stretch;
+    flex-shrink: 0;
+}
+
+.block-panel-creation {
+    flex: 1;
+    min-width: 0;
+    display: flex;
+    flex-direction: column;
+}
+
+.block-panel-creation .config-panel {
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    flex: 1;
+}
+
+.block-panel-modification {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+}
+
+.block-mod-body {
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: row;
+    align-items: center;
+    gap: 20px;
+    flex: 1;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.block-mod-left {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 3px;
+}
+
+.block-mod-left label {
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    white-space: nowrap;
+}
+
+.block-mod-body input[type="text"] {
+    width: 120px;
+    padding: 5px 8px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.82rem;
+    outline: none;
+    transition: border-color 0.2s;
+}
+
+.block-mod-body input[type="text"]:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 2px var(--primary-blue-pale);
+}
+
+.block-mod-body .insert-buttons {
+    display: flex;
+    gap: 8px;
+}
+
+.block-mod-body .insert-buttons .btn,
+.config-buttons .btn {
+    min-width: 72px;
+}
+
+/* Segmentation wrapper — content-based, JS caps at 70% of available */
+.block-segmentation-wrapper {
+    display: flex;
+    flex-direction: column;
+    flex: 0 1 auto;
+    min-height: 80px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.block-segmentation-wrapper>.section-title {
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    flex-shrink: 0;
+    background-color: var(--bg-main);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+    justify-content: center;
+}
+
+.block-segmentation-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-x: auto;
+    overflow-y: hidden;
+    padding: 12px;
+    scrollbar-width: thin;
+}
+
+.block-segmentation-scroll::-webkit-scrollbar {
+    height: 8px;
+}
+
+.block-segmentation-scroll::-webkit-scrollbar-thumb {
+    background: var(--primary-blue-pale);
+    border-radius: 4px;
+}
+
+.block-segmentation-content {
+    display: flex;
+    gap: 10px;
+    align-items: center;
+    justify-content: center;
+    min-width: min-content;
+    height: 100%;
+}
+
+/* Each block column */
+.block-column {
+    flex: 0 0 auto;
+    min-width: 140px;
+    max-width: 200px;
+    max-height: 100%;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-card);
+    transition: border-color 0.3s, box-shadow 0.3s;
+    overflow: hidden;
+}
+
+.block-column.block-active {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 2px var(--primary-blue-pale), 0 4px 12px rgba(43, 87, 154, 0.15);
+}
+
+.block-column.block-skipped {
+    border-color: var(--border-light);
+    opacity: 0.45;
+    transition: opacity 0.3s, border-color 0.3s;
+}
+
+.block-column-header {
+    text-align: center;
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: white;
+    padding: 6px 8px;
+    background: linear-gradient(135deg, var(--primary-blue), var(--primary-blue-light));
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    flex-shrink: 0;
+}
+
+.block-table-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.block-table-scroll::-webkit-scrollbar {
+    width: 5px;
+}
+
+.block-table-scroll::-webkit-scrollbar-thumb {
+    background: var(--primary-blue-pale);
+    border-radius: 4px;
+}
+
+.block-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.block-table th {
+    background-color: var(--primary-blue-pale);
+    color: var(--primary-blue);
+    padding: 5px 8px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.block-table td {
+    padding: 5px 8px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-light);
+    transition: background-color 0.3s, color 0.3s;
+}
+
+.block-table tr:hover {
+    background-color: rgba(43, 87, 154, 0.06);
+}
+
+.block-table td.empty-cell {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+/* Reuse highlight classes for block table rows */
+.block-table tr.highlight-checking {
+    background-color: var(--highlight-checking) !important;
+    transition: background-color 0.15s;
+}
+
+.block-table tr.highlight-found {
+    background-color: var(--highlight-found) !important;
+    font-weight: 600;
+}
+
+.block-table tr.highlight-not-found {
+    background-color: var(--highlight-not-found) !important;
+}
+
+.block-table tr.highlight-deleting {
+    background-color: var(--red-pale) !important;
+    outline: 2px solid var(--red);
+    font-weight: 600;
+    transition: background-color 0.3s, opacity 0.5s;
+}
+
+.block-table tr.highlight-deleting.fade-out {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.5s, transform 0.5s;
+}
+
+.block-table tr.highlight-discarded {
+    background-color: var(--highlight-discarded) !important;
+    opacity: 0.5;
+    transition: background-color 0.2s, opacity 0.3s;
+}
+
+.block-table tr.highlight-mid {
+    background-color: var(--highlight-mid) !important;
+    transition: background-color 0.15s;
+}
+
+.block-table tr.ellipsis-row td {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 2px 8px;
+    letter-spacing: 2px;
+    background-color: var(--bg-main);
+    user-select: none;
+}
+
+/* Block log wrapper — fills remaining space */
+.block-log-wrapper {
+    flex: 1;
+    min-height: 60px;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+    display: flex;
+    flex-direction: column;
+}
+
+.block-log-wrapper .log-content {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+}
+
+/* Print — block search */
+@media print {
+
+    .block-top-row,
+    .block-log-wrapper,
+    .footer-buttons {
+        display: none !important;
+    }
+
+    .block-segmentation-wrapper {
+        max-height: none;
+    }
+
+    .block-segmentation-scroll {
+        overflow: visible;
+    }
+
+    .block-table-scroll {
+        max-height: none;
+        overflow: visible;
+    }
 }
