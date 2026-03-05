@@ -60,13 +60,13 @@ class TreeView {
                             <label for="tree-input-key">Ingrese la Clave (letra)</label>
                             <div class="tree-input-row">
                                 <input type="text" id="tree-input-key" placeholder="A-Z" maxlength="1">
-                                <button class="btn btn-info" id="tree-btn-load">Cargar</button>
-                                <button class="btn btn-secondary" id="tree-btn-clear">Limpiar</button>
+                                <button class="btn btn-info" id="tree-btn-load">CARGAR</button>
+                                <button class="btn btn-secondary" id="tree-btn-clear">LIMPIAR</button>
                             </div>
                             <div class="tree-mod-buttons">
-                                <button class="btn btn-primary" id="tree-btn-insert">Insertar</button>
-                                <button class="btn btn-danger" id="tree-btn-delete">Borrar</button>
-                                <button class="btn btn-success" id="tree-btn-search">Buscar</button>
+                                <button class="btn btn-primary" id="tree-btn-insert">INSERTAR</button>
+                                <button class="btn btn-danger" id="tree-btn-delete">BORRAR</button>
+                                <button class="btn btn-success" id="tree-btn-search">BUSCAR</button>
                             </div>
                         </div>
                     </div>
@@ -88,8 +88,8 @@ class TreeView {
             </div>
 
             <div class="footer-buttons">
-                <button class="btn btn-success" id="tree-btn-save">Guardar</button>
-                <button class="btn btn-primary" id="tree-btn-print">Imprimir</button>
+                <button class="btn btn-success" id="tree-btn-save">GUARDAR</button>
+                <button class="btn btn-primary" id="tree-btn-print">IMPRIMIR</button>
             </div>
         `;
 

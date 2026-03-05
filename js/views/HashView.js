@@ -34,10 +34,10 @@ class HashView extends AlgorithmView {
     _getCollisionStrategiesOptions() {
         return `
             <option value="">-- Seleccione --</option>
-            <option value="prueba-lineal">P. Lineal</option>
-            <option value="prueba-cuadratica">P. Cuadrática</option>
-            <option value="doble-hash">D. F. Hash</option>
-            <option value="arreglos-anidados">A. Anidados</option>
+            <option value="prueba-lineal">Prueba Lineal</option>
+            <option value="prueba-cuadratica">Prueba Cuadrática</option>
+            <option value="doble-hash">Doble Función Hash</option>
+            <option value="arreglos-anidados">Arreglos Anidados</option>
             <option value="encadenamiento">Encadenamiento</option>
         `;
     }
@@ -60,53 +60,57 @@ class HashView extends AlgorithmView {
             <!-- Título del Algoritmo -->
             <div class="algo-title">${title}</div>
 
-            <!-- Sección: Configuración de la Estructura -->
-            <div class="section-block">
-                <div class="section-title">Configuración de la Estructura</div>
-                <div class="config-panel">
-                    <div class="config-fields">
-                        <div class="config-group">
-                            <label for="cfg-datatype">Tipo de Dato</label>
-                            <select id="cfg-datatype">
-                                <option value="">-- Seleccione --</option>
-                                <option value="numerico">Numérico</option>
-                                <option value="texto">Cadena de Texto</option>
-                                <option value="alfanumerico">Alfanumérico</option>
-                            </select>
+            <!-- Top row: Configuración (izq) + Modificación (der) -->
+            <div class="block-top-row">
+                <!-- Panel Configuración -->
+                <div class="block-panel-creation">
+                    <div class="section-title">Configuración de la Estructura</div>
+                    <div class="config-panel">
+                        <div class="config-fields">
+                            <div class="config-group">
+                                <label for="cfg-datatype">Tipo de Dato</label>
+                                <select id="cfg-datatype">
+                                    <option value="">-- Seleccione --</option>
+                                    <option value="numerico">Numérico</option>
+                                    <option value="texto">Cadena de Texto</option>
+                                    <option value="alfanumerico">Alfanumérico</option>
+                                </select>
+                            </div>
+                            <div class="config-group">
+                                <label for="cfg-collision">Método de Colisión</label>
+                                <select id="cfg-collision">
+                                    ${this._getCollisionStrategiesOptions()}
+                                </select>
+                            </div>
+                            <div class="config-group">
+                                <label for="cfg-keylength">Tamaño Clave</label>
+                                <input type="number" id="cfg-keylength" min="1" max="100" placeholder="Ej: 3">
+                            </div>
+                            <div class="config-group">
+                                <label for="cfg-range">Rango Estructura</label>
+                                <input type="number" id="cfg-range" min="1" placeholder="Ej: 10">
+                            </div>
                         </div>
-                        <div class="config-group">
-                            <label for="cfg-collision">Método de Colisión</label>
-                            <select id="cfg-collision">
-                                ${this._getCollisionStrategiesOptions()}
-                            </select>
+                        <div class="config-buttons">
+                            <button class="btn btn-primary" id="btn-create">CREAR</button>
+                            <button class="btn btn-info" id="btn-load">CARGAR</button>
+                            <button class="btn btn-secondary" id="btn-clear">LIMPIAR</button>
                         </div>
-                        <div class="config-group">
-                            <label for="cfg-keylength">Tamaño Clave</label>
-                            <input type="number" id="cfg-keylength" min="1" max="100" placeholder="Ej: 3">
-                        </div>
-                        <div class="config-group">
-                            <label for="cfg-range">Rango Estructura</label>
-                            <input type="number" id="cfg-range" min="1" placeholder="Ej: 10">
-                        </div>
-                    </div>
-                    <div class="config-buttons">
-                        <button class="btn btn-primary" id="btn-create">Crear</button>
-                        <button class="btn btn-info" id="btn-load">Cargar</button>
-                        <button class="btn btn-secondary" id="btn-clear">Limpiar</button>
                     </div>
                 </div>
-            </div>
-
-            <!-- Sección: Modificación de la Estructura -->
-            <div class="section-block">
-                <div class="section-title">Modificación de la Estructura</div>
-                <div class="insert-panel">
-                    <label for="input-key">Digite la Clave</label>
-                    <input type="text" id="input-key" placeholder="Ingrese la clave..." disabled>
-                    <div class="insert-buttons">
-                        <button class="btn btn-primary" id="btn-insert" disabled>Insertar</button>
-                        <button class="btn btn-danger" id="btn-delete" disabled>Borrar</button>
-                        <button class="btn btn-success" id="btn-search" disabled>Buscar</button>
+                <!-- Panel Modificación -->
+                <div class="block-panel-modification">
+                    <div class="section-title">Modificación de la Estructura</div>
+                    <div class="block-mod-body">
+                        <div class="block-mod-left">
+                            <label for="input-key">Digite la Clave</label>
+                            <input type="text" id="input-key" placeholder="Ingrese la clave..." disabled>
+                        </div>
+                        <div class="insert-buttons">
+                            <button class="btn btn-primary" id="btn-insert" disabled>INSERTAR</button>
+                            <button class="btn btn-danger" id="btn-delete" disabled>BORRAR</button>
+                            <button class="btn btn-success" id="btn-search" disabled>BUSCAR</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -138,8 +142,8 @@ class HashView extends AlgorithmView {
 
             <!-- Botones de pie de página -->
             <div class="footer-buttons">
-                <button class="btn btn-success" id="btn-save" disabled>Guardar</button>
-                <button class="btn btn-primary" id="btn-print" disabled>Imprimir</button>
+                <button class="btn btn-success" id="btn-save" disabled>GUARDAR</button>
+                <button class="btn btn-primary" id="btn-print" disabled>IMPRIMIR</button>
             </div>
         `;
 

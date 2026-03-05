@@ -79,9 +79,9 @@ class BlockSearchView {
                             </div>
                         </div>
                         <div class="config-buttons">
-                            <button class="btn btn-primary" id="btn-create">Crear</button>
-                            <button class="btn btn-info" id="btn-load">Cargar</button>
-                            <button class="btn btn-secondary" id="btn-clear">Limpiar</button>
+                            <button class="btn btn-primary" id="btn-create">CREAR</button>
+                            <button class="btn btn-info" id="btn-load">CARGAR</button>
+                            <button class="btn btn-secondary" id="btn-clear">LIMPIAR</button>
                         </div>
                     </div>
                 </div>
@@ -94,9 +94,9 @@ class BlockSearchView {
                             <input type="text" id="input-key" placeholder="Ingrese la clave..." disabled>
                         </div>
                         <div class="insert-buttons">
-                            <button class="btn btn-primary" id="btn-insert" disabled>Insertar</button>
-                            <button class="btn btn-danger" id="btn-delete" disabled>Borrar</button>
-                            <button class="btn btn-success" id="btn-search" disabled>Buscar</button>
+                            <button class="btn btn-primary" id="btn-insert" disabled>INSERTAR</button>
+                            <button class="btn btn-danger" id="btn-delete" disabled>BORRAR</button>
+                            <button class="btn btn-success" id="btn-search" disabled>BUSCAR</button>
                         </div>
                     </div>
                 </div>
@@ -121,8 +121,8 @@ class BlockSearchView {
 
             <!-- Footer -->
             <div class="footer-buttons">
-                <button class="btn btn-success" id="btn-save" disabled>Guardar</button>
-                <button class="btn btn-primary" id="btn-print" disabled>Imprimir</button>
+                <button class="btn btn-success" id="btn-save" disabled>GUARDAR</button>
+                <button class="btn btn-primary" id="btn-print" disabled>IMPRIMIR</button>
             </div>
         `;
 

@@ -54,8 +54,10 @@ class AlgorithmView {
             <!-- Título del Algoritmo -->
             <div class="algo-title">${title}</div>
 
-            <!-- Sección: Creación de la Estructura -->
-            <div class="section-block">
+            <!-- Top row: Creación (izq) + Modificación (der) -->
+        <div class="block-top-row">
+            <!-- Panel Creación -->
+            <div class="block-panel-creation">
                 <div class="section-title">Creación de la Estructura</div>
                 <div class="config-panel">
                     <div class="config-fields">
@@ -86,28 +88,31 @@ class AlgorithmView {
                                 <span class="toggle-label active" id="toggle-no">No</span>
                             </div>
                         </div>
+                        ${this._getExtraConfigHTML ? this._getExtraConfigHTML() : ''}
                     </div>
                     <div class="config-buttons">
-                        <button class="btn btn-primary" id="btn-create">Crear</button>
-                        <button class="btn btn-info" id="btn-load">Cargar</button>
-                        <button class="btn btn-secondary" id="btn-clear">Limpiar</button>
+                        <button class="btn btn-primary" id="btn-create">CREAR</button>
+                        <button class="btn btn-info" id="btn-load">CARGAR</button>
+                        <button class="btn btn-secondary" id="btn-clear">LIMPIAR</button>
                     </div>
                 </div>
             </div>
-
-            <!-- Sección: Modificación de la Estructura -->
-            <div class="section-block">
+            <!-- Panel Modificación -->
+            <div class="block-panel-modification">
                 <div class="section-title">Modificación de la Estructura</div>
-                <div class="insert-panel">
-                    <label for="input-key">Digite la Clave</label>
-                    <input type="text" id="input-key" placeholder="Ingrese la clave..." disabled>
+                <div class="block-mod-body">
+                    <div class="block-mod-left">
+                        <label for="input-key">Digite la Clave</label>
+                        <input type="text" id="input-key" placeholder="Ingrese la clave..." disabled>
+                    </div>
                     <div class="insert-buttons">
-                        <button class="btn btn-primary" id="btn-insert" disabled>Insertar</button>
-                        <button class="btn btn-danger" id="btn-delete" disabled>Borrar</button>
-                        <button class="btn btn-success" id="btn-search" disabled>Buscar</button>
+                        <button class="btn btn-primary" id="btn-insert" disabled>INSERTAR</button>
+                        <button class="btn btn-danger" id="btn-delete" disabled>BORRAR</button>
+                        <button class="btn btn-success" id="btn-search" disabled>BUSCAR</button>
                     </div>
                 </div>
             </div>
+        </div>
 
             <!-- Área de contenido: Tabla + Log -->
             <div class="content-area">
@@ -136,8 +141,8 @@ class AlgorithmView {
 
             <!-- Botones de pie de página -->
             <div class="footer-buttons">
-                <button class="btn btn-success" id="btn-save" disabled>Guardar</button>
-                <button class="btn btn-primary" id="btn-print" disabled>Imprimir</button>
+                <button class="btn btn-success" id="btn-save" disabled>GUARDAR</button>
+                <button class="btn btn-primary" id="btn-print" disabled>IMPRIMIR</button>
             </div>
         `;
 

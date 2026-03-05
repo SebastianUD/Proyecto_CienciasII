@@ -59,12 +59,12 @@ class HuffmanView {
                                        autocomplete="off" rows="3"></textarea>
                             </div>
                             <div class="tree-mod-buttons">
-                                <button class="btn btn-primary" id="huffman-btn-generate">Generar Árbol</button>
-                                <button class="btn btn-success" id="huffman-btn-search">Buscar</button>
+                                <button class="btn btn-primary" id="huffman-btn-generate">GENERAR ÁRBOL</button>
+                                <button class="btn btn-success" id="huffman-btn-search">BUSCAR</button>
                             </div>
                             <div class="tree-mod-buttons">
-                                <button class="btn btn-info" id="huffman-btn-load">Cargar</button>
-                                <button class="btn btn-secondary" id="huffman-btn-clear">Limpiar</button>
+                                <button class="btn btn-info" id="huffman-btn-load">CARGAR</button>
+                                <button class="btn btn-secondary" id="huffman-btn-clear">LIMPIAR</button>
                             </div>
                         </div>
                     </div>
@@ -104,8 +104,8 @@ class HuffmanView {
             </div>
 
             <div class="footer-buttons">
-                <button class="btn btn-success" id="huffman-btn-save">Guardar</button>
-                <button class="btn btn-primary" id="huffman-btn-print">Imprimir</button>
+                <button class="btn btn-success" id="huffman-btn-save">GUARDAR</button>
+                <button class="btn btn-primary" id="huffman-btn-print">IMPRIMIR</button>
             </div>
         `;
 

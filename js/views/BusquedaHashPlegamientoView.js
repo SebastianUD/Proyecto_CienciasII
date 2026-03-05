@@ -38,10 +38,10 @@ class BusquedaHashPlegamientoView extends HashView {
     _getCollisionStrategiesOptions() {
         return `
             <option value="">-- Seleccione --</option>
-            <option value="prueba-lineal">P. Lineal</option>
-            <option value="prueba-cuadratica">P. Cuadrática</option>
-            <option value="doble-hash">D. F. Hash</option>
-            <option value="arreglos-anidados">A. Anidados</option>
+            <option value="prueba-lineal">Prueba Lineal</option>
+            <option value="prueba-cuadratica">Prueba Cuadrática</option>
+            <option value="doble-hash">Doble Función Hash</option>
+            <option value="arreglos-anidados">Arreglos Anidados</option>
             <option value="encadenamiento">Encadenamiento</option>
         `;
     }
