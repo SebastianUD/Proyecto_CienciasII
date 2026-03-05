@@ -354,7 +354,6 @@ body {
     color: var(--primary-blue);
     padding: 0 0 10px 0;
     border-bottom: 2px solid var(--primary-blue-pale);
-    margin-bottom: 8px;
     letter-spacing: 0.5px;
 }
 
@@ -873,8 +872,7 @@ body {
 .footer-buttons {
     display: flex;
     justify-content: center;
-    gap: 14px;
-    padding-top: 8px;
+    gap: 16px;
 }
 
 .hidden {
