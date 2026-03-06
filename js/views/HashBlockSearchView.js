@@ -434,9 +434,45 @@ class HashBlockSearchView {
         }
 
         this.bucketStructure.fromJSON(data.structure);
-        // Force hashMethod to match the current view, not the saved file
-        this.bucketStructure.hashMethod = this._getHashMethod();
         this._searchMode = data.structure.searchMode || 'secuencial';
+
+        const currentMethod = this._getHashMethod();
+        const fileMethod = data.structure.hashMethod || 'modulo';
+
+        // If the hash method differs, re-process all keys with the current view's method
+        if (currentMethod !== fileMethod) {
+            // 1. Extract all keys from every bucket (blocks + collision)
+            const allKeys = [];
+            for (const bucket of this.bucketStructure.buckets) {
+                for (const block of bucket.blocks) {
+                    for (const k of block.keys) {
+                        if (k !== null) allKeys.push(k);
+                    }
+                }
+                if (bucket.collisionBlock) {
+                    for (const k of bucket.collisionBlock.keys) {
+                        if (k !== null) allKeys.push(k);
+                    }
+                }
+            }
+
+            // 2. Re-create structure with same config but current hash method
+            this.bucketStructure.create({
+                numBuckets: data.structure.numBuckets,
+                blocksPerBucket: data.structure.blocksPerBucket,
+                keysPerBlock: data.structure.keysPerBlock,
+                keyLength: data.structure.keyLength,
+                dataType: data.structure.dataType,
+                searchMode: this._searchMode,
+                hashMethod: currentMethod,
+                hashBase: data.structure.hashBase || 0
+            });
+
+            // 3. Re-insert all keys with the new hash function
+            for (const key of allKeys) {
+                this.bucketStructure.insert(key);
+            }
+        }
 
         const el = this.elements;
         el.dataType.value = data.structure.dataType;
@@ -475,7 +511,11 @@ class HashBlockSearchView {
         this._updateSegmentationMaxHeight();
         this._renderAll();
         this._setOperation('load');
-        this._addLog('Estructura hash cargada desde archivo.', 'success');
+        if (currentMethod !== fileMethod) {
+            this._addLog(`Archivo cargado (método original: ${fileMethod}). Claves re-procesadas con método ${currentMethod}.`, 'warning');
+        } else {
+            this._addLog('Estructura hash cargada desde archivo.', 'success');
+        }
     }
 
     _onInsert() {
