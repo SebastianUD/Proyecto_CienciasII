@@ -1650,7 +1650,7 @@ body {
 }
 
 .block-panel-creation {
-    flex: 8;
+    flex: 7.5;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -1662,7 +1662,7 @@ body {
 }
 
 .block-panel-modification {
-    flex: 2;
+    flex: 2.5;
     min-width: 0;
     display: flex;
     flex-direction: column;

@@ -101,7 +101,7 @@ class HashBlockSearchView {
                                 <input type="number" id="cfg-keylength" min="1" max="100" placeholder="Ej: 3">
                             </div>
                             <div class="config-group">
-                                <label for="cfg-range">Rango Estructura (N)</label>
+                                <label for="cfg-range">Rango Estructura</label>
                                 <input type="number" id="cfg-range" min="1" placeholder="Ej: 10">
                             </div>
                             <div class="config-group">
