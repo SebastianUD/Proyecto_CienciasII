@@ -180,7 +180,7 @@ class HashBucketStructure {
             const hash = val % n;
             return {
                 bucketIndex: hash,
-                formula: `h(${k}) = digCent(${k}²) = digCent(${k2}) mod ${n} = ${hash}`,
+                formula: `h(${k}) = digCent(${k}²) = digCent(${k2}) = ${picked} = ${hash}`,
                 details: { k, k2, picked, hash }
             };
         }
@@ -196,7 +196,7 @@ class HashBucketStructure {
             const hash = val % n;
             return {
                 bucketIndex: hash,
-                formula: `h(${k}) = elegirdigitos(${pickedDigits}) mod ${n} = ${hash}`,
+                formula: `h(${k}) = elegirdigitos impares(${pickedDigits}) = ${hash}`,
                 details: { k, pickedDigits, hash }
             };
         }
@@ -215,7 +215,7 @@ class HashBucketStructure {
             const hash = val % n;
             return {
                 bucketIndex: hash,
-                formula: `h(${k}) = digmensig(${blocks.join(' + ')}) = digmensig(${sum}) = ${lastDigits} mod ${n} = ${hash}`,
+                formula: `h(${k}) = digmensig(${blocks.join(' + ')}) = digmensig(${sum}) = ${lastDigits} = ${hash}`,
                 details: { k, blocks, sum, lastDigits, hash }
             };
         }
@@ -238,7 +238,7 @@ class HashBucketStructure {
             const hash = val % n;
             return {
                 bucketIndex: hash,
-                formula: `h(${k}) = digmensig(${parts.join(' + ')}) = digmensig(${converted}) = ${lastDigits} mod ${n} = ${hash}`,
+                formula: `h(${k}) = digmensig(${parts.join(' + ')}) = digmensig(${converted}) = ${lastDigits} = ${hash}`,
                 details: { k, base, converted, parts, lastDigits, hash }
             };
         }

@@ -434,6 +434,8 @@ class HashBlockSearchView {
         }
 
         this.bucketStructure.fromJSON(data.structure);
+        // Force hashMethod to match the current view, not the saved file
+        this.bucketStructure.hashMethod = this._getHashMethod();
         this._searchMode = data.structure.searchMode || 'secuencial';
 
         const el = this.elements;
