@@ -59,11 +59,11 @@ const MenuModel = {
                                 id: 'ext-transformacion',
                                 label: 'Transformación de Claves',
                                 children: [
-                                    { id: 'ext-hash-mod', label: 'Función Hash Mod', enabled: false },
-                                    { id: 'ext-hash-cuadrado', label: 'Función Hash Cuadrado', enabled: false },
-                                    { id: 'ext-hash-truncamiento', label: 'Función Hash Truncamiento', enabled: false },
-                                    { id: 'ext-hash-plegamiento', label: 'Función Hash Plegamiento', enabled: false },
-                                    { id: 'ext-conversion-base', label: 'Conversión de Base', enabled: false }
+                                    { id: 'ext-hash-mod', label: 'Función Hash Mod', action: 'ext-hash-mod', enabled: true },
+                                    { id: 'ext-hash-cuadrado', label: 'Función Hash Cuadrado', action: 'ext-hash-cuadrado', enabled: true },
+                                    { id: 'ext-hash-truncamiento', label: 'Función Hash Truncamiento', action: 'ext-hash-truncamiento', enabled: true },
+                                    { id: 'ext-hash-plegamiento', label: 'Función Hash Plegamiento', action: 'ext-hash-plegamiento', enabled: true },
+                                    { id: 'ext-conversion-base', label: 'Conversión de Base', action: 'ext-conversion-base', enabled: true }
                                 ]
                             }
                         ]

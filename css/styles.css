@@ -508,6 +508,25 @@ body {
     background-color: var(--red);
 }
 
+/* Neutral toggle (no green/red — used for search type Sec./Bin.) */
+.toggle-switch.neutral {
+    background-color: var(--primary-blue-pale);
+}
+
+.toggle-switch.neutral .toggle-knob {
+    background-color: var(--primary-blue);
+    left: 2px;
+}
+
+.toggle-switch.neutral-on {
+    background-color: var(--primary-blue-pale);
+}
+
+.toggle-switch.neutral-on .toggle-knob {
+    left: 24px;
+    background-color: var(--primary-blue);
+}
+
 .config-buttons {
     display: flex;
     gap: 16px;
@@ -1631,7 +1650,7 @@ body {
 }
 
 .block-panel-creation {
-    flex: 7;
+    flex: 8;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -1643,7 +1662,7 @@ body {
 }
 
 .block-panel-modification {
-    flex: 3;
+    flex: 2;
     min-width: 0;
     display: flex;
     flex-direction: column;
@@ -1895,6 +1914,213 @@ body {
     user-select: none;
 }
 
+/* ===========================
+   HASH BLOCK SEARCH — 3-Column Layout
+   =========================== */
+
+/* Main 3-column container */
+.hash-block-area {
+    display: flex;
+    gap: 12px;
+    flex: 1;
+    min-height: 120px;
+    align-items: center;
+    overflow: hidden;
+}
+
+/* Left column: Bucket Directory */
+.bucket-directory-wrapper {
+    flex: 0 0 calc(15% - 6px);
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.bucket-directory-wrapper>.section-title {
+    flex-shrink: 0;
+    background-color: var(--bg-main);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    justify-content: center;
+}
+
+.bucket-directory-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    scrollbar-width: thin;
+}
+
+.bucket-directory-scroll::-webkit-scrollbar {
+    width: 5px;
+}
+
+.bucket-directory-scroll::-webkit-scrollbar-thumb {
+    background: var(--primary-blue-pale);
+    border-radius: 4px;
+}
+
+.bucket-directory-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.78rem;
+}
+
+.bucket-directory-table th {
+    background-color: var(--primary-blue);
+    color: white;
+    padding: 5px 6px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+}
+
+.bucket-directory-table td {
+    padding: 4px 6px;
+    text-align: center;
+    border-bottom: 1px solid var(--border-light);
+    transition: background-color 0.3s;
+}
+
+.bucket-directory-table tr:hover {
+    background-color: rgba(43, 87, 154, 0.06);
+}
+
+.bucket-directory-table td.empty-cell {
+    color: var(--text-muted);
+    font-style: italic;
+}
+
+.bucket-directory-table tr.highlight-checking {
+    background-color: var(--highlight-checking) !important;
+}
+
+.bucket-directory-table tr.highlight-found {
+    background-color: var(--highlight-found) !important;
+    font-weight: 600;
+}
+
+.bucket-directory-table tr.highlight-not-found {
+    background-color: var(--highlight-not-found) !important;
+}
+
+.bucket-directory-table tr.ellipsis-row td {
+    text-align: center;
+    color: var(--text-muted);
+    font-size: 0.9rem;
+    padding: 2px 6px;
+    letter-spacing: 2px;
+    background-color: var(--bg-main);
+    user-select: none;
+}
+
+/* Center column: Block Segmentation */
+.hash-block-segmentation-wrapper {
+    flex: 1;
+    min-width: 0;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.hash-block-segmentation-wrapper>.section-title {
+    flex-shrink: 0;
+    background-color: var(--bg-main);
+    color: var(--text-secondary);
+    border-color: var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    justify-content: center;
+}
+
+/* Right column: Collision Area */
+.collision-area-wrapper {
+    flex: 0 0 calc(15% - 6px);
+    min-width: 0;
+    max-height: 100%;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.collision-area-wrapper>.section-title {
+    flex-shrink: 0;
+    background-color: #FFF3CD;
+    color: var(--accent-orange);
+    border-color: var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+    justify-content: center;
+}
+
+.collision-area-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: hidden;
+    padding: 6px;
+    scrollbar-width: thin;
+}
+
+.collision-area-scroll::-webkit-scrollbar {
+    width: 5px;
+}
+
+.collision-area-scroll::-webkit-scrollbar-thumb {
+    background: var(--accent-orange-pale);
+    border-radius: 4px;
+}
+
+.collision-area-content {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+}
+
+/* Collision blocks use a distinctive orange header */
+.collision-block .block-column-header,
+.collision-header {
+    background: linear-gradient(135deg, var(--accent-orange), #E04A15);
+}
+
+.collision-block {
+    min-width: auto;
+    max-width: none;
+    width: 100%;
+}
+
+/* Empty-state placeholder inside segmentation / collision */
+.block-empty-placeholder {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 100%;
+    height: 100%;
+    min-height: 60px;
+    color: var(--text-muted);
+    font-size: 0.88rem;
+    font-style: italic;
+    text-align: center;
+    padding: 12px;
+}
+
 /* Block log wrapper — fills remaining space */
 .block-log-wrapper {
     flex: 1;
@@ -1934,5 +2160,37 @@ body {
     .block-table-scroll {
         max-height: none;
         overflow: visible;
+    }
+
+    /* Hash block area — show fully for printing */
+    .hash-block-area {
+        max-height: none !important;
+        height: auto !important;
+        flex: none !important;
+        overflow: visible !important;
+        align-items: flex-start !important;
+    }
+
+    .bucket-directory-wrapper,
+    .hash-block-segmentation-wrapper,
+    .collision-area-wrapper {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .bucket-directory-scroll,
+    .hash-block-segmentation-scroll,
+    .collision-area-scroll {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .algorithm-view {
+        overflow: visible !important;
+        height: auto !important;
+    }
+
+    .main-content {
+        overflow: visible !important;
     }
 }

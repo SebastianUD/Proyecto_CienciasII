@@ -33,8 +33,10 @@ class DataStructure {
         this.created = false;
         /** @type {number} Cantidad de claves insertadas */
         this.count = 0;
-        /** @type {string} Método hash: 'modulo' o 'cuadrado' */
+        /** @type {string} Método hash: 'modulo', 'cuadrado', 'truncamiento', 'plegamiento', 'conversion-base' */
         this.hashMethod = 'modulo';
+        /** @type {number} Base para conversión de base (solo aplica si hashMethod === 'conversion-base') */
+        this.hashBase = 0;
     }
 
     /**
@@ -46,13 +48,14 @@ class DataStructure {
      * @param {string} collisionStrategy - Estrategia de colisión.
      * @param {string} hashMethod - Método hash ('modulo' o 'cuadrado').
      */
-    create(size, keyLength, dataType, allowDuplicates, collisionStrategy = null, hashMethod = 'modulo') {
+    create(size, keyLength, dataType, allowDuplicates, collisionStrategy = null, hashMethod = 'modulo', hashBase = 0) {
         this.size = size;
         this.keyLength = keyLength;
         this.dataType = dataType;
         this.allowDuplicates = allowDuplicates;
         this.collisionStrategy = collisionStrategy;
         this.hashMethod = hashMethod;
+        this.hashBase = hashBase;
         this.keys = new Array(size).fill(null);
         this.created = true;
         this.count = 0;
@@ -398,6 +401,29 @@ class DataStructure {
             return { hash: (val % this.size) + 1, k2: null, pickedDigits: null, blocks: blocks.join(' + '), sum, lastDigits };
         }
 
+        if (this.hashMethod === 'conversion-base') {
+            const base = this.hashBase;
+            const kStr = k.toString();
+            const d = (this.size - 1).toString().length;
+            // Interpretar cada dígito como si estuviera en la base dada
+            let converted = 0;
+            const parts = [];
+            for (let i = 0; i < kStr.length; i++) {
+                const digit = parseInt(kStr[i], 10);
+                const power = kStr.length - 1 - i;
+                converted += digit * Math.pow(base, power);
+                parts.push(`${digit} * ${base}^${power}`);
+            }
+            const convStr = converted.toString();
+            // digmensig: tomar los d dígitos menos significativos
+            const lastDigits = convStr.length > d ? convStr.substring(convStr.length - d) : convStr;
+            const val = parseInt(lastDigits, 10);
+            return {
+                hash: (val % this.size) + 1, k2: null, pickedDigits: null, blocks: null,
+                conversionBase: base, converted, convParts: parts.join(' + '), lastDigits
+            };
+        }
+
         // Método del cuadrado: extraer dígitos centrales de k^2
         const k2 = (BigInt(k) ** 2n).toString();
         const d = (this.size - 1).toString().length;
@@ -436,6 +462,9 @@ class DataStructure {
             formula = `h(${k}) = elegirdigitos impares(${pickedDigits}) + 1 = ${hash}`;
         } else if (this.hashMethod === 'plegamiento') {
             formula = `h(${k}) = digmensig(${blocks}) = digmensig(${sum}) = ${lastDigits} + 1 = ${hash}`;
+        } else if (this.hashMethod === 'conversion-base') {
+            const { conversionBase, converted, convParts, lastDigits: ld } = this._getHashValue(k);
+            formula = `h(${k}) = digmensig(${convParts}) = digmensig(${converted}) = ${ld} + 1 = ${hash}`;
         } else {
             formula = `h(${k}) = (${k} mod ${this.size}) + 1 = ${hash}`;
         }
@@ -626,6 +655,7 @@ class DataStructure {
             allowDuplicates: this.allowDuplicates,
             count: this.count,
             hashMethod: this.hashMethod,
+            hashBase: this.hashBase || 0,
             collisionStrategy: this.collisionStrategy || null
         };
     }
@@ -642,6 +672,7 @@ class DataStructure {
         this.allowDuplicates = data.allowDuplicates;
         this.count = data.count;
         this.hashMethod = data.hashMethod || 'modulo';
+        this.hashBase = data.hashBase || 0;
         this.collisionStrategy = data.collisionStrategy || null;
         this.created = true;
     }

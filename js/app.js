@@ -41,7 +41,12 @@
         'arboles-residuos-multiples': ArbolesResiduosMultiplesView,
         'arboles-huffman': HuffmanView,
         'ext-secuencial-bloques': BusquedaSecuencialBloquesView,
-        'ext-binaria-bloques': BusquedaBinariaBloquesView
+        'ext-binaria-bloques': BusquedaBinariaBloquesView,
+        'ext-hash-mod': ExtHashModView,
+        'ext-hash-cuadrado': ExtHashCuadradoView,
+        'ext-hash-truncamiento': ExtHashTruncamientoView,
+        'ext-hash-plegamiento': ExtHashPlegamientoView,
+        'ext-conversion-base': ExtHashConversionBaseView
     };
 
     /**

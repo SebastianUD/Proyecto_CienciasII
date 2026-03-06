@@ -107,7 +107,7 @@ const FileManager = {
                 reader.onload = (event) => {
                     try {
                         const data = JSON.parse(event.target.result);
-                        if (!data.structure || !data.structure.keys) {
+                        if (!data.structure || (!data.structure.keys && !data.structure.buckets)) {
                             Validation.showError('El archivo no tiene un formato válido.');
                             resolve(null);
                             return;
