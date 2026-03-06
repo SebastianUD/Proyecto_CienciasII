@@ -433,6 +433,12 @@ class HashBlockSearchView {
             return;
         }
 
+        // Reject files from non-hash algorithms
+        if (data.structure.buckets === undefined) {
+            Validation.showError('Este archivo no es compatible con búsqueda hash externa. Use la vista correspondiente.');
+            return;
+        }
+
         this.bucketStructure.fromJSON(data.structure);
         this._searchMode = data.structure.searchMode || 'secuencial';
 
@@ -541,9 +547,9 @@ class HashBlockSearchView {
 
         let message = `Clave "${this.bucketStructure._prepareKey(rawValue)}" insertada`;
         if (result.isCollision) {
-            message += ` en bloque de colisión (BC - ${result.bucketIndex})`;
+            message += ` en bloque de colisión (${result.bucketIndex} - BC)`;
         } else {
-            message += ` en B${result.blockIndex + 1} - ${result.bucketIndex}`;
+            message += ` en ${result.bucketIndex} - B${result.blockIndex + 1}`;
         }
         message += ` usando ${result.formula}.`;
 
@@ -666,9 +672,9 @@ class HashBlockSearchView {
 
         let delMsg = `Clave "${displayKey}" borrada`;
         if (deleteResult.isCollision) {
-            delMsg += ` del bloque de colisión (BC - ${deleteResult.bucketIndex})`;
+            delMsg += ` del bloque de colisión (${deleteResult.bucketIndex} - BC)`;
         } else {
-            delMsg += ` de B${deleteResult.blockIndex + 1} - ${deleteResult.bucketIndex}`;
+            delMsg += ` de ${deleteResult.bucketIndex} - B${deleteResult.blockIndex + 1}`;
         }
         delMsg += '.';
         this._addLog(delMsg, 'success');
@@ -857,7 +863,7 @@ class HashBlockSearchView {
 
                 const header = document.createElement('div');
                 header.classList.add('block-column-header');
-                header.textContent = `B${b + 1} - ${i}`;
+                header.textContent = `${i} - B${b + 1}`;
                 col.appendChild(header);
 
                 const tableWrap = document.createElement('div');
@@ -976,7 +982,7 @@ class HashBlockSearchView {
 
             const header = document.createElement('div');
             header.classList.add('block-column-header', 'collision-header');
-            header.textContent = `BC - ${i}`;
+            header.textContent = `${i} - BC`;
             col.appendChild(header);
 
             const tableWrap = document.createElement('div');
@@ -1067,7 +1073,7 @@ class HashBlockSearchView {
                             blockEl.classList.add('block-skipped');
                             this._scrollElementIntoView(blockEl, this.elements.blockSegScroll);
                         }
-                        this._addLog(`  B${bIdx + 1} - ${step.bucketIndex}: último="${step.lastKey}" → Saltar`, 'info');
+                        this._addLog(`  ${step.bucketIndex} - B${bIdx + 1}: último="${step.lastKey}" → Saltar`, 'info');
                         stepIndex++;
                         setTimeout(animateStep, delay);
                     } else if (step.action === 'enter-block' || step.action === 'discard-right') {
@@ -1076,7 +1082,7 @@ class HashBlockSearchView {
                             blockEl.classList.add('block-active');
                             this._scrollElementIntoView(blockEl, this.elements.blockSegScroll);
                         }
-                        this._addLog(`  B${bIdx + 1} - ${step.bucketIndex}: último="${step.lastKey}" → Entrar`, 'success');
+                        this._addLog(`  ${step.bucketIndex} - B${bIdx + 1}: último="${step.lastKey}" → Entrar`, 'success');
                         stepIndex++;
                         setTimeout(animateStep, delay);
                     } else if (step.action === 'found-at-boundary') {
@@ -1097,7 +1103,7 @@ class HashBlockSearchView {
                                 this._scrollRowIntoView(row);
                             }
                         }
-                        this._addLog(`✔ Clave "${displayKey}" encontrada en B${bIdx + 1} - ${step.bucketIndex}. Pasos: ${steps.length}.`, 'success');
+                        this._addLog(`✔ Clave "${displayKey}" encontrada en ${step.bucketIndex} - B${bIdx + 1}. Pasos: ${steps.length}.`, 'success');
                         stepIndex++;
                         setTimeout(resolve, delay);
                         return;
@@ -1107,7 +1113,7 @@ class HashBlockSearchView {
 
                 if (step.type === 'enter-collision') {
                     this._scrollToCollisionBlock(step.bucketIndex);
-                    this._addLog(`  → Buscando en bloque de colisión BC - ${step.bucketIndex}...`, 'info');
+                    this._addLog(`  → Buscando en bloque de colisión ${step.bucketIndex} - BC...`, 'info');
                     stepIndex++;
                     setTimeout(animateStep, delay);
                     return;
@@ -1119,6 +1125,10 @@ class HashBlockSearchView {
                     if (row) {
                         row.classList.add('highlight-checking');
                         this._scrollRowIntoView(row);
+                        // Also ensure collision block is visible in the collision area scroll
+                        if (step.isCollision) {
+                            this._scrollToCollisionBlock(step.bucketIndex);
+                        }
                     }
 
                     if (step.action === 'found') {
@@ -1129,9 +1139,12 @@ class HashBlockSearchView {
                                 blockEl.classList.add('block-active');
                                 this._scrollElementIntoView(blockEl, this.elements.blockSegScroll);
                             }
+                        } else {
+                            // Scroll collision area to show the collision block
+                            this._scrollToCollisionBlock(step.bucketIndex);
                         }
                         this._highlightBucketRow(step.bucketIndex, 'highlight-found');
-                        const blockLabel = step.isCollision ? `BC - ${step.bucketIndex}` : `B${step.blockIndex + 1} - ${step.bucketIndex}`;
+                        const blockLabel = step.isCollision ? `${step.bucketIndex} - BC` : `${step.bucketIndex} - B${step.blockIndex + 1}`;
                         this._addLog(`✔ Clave "${displayKey}" encontrada en ${blockLabel}, pos ${keyIdx + 1}. Pasos: ${steps.length}.`, 'success');
                         setTimeout(() => {
                             if (row) {

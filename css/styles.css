@@ -409,7 +409,7 @@ body {
     display: flex;
     flex-direction: column;
     flex: 1 1 0;
-    min-width: 0;
+    min-width: fit-content;
     gap: 3px;
 }
 
@@ -529,7 +529,7 @@ body {
 
 .config-buttons {
     display: flex;
-    gap: 16px;
+    gap: 12px;
     flex-wrap: wrap;
 }
 
@@ -651,7 +651,7 @@ body {
 
 .insert-buttons {
     display: flex;
-    gap: 16px;
+    gap: 12px;
 }
 
 /* Content Area */
@@ -891,7 +891,7 @@ body {
 .footer-buttons {
     display: flex;
     justify-content: center;
-    gap: 16px;
+    gap: 12px;
 }
 
 .hidden {
@@ -937,8 +937,8 @@ body {
 }
 
 .huffman-layout .tree-mod-section {
-    flex: 0 0 30%;
-    max-height: 30%;
+    flex: 0 0 35%;
+    max-height: 35%;
     display: flex;
     flex-direction: column;
     overflow: hidden;
@@ -1924,14 +1924,15 @@ body {
     gap: 12px;
     flex: 1;
     min-height: 120px;
-    align-items: center;
+    align-items: stretch;
     overflow: hidden;
 }
 
 /* Left column: Bucket Directory */
 .bucket-directory-wrapper {
-    flex: 0 0 calc(15% - 6px);
+    flex: 0 0 16%;
     max-height: 100%;
+    align-self: center;
     display: flex;
     flex-direction: column;
     background-color: var(--bg-card);
@@ -2049,8 +2050,7 @@ body {
 
 /* Right column: Collision Area */
 .collision-area-wrapper {
-    flex: 0 0 calc(15% - 6px);
-    min-width: 0;
+    flex: 0 0 14%;
     max-height: 100%;
     display: flex;
     flex-direction: column;
@@ -2092,6 +2092,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 8px;
+    min-height: 100%;
+    justify-content: center;
 }
 
 /* Collision blocks use a distinctive orange header */

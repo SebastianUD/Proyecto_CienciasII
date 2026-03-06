@@ -19,7 +19,7 @@ class ExtHashConversionBaseView extends HashBlockSearchView {
     _getExtraConfigHTML() {
         return `
             <div class="config-group">
-                <label for="cfg-hash-base">Base Conversión</label>
+                <label for="cfg-hash-base">Base</label>
                 <input type="number" id="cfg-hash-base" min="2" placeholder="Ej: 9">
             </div>
         `;
@@ -64,5 +64,23 @@ class ExtHashConversionBaseView extends HashBlockSearchView {
         const h1 = `h(k) = digmensig(Σ dᵢ × ${config.hashBase}^i)`;
         this._addLog(`Estructura creada: ${config.numBuckets} cubetas, ${config.blocksPerBucket} bloques/cubeta, ${config.keysPerBlock} claves/bloque, tipo: ${config.dataType}, búsqueda: ${config.searchMode}.`, 'info');
         this._addLog(`Función hash (Conversión Base ${config.hashBase}): ${h1}`, 'info');
+    }
+
+    /**
+     * Override _onLoad to require base input when loading from a different method.
+     * @override
+     */
+    async _onLoad() {
+        // Check if the base input has a value before loading
+        const baseVal = parseInt(this.elements.hashBase?.value);
+        if (!baseVal || baseVal < 2) {
+            Validation.showError('Debe ingresar una base de conversión válida antes de cargar un archivo.');
+            return;
+        }
+        await super._onLoad();
+        // After load, ensure hashBase is set on the structure
+        if (this.bucketStructure.created) {
+            this.bucketStructure.hashBase = baseVal;
+        }
     }
 }
