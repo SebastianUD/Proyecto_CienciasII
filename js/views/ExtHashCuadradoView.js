@@ -16,7 +16,7 @@ class ExtHashCuadradoView extends HashBlockSearchView {
 
     _onCreationSuccess(config) {
         this._setOperation('create');
-        const h1 = `h(k) = digCent(k²) mod ${config.numBuckets}`;
+        const h1 = `h(k) = digCent(k²)`;
         this._addLog(`Estructura creada: ${config.numBuckets} cubetas, ${config.blocksPerBucket} bloques/cubeta, ${config.keysPerBlock} claves/bloque, tipo: ${config.dataType}, búsqueda: ${config.searchMode}.`, 'info');
         this._addLog(`Función hash: ${h1}`, 'info');
     }

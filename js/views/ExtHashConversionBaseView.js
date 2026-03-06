@@ -61,7 +61,7 @@ class ExtHashConversionBaseView extends HashBlockSearchView {
 
     _onCreationSuccess(config) {
         this._setOperation('create');
-        const h1 = `h(k) = digmensig(Σ dᵢ × ${config.hashBase}^i) mod ${config.numBuckets}`;
+        const h1 = `h(k) = digmensig(Σ dᵢ × ${config.hashBase}^i)`;
         this._addLog(`Estructura creada: ${config.numBuckets} cubetas, ${config.blocksPerBucket} bloques/cubeta, ${config.keysPerBlock} claves/bloque, tipo: ${config.dataType}, búsqueda: ${config.searchMode}.`, 'info');
         this._addLog(`Función hash (Conversión Base ${config.hashBase}): ${h1}`, 'info');
     }
