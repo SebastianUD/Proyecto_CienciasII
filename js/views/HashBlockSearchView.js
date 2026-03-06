@@ -227,6 +227,7 @@ class HashBlockSearchView {
             bucketDirectoryBody: document.getElementById('bucket-directory-body'),
             blockSegScroll: document.getElementById('hash-block-seg-scroll'),
             blockSegContent: document.getElementById('hash-block-seg-content'),
+            collisionAreaScroll: document.getElementById('collision-area-scroll'),
             collisionAreaContent: document.getElementById('collision-area-content'),
             logWrapper: document.getElementById('block-log-wrapper'),
             logContent: document.getElementById('log-content'),
@@ -1268,7 +1269,15 @@ class HashBlockSearchView {
             `.block-column[data-bucket="${bucketIndex}"][data-collision="true"]`
         );
         if (!col) return;
-        col.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        const scrollParent = this.elements.collisionAreaScroll;
+        if (!scrollParent) return;
+        const colTop = col.offsetTop;
+        const colH = col.offsetHeight;
+        const scrollH = scrollParent.clientHeight;
+        scrollParent.scrollTo({
+            top: colTop - (scrollH / 2) + (colH / 2),
+            behavior: 'smooth'
+        });
     }
 
     /** Scrolls a generic element into view within a scrollable parent. */
