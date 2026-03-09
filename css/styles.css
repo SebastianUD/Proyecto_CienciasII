@@ -1928,9 +1928,31 @@ body {
     overflow: hidden;
 }
 
+/* 2-column variant for Dinamicas Totales */
+.hash-block-area.two-columns .bucket-directory-wrapper {
+    display: none;
+}
+
+.hash-block-area.two-columns .collision-area-wrapper {
+    flex: 0 0 30%;
+}
+
+/* Custom layout for Dynamica Totales with narrow left and wide right */
+.layout-dinamica-totales .bucket-directory-wrapper {
+    flex: 0 0 18% !important;
+}
+
+.layout-dinamica-totales .bucket-directory-scroll {
+    overflow-y: hidden !important;
+}
+
+.layout-dinamica-totales .collision-area-wrapper {
+    flex: 0 0 28% !important;
+}
+
 /* Left column: Bucket Directory */
 .bucket-directory-wrapper {
-    flex: 0 0 16%;
+    flex: 1;
     max-height: 100%;
     align-self: center;
     display: flex;
@@ -2050,7 +2072,7 @@ body {
 
 /* Right column: Collision Area */
 .collision-area-wrapper {
-    flex: 0 0 14%;
+    flex: 0 0 20%;
     max-height: 100%;
     display: flex;
     flex-direction: column;
@@ -2196,3 +2218,176 @@ body {
         overflow: visible !important;
     }
 }
+
+/* Matrix Table Style */
+.matrix-table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 4px;
+    margin-top: 10px;
+}
+
+.matrix-table th {
+    background-color: var(--primary-blue);
+    color: white;
+    padding: 10px;
+    border-radius: 4px;
+    font-size: 0.85rem;
+}
+
+.matrix-table td {
+    background-color: white;
+    border: 1px solid var(--border-color);
+    padding: 12px;
+    text-align: center;
+    font-weight: 600;
+    border-radius: 4px;
+    transition: all 0.3s ease;
+}
+
+.matrix-table td.empty-cell {
+    color: #ccc;
+    font-weight: normal;
+    background-color: #fafafa;
+}
+
+.matrix-table td.highlight-found {
+    background-color: var(--highlight-found);
+    border-color: var(--green);
+    transform: scale(1.05);
+}
+
+.matrix-table td.highlight-checking {
+    background-color: var(--highlight-checking) !important;
+    transition: background-color 0.15s;
+}
+
+.matrix-table td.highlight-deleting {
+    background-color: var(--red-pale) !important;
+    outline: 2px solid var(--red);
+    font-weight: 600;
+    transition: background-color 0.3s, opacity 0.5s;
+}
+
+.matrix-table td.fade-out {
+    opacity: 0;
+    transform: scale(0.95);
+    transition: opacity 0.5s, transform 0.5s;
+}
+
+/* D.O. Info Card */
+.do-info-card {
+    background-color: white;
+    border: 1px solid var(--border-color);
+    border-radius: 8px;
+    padding: 15px;
+    text-align: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+}
+
+.do-info-card h3 {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    margin-bottom: 10px;
+    text-transform: uppercase;
+}
+
+.do-info-card .do-value {
+    font-size: 2rem;
+    font-weight: 700;
+    color: var(--primary-blue);
+}
+
+.do-info-card .do-label {
+    font-size: 0.75rem;
+    color: var(--text-muted);
+}
+
+.do-info-card hr {
+    margin: 15px 0;
+    border: none;
+    border-top: 1px solid var(--border-light);
+}
+
+.do-info-card .do-threshold {
+    font-size: 0.85rem;
+    color: var(--accent-orange);
+    font-weight: 600;
+}
+
+/* Matrix Side Navigation */
+.matrix-container-relative {
+    position: relative;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    width: 100%;
+}
+
+.table-wrapper-center {
+    flex: 1;
+    overflow: hidden;
+    display: flex;
+    justify-content: center;
+}
+
+.matrix-side-btn {
+    background: white;
+    border: 1px solid var(--border-color);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    color: var(--primary-blue);
+    font-size: 1.2rem;
+    font-weight: bold;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s;
+    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    z-index: 10;
+}
+
+.matrix-side-btn:hover:not(:disabled) {
+    background-color: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+    transform: scale(1.1);
+}
+
+.matrix-side-btn:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+    box-shadow: none;
+    filter: grayscale(1);
+}
+
+/* Horizontal Layout Fix: Ensure it fits without scrolling */
+.matrix-table.horizontal-layout {
+    table-layout: fixed;
+    width: 100%;
+    max-width: 100%;
+}
+
+.matrix-table.horizontal-layout th,
+.matrix-table.horizontal-layout td {
+    padding: 4px 2px;
+    font-size: 0.85rem;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+/* Expansion Animation */
+.animate-expansion {
+    animation: expansion-stretch 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+@keyframes expansion-stretch {
+    0% { transform: scaleX(1); opacity: 1; }
+    50% { transform: scaleX(1.1); opacity: 0.8; background-color: #e3f2fd; }
+    100% { transform: scaleX(1); opacity: 1; }
+}
+

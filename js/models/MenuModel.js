@@ -65,6 +65,14 @@ const MenuModel = {
                                     { id: 'ext-hash-plegamiento', label: 'Función Hash Plegamiento', action: 'ext-hash-plegamiento', enabled: true },
                                     { id: 'ext-conversion-base', label: 'Conversión de Base', action: 'ext-conversion-base', enabled: true }
                                 ]
+                            },
+                            {
+                                id: 'ext-dinamicas',
+                                label: 'Dinámicas',
+                                children: [
+                                    { id: 'ext-dinamica-totales', label: 'Totales', action: 'ext-dinamica-totales', enabled: true },
+                                    { id: 'ext-dinamica-parciales', label: 'Parciales', action: 'ext-dinamica-parciales', enabled: true }
+                                ]
                             }
                         ]
                     }

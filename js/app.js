@@ -46,7 +46,9 @@
         'ext-hash-cuadrado': ExtHashCuadradoView,
         'ext-hash-truncamiento': ExtHashTruncamientoView,
         'ext-hash-plegamiento': ExtHashPlegamientoView,
-        'ext-conversion-base': ExtHashConversionBaseView
+        'ext-conversion-base': ExtHashConversionBaseView,
+        'ext-dinamica-totales': ExtDinamicaTotalesView,
+        'ext-dinamica-parciales': ExtDinamicaParcialesView
     };
 
     /**
