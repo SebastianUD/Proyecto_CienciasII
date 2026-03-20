@@ -51,13 +51,15 @@ class ExtDinamicaParcialesView extends HashBlockSearchView {
         const labelKeys = document.querySelector('label[for="cfg-keys-per-block"]');
         if (labelKeys) labelKeys.innerText = 'Claves por Cubeta';
 
-        // 3. Valores por defecto (editables por el usuario)
+        // 3. Valores por defecto (ahora solo placeholders)
         if (this.elements.blocksPerBucket) {
-            this.elements.blocksPerBucket.value = 2;
+            this.elements.blocksPerBucket.value = '';
+            this.elements.blocksPerBucket.placeholder = 'Ej: 2';
             this.elements.blocksPerBucket.min = 1;
         }
         if (this.elements.keysPerBlock) {
-            this.elements.keysPerBlock.value = 2;
+            this.elements.keysPerBlock.value = '';
+            this.elements.keysPerBlock.placeholder = 'Ej: 2';
             this.elements.keysPerBlock.min = 1;
         }
 
@@ -68,11 +70,11 @@ class ExtDinamicaParcialesView extends HashBlockSearchView {
                 <div style="display: flex; gap: 10px;">
                     <div style="flex: 1;">
                         <label for="cfg-do">D.O. Expansión (%)</label>
-                        <input type="number" id="cfg-do" min="1" max="100" placeholder="Ej: 70" value="70">
+                        <input type="number" id="cfg-do" min="1" max="100" placeholder="Ej: 75">
                     </div>
                     <div style="flex: 1;">
                         <label for="cfg-do-red">D.O. Reducción (%)</label>
-                        <input type="number" id="cfg-do-red" min="1" max="100" placeholder="Ej: 30" value="30">
+                        <input type="number" id="cfg-do-red" min="1" max="100" placeholder="Ej: 125">
                     </div>
                 </div>
             `;
@@ -83,12 +85,12 @@ class ExtDinamicaParcialesView extends HashBlockSearchView {
         if (leftCol) {
             // Cambiar título de la sección
             const titleEl = leftCol.querySelector('.section-title');
-            if (titleEl) titleEl.innerText = 'Densidad de Ocupación';
+            if (titleEl) titleEl.innerText = 'Cálculos D.O.';
 
             // Reemplazar contenido (tabla del directorio) por el contenedor de la tarjeta
             const scrollEl = leftCol.querySelector('.bucket-directory-scroll');
             if (scrollEl) {
-                scrollEl.innerHTML = '<div id="do-container" style="padding: 10px;"></div>';
+                scrollEl.innerHTML = '<div id="do-container"></div>';
             }
         }
 
@@ -181,8 +183,8 @@ class ExtDinamicaParcialesView extends HashBlockSearchView {
             recordsPerRow: keysPerBucket,
             keyLength: parseInt(el.keyLength.value),
             dataType: el.dataType.value,
-            occupancyDensity: parseInt(el.inputDO.value),
-            reductionDensity: parseInt(el.inputDORed.value)
+            occupancyDensity: parseInt(el.inputDO?.value) || 70,
+            reductionDensity: parseInt(el.inputDORed?.value) || 30
         };
 
         this.dinamicModel.create(config);
@@ -432,19 +434,17 @@ class ExtDinamicaParcialesView extends HashBlockSearchView {
         el.dataType.value = '';
         el.keyLength.disabled = false;
         el.keyLength.value = '';
-        el.inputDO.disabled = false;
-        el.inputDO.value = '70';
-        el.inputDORed.disabled = false;
-        el.inputDORed.value = '30';
+        el.inputDO.value = '';
+        el.inputDORed.value = '';
         el.btnCreate.disabled = false;
 
-        // Número de cubetas y Registros vuelven a valor por defecto y se habilitan
+        // Número de cubetas y Registros vuelven a estar vacíos y se habilitan
         if (el.blocksPerBucket) {
-            el.blocksPerBucket.value = 2;
+            el.blocksPerBucket.value = '';
             el.blocksPerBucket.disabled = false;
         }
         if (el.keysPerBlock) {
-            el.keysPerBlock.value = 2;
+            el.keysPerBlock.value = '';
             el.keysPerBlock.disabled = false;
         }
 

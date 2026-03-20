@@ -1922,8 +1922,8 @@ body {
 .hash-block-area {
     display: flex;
     gap: 12px;
-    flex: 1;
-    min-height: 120px;
+    flex: 0.6;
+    min-height: 0;
     align-items: stretch;
     overflow: hidden;
 }
@@ -1939,13 +1939,17 @@ body {
 
 /* Custom layout for Dynamica Totales with responsive left and right */
 .layout-dinamica-totales .bucket-directory-wrapper {
-    flex: 1 1 18% !important;
-    min-width: 120px;
-    max-width: 25%;
+    flex: 0 0 15% !important;
+    min-width: 80px;
+    max-width: 12%;
 }
 
 .layout-dinamica-totales .bucket-directory-scroll {
     overflow-y: hidden !important;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    align-items: center;
 }
 
 .layout-dinamica-totales .collision-area-wrapper {
@@ -1958,7 +1962,6 @@ body {
 .bucket-directory-wrapper {
     flex: 1;
     max-height: 100%;
-    align-self: center;
     display: flex;
     flex-direction: column;
     background-color: var(--bg-card);
@@ -1966,6 +1969,14 @@ body {
     border-radius: var(--border-radius);
     overflow: hidden;
     box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+#do-container {
+    width: 100%;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    box-sizing: border-box;
 }
 
 .bucket-directory-wrapper>.section-title {
@@ -2151,8 +2162,8 @@ body {
 
 /* Block log wrapper — fills remaining space */
 .block-log-wrapper {
-    flex: 1;
-    min-height: 60px;
+    flex: 1.4;
+    min-height: 0;
     background-color: var(--bg-card);
     border: 1px solid var(--border-color);
     border-radius: var(--border-radius);
