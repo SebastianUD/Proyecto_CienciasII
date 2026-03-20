@@ -1937,9 +1937,11 @@ body {
     flex: 0 0 30%;
 }
 
-/* Custom layout for Dynamica Totales with narrow left and wide right */
+/* Custom layout for Dynamica Totales with responsive left and right */
 .layout-dinamica-totales .bucket-directory-wrapper {
-    flex: 0 0 18% !important;
+    flex: 1 1 18% !important;
+    min-width: 120px;
+    max-width: 25%;
 }
 
 .layout-dinamica-totales .bucket-directory-scroll {
@@ -1947,7 +1949,9 @@ body {
 }
 
 .layout-dinamica-totales .collision-area-wrapper {
-    flex: 0 0 28% !important;
+    flex: 1 1 28% !important;
+    min-width: 140px;
+    max-width: 35%;
 }
 
 /* Left column: Bucket Directory */
@@ -2275,42 +2279,45 @@ body {
     transition: opacity 0.5s, transform 0.5s;
 }
 
-/* D.O. Info Card */
 .do-info-card {
     background-color: white;
     border: 1px solid var(--border-color);
     border-radius: 8px;
-    padding: 15px;
+    padding: clamp(8px, 2vw, 15px);
     text-align: center;
-    box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+    width: 100%;
+    max-width: 100%;
+    box-sizing: border-box;
 }
 
 .do-info-card h3 {
-    font-size: 0.8rem;
+    font-size: clamp(0.65rem, 1.2vw, 0.85rem);
     color: var(--text-secondary);
-    margin-bottom: 10px;
+    margin-bottom: clamp(4px, 1vw, 10px);
     text-transform: uppercase;
 }
 
 .do-info-card .do-value {
-    font-size: 2rem;
+    font-size: clamp(1rem, 2.5vw, 2rem);
     font-weight: 700;
     color: var(--primary-blue);
+    word-break: break-all;
 }
 
 .do-info-card .do-label {
-    font-size: 0.75rem;
+    font-size: clamp(0.6rem, 1vw, 0.75rem);
     color: var(--text-muted);
 }
 
 .do-info-card hr {
-    margin: 15px 0;
+    margin: clamp(6px, 1.5vw, 15px) 0;
     border: none;
     border-top: 1px solid var(--border-light);
 }
 
 .do-info-card .do-threshold {
-    font-size: 0.85rem;
+    font-size: clamp(0.7rem, 1.2vw, 0.85rem);
     color: var(--accent-orange);
     font-weight: 600;
 }
@@ -2346,7 +2353,7 @@ body {
     align-items: center;
     justify-content: center;
     transition: all 0.2s;
-    box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    box-shadow: 0 2px 5px rgba(0, 0, 0, 0.1);
     z-index: 10;
 }
 
@@ -2364,7 +2371,6 @@ body {
     filter: grayscale(1);
 }
 
-/* Horizontal Layout Fix: Ensure it fits without scrolling */
 .matrix-table.horizontal-layout {
     table-layout: fixed;
     width: 100%;
@@ -2380,14 +2386,24 @@ body {
     white-space: nowrap;
 }
 
-/* Expansion Animation */
 .animate-expansion {
     animation: expansion-stretch 0.8s cubic-bezier(0.4, 0, 0.2, 1);
 }
 
 @keyframes expansion-stretch {
-    0% { transform: scaleX(1); opacity: 1; }
-    50% { transform: scaleX(1.1); opacity: 0.8; background-color: #e3f2fd; }
-    100% { transform: scaleX(1); opacity: 1; }
+    0% {
+        transform: scaleX(1);
+        opacity: 1;
+    }
+
+    50% {
+        transform: scaleX(1.1);
+        opacity: 0.8;
+        background-color: #e3f2fd;
+    }
+
+    100% {
+        transform: scaleX(1);
+        opacity: 1;
+    }
 }
-

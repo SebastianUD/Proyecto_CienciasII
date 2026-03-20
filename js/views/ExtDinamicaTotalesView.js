@@ -45,52 +45,20 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         }
 
         // 2. Personalizar etiquetas
-        const labelBlocks = Array.from(document.querySelectorAll('label')).find(l => l.innerText.includes('Bloques X Cubeta'));
+        const labelBlocks = document.querySelector('label[for="cfg-blocks-per-bucket"]');
         if (labelBlocks) labelBlocks.innerText = 'Número de Cubetas';
 
-        const labelKeys = Array.from(document.querySelectorAll('label')).find(l => l.innerText.includes('Claves X Bloque'));
+        const labelKeys = document.querySelector('label[for="cfg-keys-per-block"]');
         if (labelKeys) labelKeys.innerText = 'Claves por Cubeta';
 
-        // 3. Fijar valores y agregar alertas
+        // 3. Valores por defecto (editables por el usuario)
         if (this.elements.blocksPerBucket) {
             this.elements.blocksPerBucket.value = 2;
-            this.elements.blocksPerBucket.disabled = true;
-            this.elements.blocksPerBucket.style.cursor = 'not-allowed';
-            const blocksContainer = this.elements.blocksPerBucket.closest('div');
-            if (blocksContainer) {
-                blocksContainer.style.cursor = 'not-allowed';
-                blocksContainer.addEventListener('click', (e) => {
-                    if (this.elements.blocksPerBucket.disabled) {
-                        e.stopPropagation();
-                        Swal.fire({
-                            title: 'Valor por defecto',
-                            text: 'El número inicial de cubetas ya está establecido por defecto.',
-                            icon: 'info',
-                            confirmButtonColor: 'var(--primary-blue)'
-                        });
-                    }
-                }, true);
-            }
+            this.elements.blocksPerBucket.min = 1;
         }
         if (this.elements.keysPerBlock) {
             this.elements.keysPerBlock.value = 2;
-            this.elements.keysPerBlock.disabled = true;
-            this.elements.keysPerBlock.style.cursor = 'not-allowed';
-            const keysContainer = this.elements.keysPerBlock.closest('div');
-            if (keysContainer) {
-                keysContainer.style.cursor = 'not-allowed';
-                keysContainer.addEventListener('click', (e) => {
-                    if (this.elements.keysPerBlock.disabled) {
-                        e.stopPropagation();
-                        Swal.fire({
-                            title: 'Valor por defecto',
-                            text: 'La cantidad de claves por cubeta ya está establecida por defecto.',
-                            icon: 'info',
-                            confirmButtonColor: 'var(--primary-blue)'
-                        });
-                    }
-                }, true);
-            }
+            this.elements.keysPerBlock.min = 1;
         }
 
         // 4. Reemplazar "Tipo de Búsqueda" por inputs de D.O.
@@ -191,9 +159,11 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         }
 
         const el = this.elements;
-        // El rango para el validador es 2, ya que iniciamos 2x2
+        const numBuckets = parseInt(el.blocksPerBucket?.value) || 2;
+        const keysPerBucket = parseInt(el.keysPerBlock?.value) || 2;
+
         const validation = Validation.validateCreateParams(
-            "2", el.keyLength.value, el.dataType.value
+            numBuckets.toString(), el.keyLength.value, el.dataType.value
         );
 
         if (!validation.valid) {
@@ -201,22 +171,25 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
             return;
         }
 
+        if (numBuckets < 1 || keysPerBucket < 1) {
+            Validation.showError('El número de cubetas y claves por cubeta deben ser al menos 1.');
+            return;
+        }
+
         const config = {
-            numBuckets: 2,
+            numBuckets: numBuckets,
+            recordsPerRow: keysPerBucket,
             keyLength: parseInt(el.keyLength.value),
             dataType: el.dataType.value,
             occupancyDensity: parseInt(el.inputDO.value),
             reductionDensity: parseInt(el.inputDORed.value)
         };
 
-        // El usuario solicitó que la reducción pueda ser mayor que la expansión 
-        // debido a que usan fórmulas distintas ahora.
-
         this.dinamicModel.create(config);
 
         // Mostrar áreas
         if (this.elements.hashBlockArea) this.elements.hashBlockArea.style.display = 'flex';
-        if (this.elements.blockLogWrapper) this.elements.blockLogWrapper.style.display = 'block';
+        if (this.elements.logWrapper) this.elements.logWrapper.style.display = 'flex';
 
         // Bloquear configuración completa
         el.dataType.disabled = true;
@@ -230,11 +203,12 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         if (el.keysPerBlock) el.keysPerBlock.disabled = true;
 
         this._enableControls();
+        this._updateSegmentationMaxHeight();
         this._renderAll();
 
         this._setOperation('create');
-        this._addLog(`Matriz dinámica total 2x2 creada. D.O. Objetivo: ${config.occupancyDensity}%.`, 'info');
-        this._addLog(`Función hash inicial: h(k) = k mod 2`, 'info');
+        this._addLog(`Matriz dinámica total ${numBuckets}x${keysPerBucket} creada. D.O. Objetivo: ${config.occupancyDensity}%.`, 'info');
+        this._addLog(`Función hash inicial: h(k) = k mod ${numBuckets}`, 'info');
     }
 
     /**
@@ -464,14 +438,14 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         el.inputDORed.value = '30';
         el.btnCreate.disabled = false;
 
-        // Número de cubetas y Registros siempre inician en 2
+        // Número de cubetas y Registros vuelven a valor por defecto y se habilitan
         if (el.blocksPerBucket) {
             el.blocksPerBucket.value = 2;
-            el.blocksPerBucket.disabled = true;
+            el.blocksPerBucket.disabled = false;
         }
         if (el.keysPerBlock) {
             el.keysPerBlock.value = 2;
-            el.keysPerBlock.disabled = true;
+            el.keysPerBlock.disabled = false;
         }
 
         el.inputKey.value = '';
@@ -501,7 +475,7 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         el.btnSearch.disabled = false;
 
         el.hashBlockArea.style.display = 'flex';
-        el.logWrapper.style.display = 'block';
+        el.logWrapper.style.display = 'flex';
 
         el.inputKey.focus();
     }

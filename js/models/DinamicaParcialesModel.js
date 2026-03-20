@@ -40,13 +40,13 @@ class DinamicaParcialesModel {
      * @param {string} config.dataType - Tipo de datos ('numerico' o 'alfanumerico').
      */
     create(config) {
-        this.numBuckets = 2; // Siempre iniciamos en 2
+        this.numBuckets = config.numBuckets || 2;
         this.recordsPerRow = config.recordsPerRow || 2;
         this.occupancyThreshold = config.occupancyDensity || 70;
         this.reductionThreshold = config.reductionDensity || 30;
         this.keyLength = config.keyLength;
         this.dataType = config.dataType;
-        this.baseBuckets = 2;
+        this.baseBuckets = this.numBuckets;
         this.expansionStep = 0;
         this.created = true;
         this._initializeMatrix();

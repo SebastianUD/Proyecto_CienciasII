@@ -37,8 +37,8 @@ class DinamicaTotalesModel {
      * @param {number} [config.reductionDensity=30] - Umbral de densidad para reducción.
      */
     create(config) {
-        this.numBuckets = 2; // Siempre iniciamos en 2 para dinámica total según requerimiento
-        this.recordsPerRow = 2; // Siempre iniciamos en 2 para registros según requerimiento
+        this.numBuckets = config.numBuckets || 2;
+        this.recordsPerRow = config.recordsPerRow || 2;
         this.occupancyThreshold = config.occupancyDensity || 70;
         this.reductionThreshold = config.reductionDensity || 30;
         this.keyLength = config.keyLength;
@@ -105,7 +105,7 @@ class DinamicaTotalesModel {
      */
     getReductionDensity() {
         if (!this.created || this.numBuckets === 0) return 0;
-        // Fórmula obligatoria: (Claves / Número de cubetas) * 100
+        // Fórmula : (Claves / Número de cubetas) * 100
         return (this.count / this.numBuckets) * 100;
     }
 
