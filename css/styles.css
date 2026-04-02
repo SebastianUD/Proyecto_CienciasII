@@ -1981,7 +1981,7 @@ body {
 
 /* Left column: Bucket Directory */
 .bucket-directory-wrapper {
-    flex: 1;
+    flex: 0 0 16%;
     max-height: 100%;
     display: flex;
     flex-direction: column;
@@ -2108,7 +2108,7 @@ body {
 
 /* Right column: Collision Area */
 .collision-area-wrapper {
-    flex: 0 0 20%;
+    flex: 0 0 14%;
     max-height: 100%;
     display: flex;
     flex-direction: column;
