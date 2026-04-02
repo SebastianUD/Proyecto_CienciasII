@@ -318,20 +318,22 @@ class DinamicaParcialesModel {
      * @returns {Object} Resultado de la búsqueda (found, bucketIndex, etc).
      */
     search(rawKey) {
-        const currentSnapshot = this.getCurrentSnapshot();
+        const snapshot = this.getCurrentSnapshot();
+        if (!snapshot) return { found: false };
+
         const key = this._prepareKey(rawKey);
         const k = this.getNumericValue(key);
-        const n = currentSnapshot.numBuckets;
+        const n = snapshot.numBuckets;
         const bucketIndex = k % n;
         const formula = `h(${k}) = ${k} mod ${n} = ${bucketIndex}`;
 
-        for (let j = 0; j < currentSnapshot.recordsPerRow; j++) {
-            if (currentSnapshot.matrix[bucketIndex][j] === key) {
+        for (let j = 0; j < snapshot.recordsPerRow; j++) {
+            if (snapshot.matrix[bucketIndex][j] === key) {
                 return { found: true, bucketIndex, slotIndex: j, isCollision: false, formula };
             }
         }
 
-        const collBlock = currentSnapshot.collisionBlocks[bucketIndex];
+        const collBlock = snapshot.collisionBlocks[bucketIndex];
         if (collBlock) {
             const cIdx = collBlock.indexOf(key);
             if (cIdx !== -1) {
@@ -354,7 +356,18 @@ class DinamicaParcialesModel {
             if (result.isCollision) {
                 this.collisionBlocks[result.bucketIndex].splice(result.collisionIndex, 1);
             } else {
-                this.matrix[result.bucketIndex][result.slotIndex] = null;
+                // Eliminar y desplazar hacia arriba
+                this.matrix[result.bucketIndex].splice(result.slotIndex, 1);
+                this.matrix[result.bucketIndex].push(null);
+
+                // Si hay elementos en el bloque de colisión, subir el primero
+                if (this.collisionBlocks[result.bucketIndex].length > 0) {
+                    const firstColl = this.collisionBlocks[result.bucketIndex].shift();
+                    const lastNullIndex = this.matrix[result.bucketIndex].indexOf(null);
+                    if (lastNullIndex !== -1) {
+                        this.matrix[result.bucketIndex][lastNullIndex] = firstColl;
+                    }
+                }
             }
             this.count--;
 
@@ -551,5 +564,51 @@ class DinamicaParcialesModel {
         const valA = this.getNumericValue(a);
         const valB = this.getNumericValue(b);
         return valA - valB;
+    }
+
+    /**
+     * Serializa el estado actual del modelo para guardado.
+     * @returns {Object} Estado serializado.
+     */
+    toJSON() {
+        return {
+            numBuckets: this.numBuckets,
+            recordsPerRow: this.recordsPerRow,
+            occupancyThreshold: this.occupancyThreshold,
+            reductionThreshold: this.reductionThreshold,
+            keyLength: this.keyLength,
+            dataType: this.dataType,
+            created: this.created,
+            count: this.count,
+            matrix: this.matrix,
+            collisionBlocks: this.collisionBlocks,
+            insertionOrder: this.insertionOrder,
+            history: this.history,
+            historyIndex: this.historyIndex,
+            baseBuckets: this.baseBuckets,
+            expansionStep: this.expansionStep
+        };
+    }
+
+    /**
+     * Restaura el estado del modelo desde un objeto serializado.
+     * @param {Object} data - Datos del estado.
+     */
+    fromJSON(data) {
+        this.numBuckets = data.numBuckets;
+        this.recordsPerRow = data.recordsPerRow;
+        this.occupancyThreshold = data.occupancyThreshold;
+        this.reductionThreshold = data.reductionThreshold;
+        this.keyLength = data.keyLength;
+        this.dataType = data.dataType;
+        this.created = data.created;
+        this.count = data.count;
+        this.matrix = data.matrix;
+        this.collisionBlocks = data.collisionBlocks;
+        this.insertionOrder = data.insertionOrder;
+        this.history = data.history;
+        this.historyIndex = data.historyIndex;
+        this.baseBuckets = data.baseBuckets;
+        this.expansionStep = data.expansionStep;
     }
 }

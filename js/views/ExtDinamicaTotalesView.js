@@ -52,15 +52,19 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         if (labelKeys) labelKeys.innerText = 'Claves por Cubeta';
 
         // 3. Valores por defecto (ahora solo placeholders)
-        if (this.elements.blocksPerBucket) {
-            this.elements.blocksPerBucket.value = '';
-            this.elements.blocksPerBucket.placeholder = 'Ej: 2';
-            this.elements.blocksPerBucket.min = 1;
+        this.container.classList.add('dynamic-hashing-view');
+        const el = this.elements;
+
+        // 3. Valores por defecto (placeholder)
+        if (el.blocksPerBucket) {
+            el.blocksPerBucket.value = '';
+            el.blocksPerBucket.placeholder = 'Ej: 2';
+            el.blocksPerBucket.min = 1;
         }
-        if (this.elements.keysPerBlock) {
-            this.elements.keysPerBlock.value = '';
-            this.elements.keysPerBlock.placeholder = 'Ej: 2';
-            this.elements.keysPerBlock.min = 1;
+        if (el.keysPerBlock) {
+            el.keysPerBlock.value = '';
+            el.keysPerBlock.placeholder = 'Ej: 2';
+            el.keysPerBlock.min = 1;
         }
 
         // 4. Reemplazar "Tipo de Búsqueda" por inputs de D.O.
@@ -115,6 +119,24 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
     _createNavigationControls() {
         // Los botones se insertarán directamente en el contenedor de la matriz en _renderHorizontalMatrix
         return null;
+    }
+
+    /**
+     * Sobrescribe el cálculo de altura de la clase base para usar Flexbox puro.
+     * Esto evita que el área de mensajes se agrande inesperadamente.
+     * @private
+     * @override
+     */
+    _updateSegmentationMaxHeight() {
+        const el = this.elements;
+        if (el.hashBlockArea) {
+            el.hashBlockArea.style.height = '';
+            el.hashBlockArea.style.flex = '';
+        }
+        if (el.logWrapper) {
+            el.logWrapper.style.height = '';
+            el.logWrapper.style.flex = '';
+        }
     }
 
     /**
@@ -209,8 +231,12 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         this._renderAll();
 
         this._setOperation('create');
-        this._addLog(`Matriz dinámica total ${numBuckets}x${keysPerBucket} creada. D.O. Objetivo: ${config.occupancyDensity}%.`, 'info');
+        this._addLog(`Matriz dinámica total ${numBuckets}x${keysPerBucket} creada. D.O. Expansión: ${config.occupancyDensity}%. D.O. Reducción: ${config.reductionDensity}%.`, 'info');
         this._addLog(`Función hash inicial: h(k) = k mod ${numBuckets}`, 'info');
+
+        // Habilitar botones de guardado e impresión
+        el.btnSave.disabled = false;
+        el.btnPrint.disabled = false;
     }
 
     /**
@@ -434,9 +460,8 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         el.dataType.value = '';
         el.keyLength.disabled = false;
         el.keyLength.value = '';
-        el.inputDO.value = '';
-        el.inputDORed.value = '';
         el.btnCreate.disabled = false;
+        if (el.btnLoad) el.btnLoad.disabled = false;
 
         // Número de cubetas y Registros vuelven a estar vacíos y se habilitan
         if (el.blocksPerBucket) {
@@ -446,6 +471,16 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         if (el.keysPerBlock) {
             el.keysPerBlock.value = '';
             el.keysPerBlock.disabled = false;
+        }
+
+        // Rehabilitar inputs de D.O.
+        if (el.inputDO) {
+            el.inputDO.value = '';
+            el.inputDO.disabled = false;
+        }
+        if (el.inputDORed) {
+            el.inputDORed.value = '';
+            el.inputDORed.disabled = false;
         }
 
         el.inputKey.value = '';
@@ -473,11 +508,79 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         el.btnInsert.disabled = false;
         el.btnDelete.disabled = false;
         el.btnSearch.disabled = false;
+        el.btnSave.disabled = false;
+        el.btnPrint.disabled = false;
 
         el.hashBlockArea.style.display = 'flex';
         el.logWrapper.style.display = 'flex';
 
         el.inputKey.focus();
+    }
+
+    /**
+     * Guarda el estado actual de la estructura en un archivo JSON.
+     * @private
+     */
+    async _onSave() {
+        if (!this.dinamicModel.created) {
+            Validation.showError('No hay estructura creada para guardar.');
+            return;
+        }
+        const data = {
+            algorithm: this._algorithmName,
+            timestamp: new Date().toISOString(),
+            structure: this.dinamicModel.toJSON()
+        };
+        const jsonString = JSON.stringify(data, null, 2);
+        const defaultName = `${this._algorithmName}_${Date.now()}.json`;
+        await FileManager.saveJSON(jsonString, defaultName);
+    }
+
+    /**
+     * Carga el estado de la estructura desde un archivo JSON.
+     * @private
+     */
+    async _onLoad() {
+        if (this.dinamicModel.created) {
+            Validation.showWarning('Ya existe una estructura activa. Debe limpiarla antes de cargar otra.');
+            return;
+        }
+
+        const data = await FileManager.load();
+        if (!data) return;
+
+        // Validar compatible
+        if (data.algorithm !== this._algorithmName) {
+            Validation.showError(`Este archivo fue creado para "${data.algorithm}" y no es compatible con la vista actual ("${this._algorithmName}").`);
+            return;
+        }
+
+        this.dinamicModel.fromJSON(data.structure);
+
+        // Actualizar UI
+        const el = this.elements;
+        const s = data.structure;
+
+        el.dataType.value = s.dataType;
+        el.keyLength.value = s.keyLength;
+        if (el.blocksPerBucket) el.blocksPerBucket.value = s.baseBuckets || s.numBuckets; 
+        if (el.keysPerBlock) el.keysPerBlock.value = s.recordsPerRow;
+        if (el.inputDO) el.inputDO.value = s.occupancyThreshold || 70;
+        if (el.inputDORed) el.inputDORed.value = s.reductionThreshold || 30;
+
+        // Bloquear configuración
+        el.dataType.disabled = true;
+        el.keyLength.disabled = true;
+        el.btnCreate.disabled = true;
+        if (el.btnLoad) el.btnLoad.disabled = true;
+        if (el.inputDO) el.inputDO.disabled = true;
+        if (el.inputDORed) el.inputDORed.disabled = true;
+        if (el.blocksPerBucket) el.blocksPerBucket.disabled = true;
+        if (el.keysPerBlock) el.keysPerBlock.disabled = true;
+
+        this._enableControls();
+        this._renderAll();
+        this._addLog('Estructura cargada desde archivo.', 'success');
     }
 
     /**
@@ -519,22 +622,76 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         table.id = 'dynamic-matrix';
         table.className = 'matrix-table horizontal-layout';
 
+        const numBuckets = snapshot.numBuckets;
+        const numRows = snapshot.recordsPerRow;
+
+        // Determinar índices visibles
+        const visibleCols = this._getVisibleIndices(numBuckets, (i) => {
+            return snapshot.matrix[i].some(val => val !== null);
+        });
+        const visibleRows = this._getVisibleIndices(numRows, (j) => {
+            for (let i = 0; i < numBuckets; i++) {
+                if (snapshot.matrix[i][j] !== null) return true;
+            }
+            return false;
+        });
+
+        // Header
         const thead = document.createElement('thead');
         const headerRow = document.createElement('tr');
-        const headerLabel = snapshot.numBuckets >= 8 ? 'F/C' : 'Filas \\ Cubetas';
+        const headerLabel = numBuckets >= 8 ? 'F/C' : 'Filas \\ Cubetas';
         headerRow.innerHTML = `<th>${headerLabel}</th>`;
-        for (let i = 0; i < snapshot.numBuckets; i++) {
-            headerRow.innerHTML += `<th>${i}</th>`;
+        
+        for (let i = 0; i < visibleCols.length; i++) {
+            const colIdx = visibleCols[i];
+            if (i > 0 && colIdx > visibleCols[i - 1] + 1) {
+                headerRow.innerHTML += `<th class="ellipsis-cell">...</th>`;
+            }
+            headerRow.innerHTML += `<th>${colIdx}</th>`;
         }
         thead.appendChild(headerRow);
         table.appendChild(thead);
 
-        // Body (Registros como filas)
+        // Body
         const tbody = document.createElement('tbody');
-        for (let j = 0; j < snapshot.recordsPerRow; j++) {
+        for (let rIdx = 0; rIdx < visibleRows.length; rIdx++) {
+            const j = visibleRows[rIdx];
+            
+            // Fila de elipsis si hay salto
+            if (rIdx > 0 && j > visibleRows[rIdx - 1] + 1) {
+                const trEllipsis = document.createElement('tr');
+                trEllipsis.className = 'ellipsis-row';
+                trEllipsis.innerHTML = `<td>...</td>`;
+                for (let cIdx = 0; cIdx < visibleCols.length; cIdx++) {
+                    const i = visibleCols[cIdx];
+                    if (cIdx > 0 && i > visibleCols[cIdx - 1] + 1) {
+                        // Celda de intersección de elipsis
+                        const tdGap = document.createElement('td');
+                        tdGap.className = 'ellipsis-cell';
+                        tdGap.innerText = '...';
+                        trEllipsis.appendChild(tdGap);
+                    }
+                    const tdEll = document.createElement('td');
+                    tdEll.className = 'ellipsis-cell';
+                    tdEll.innerText = '...';
+                    trEllipsis.appendChild(tdEll);
+                }
+                tbody.appendChild(trEllipsis);
+            }
+
             const tr = document.createElement('tr');
             tr.innerHTML = `<td><strong>${j + 1}</strong></td>`;
-            for (let i = 0; i < snapshot.numBuckets; i++) {
+            for (let cIdx = 0; cIdx < visibleCols.length; cIdx++) {
+                const i = visibleCols[cIdx];
+                
+                // Celda de elipsis si hay salto en columnas
+                if (cIdx > 0 && i > visibleCols[cIdx - 1] + 1) {
+                    const tdEllipsis = document.createElement('td');
+                    tdEllipsis.className = 'ellipsis-cell';
+                    tdEllipsis.innerText = '...';
+                    tr.appendChild(tdEllipsis);
+                }
+
                 const cellValue = snapshot.matrix[i][j];
                 const td = document.createElement('td');
                 td.id = `cell-${i}-${j}`;
@@ -559,6 +716,33 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
     }
 
     /**
+     * Calcula los índices que deben ser visibles en la matriz.
+     * @private
+     * @param {number} max - Número máximo de elementos.
+     * @param {Function} hasDataFunc - Función para verificar si un índice tiene datos.
+     * @returns {number[]} Arreglo de índices visibles.
+     */
+    _getVisibleIndices(max, hasDataFunc) {
+        if (max <= 10) {
+            return Array.from({ length: max }, (_, i) => i);
+        }
+
+        const visible = new Set();
+        // Mostrar siempre los primeros 5
+        for (let i = 0; i < 5 && i < max; i++) visible.add(i);
+        // Mostrar siempre el último
+        visible.add(max - 1);
+        // Mostrar los que tengan datos
+        for (let i = 0; i < max; i++) {
+            if (hasDataFunc(i)) {
+                visible.add(i);
+            }
+        }
+
+        return Array.from(visible).sort((a, b) => a - b);
+    }
+
+    /**
      * Renderiza la información de densidad de ocupación (D.O.).
      * @private
      * @param {Object} snapshot - Instantánea del estado del modelo.
@@ -568,8 +752,8 @@ class ExtDinamicaTotalesView extends HashBlockSearchView {
         if (!container) return;
 
         // Metas y valores ahora usan bases distintas
-        const expansionDO = snapshot.expansionDO;
-        const reductionDO = snapshot.reductionDO;
+        const expansionDO = snapshot.expansionDO || 0;
+        const reductionDO = snapshot.reductionDO || 0;
 
         container.innerHTML = `
             <div class="do-info-card">
