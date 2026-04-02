@@ -73,7 +73,8 @@ const MenuModel = {
                                     { id: 'ext-dinamica-totales', label: 'Totales', action: 'ext-dinamica-totales', enabled: true },
                                     { id: 'ext-dinamica-parciales', label: 'Parciales', action: 'ext-dinamica-parciales', enabled: true }
                                 ]
-                            }
+                            },
+                            { id: 'ext-indices', label: 'Índices', action: 'ext-indices', enabled: true }
                         ]
                     }
                 ]

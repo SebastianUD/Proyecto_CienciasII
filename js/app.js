@@ -48,7 +48,8 @@
         'ext-hash-plegamiento': ExtHashPlegamientoView,
         'ext-conversion-base': ExtHashConversionBaseView,
         'ext-dinamica-totales': ExtDinamicaTotalesView,
-        'ext-dinamica-parciales': ExtDinamicaParcialesView
+        'ext-dinamica-parciales': ExtDinamicaParcialesView,
+        'ext-indices': IndicesView
     };
 
     /**

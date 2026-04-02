@@ -2462,3 +2462,217 @@ body {
         opacity: 1;
     }
 }
+
+/* ===========================
+   INDICES VIEW — Búsquedas Externas
+   =========================== */
+
+/* Config row */
+.indices-config-row {
+    flex-shrink: 0;
+}
+
+.indices-config-row>.section-title {
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+/* Results area: table on LEFT, canvas on RIGHT */
+.indices-results-area {
+    display: flex;
+    flex-direction: row;
+    gap: 12px;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Prevent main-content from scrolling when indices view is shown */
+.main-content:has(.indices-results-area) {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+.main-content:has(.indices-results-area)>#algorithm-view {
+    display: flex;
+    flex-direction: column;
+    flex: 1;
+    min-height: 0;
+    overflow: hidden;
+}
+
+/* Table wrapper — left side */
+.indices-table-wrapper {
+    flex: 0 0 50%;
+    min-width: 320px;
+    display: flex;
+    flex-direction: column;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.indices-table-wrapper>.section-title {
+    flex-shrink: 0;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+    border-color: var(--border-color);
+    border-bottom: 1px solid var(--border-color);
+}
+
+.indices-table-scroll {
+    flex: 1;
+    min-height: 0;
+    overflow-y: auto;
+    overflow-x: auto;
+    scrollbar-width: thin;
+}
+
+.indices-table-scroll::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.indices-table-scroll::-webkit-scrollbar-thumb {
+    background: var(--primary-blue-pale);
+    border-radius: 4px;
+}
+
+/* Calculation table */
+.indices-calc-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.82rem;
+}
+
+.indices-calc-table th {
+    background-color: var(--primary-blue);
+    color: white;
+    padding: 6px 12px;
+    font-size: 0.78rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.3px;
+    position: sticky;
+    top: 0;
+    z-index: 2;
+    text-align: center;
+}
+
+.indices-calc-table td {
+    padding: 5px 12px;
+    border-bottom: 1px solid var(--border-light);
+}
+
+.indices-calc-table tr:hover {
+    background-color: rgba(43, 87, 154, 0.04);
+}
+
+/* Sub-table wrappers inside the scroll area */
+.idx-subtable-wrapper {
+    margin: 12px 12px 0 12px;
+}
+
+.idx-subtable-wrapper:last-child {
+    margin-bottom: 12px;
+}
+
+/* Section title above each sub-table */
+.idx-subtable-title {
+    background: #d8d7d7;
+    text-align: center;
+    color: #5a5a5a;
+    font-size: 0.78rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.4px;
+    padding: 6px 12px;
+    border-radius: var(--border-radius) var(--border-radius) 0 0;
+}
+
+.idx-subtable-wrapper .indices-calc-table {
+    border-radius: 0 0 var(--border-radius) var(--border-radius);
+    border: 1px solid var(--border-color);
+    border-top: none;
+    overflow: hidden;
+}
+
+.idx-subtable-wrapper .indices-calc-table th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    /* Not sticky per-subtable in a shared scroll — use normal flow */
+    position: static;
+}
+
+.idx-label-cell {
+    font-weight: 500;
+    color: var(--text-primary);
+    min-width: 180px;
+}
+
+.idx-value-cell {
+    font-weight: 700;
+    color: var(--primary-blue);
+    text-align: center;
+    white-space: nowrap;
+}
+
+.idx-formula-cell {
+    font-family: 'Consolas', 'Courier New', monospace;
+    font-size: 0.78rem;
+    color: var(--text-secondary);
+    white-space: nowrap;
+}
+
+/* Canvas wrapper */
+.indices-canvas-wrapper {
+    flex: 1;
+    min-width: 0;
+    min-height: 0;
+    position: relative;
+    background-color: var(--bg-card);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    overflow: hidden;
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.06);
+}
+
+.indices-canvas-wrapper canvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+    cursor: grab;
+}
+
+.indices-canvas-wrapper canvas:active {
+    cursor: grabbing;
+}
+
+/* Print — indices */
+@media print {
+    .indices-config-row {
+        display: none !important;
+    }
+
+    .indices-results-area {
+        overflow: visible !important;
+        max-height: none !important;
+        height: auto !important;
+    }
+
+    .indices-table-wrapper {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .indices-table-scroll {
+        max-height: none !important;
+        overflow: visible !important;
+    }
+
+    .indices-canvas-wrapper {
+        min-height: 400px;
+    }
+}
