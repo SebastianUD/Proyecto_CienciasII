@@ -49,7 +49,8 @@
         'ext-conversion-base': ExtHashConversionBaseView,
         'ext-dinamica-totales': ExtDinamicaTotalesView,
         'ext-dinamica-parciales': ExtDinamicaParcialesView,
-        'ext-indices': IndicesView
+        'ext-indices': IndicesView,
+        'grafos-operaciones': GrafosView
     };
 
     /**

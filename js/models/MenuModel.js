@@ -83,7 +83,7 @@ const MenuModel = {
                 id: 'grafos',
                 label: 'Grafos',
                 children: [
-                    { id: 'grafos-placeholder', label: '...', enabled: false }
+                    { id: 'grafos-operaciones', label: 'Operaciones entre Grafos', action: 'grafos-operaciones', enabled: true }
                 ]
             }
         ];
