@@ -1186,6 +1186,36 @@ body {
     z-index: 5;
 }
 
+.drag-toggle-btn {
+    right: 54px; /* Posicionado junto al botón de ajuste */
+}
+
+.expand-btn {
+    right: 96px; /* A la izquierda del botón de arrastre */
+}
+
+.expand-btn.active {
+    background-color: var(--primary-blue);
+    color: white;
+    border-color: var(--primary-blue);
+    box-shadow: 0 2px 8px rgba(43, 87, 154, 0.3);
+}
+
+.drag-toggle-btn.active {
+    background-color: var(--accent-orange);
+    color: white;
+    border-color: var(--accent-orange);
+    box-shadow: 0 2px 8px rgba(216, 59, 1, 0.3);
+}
+
+.grafos-hidden-max {
+    display: none !important;
+}
+
+.grafos-full-row {
+    flex: 1 !important;
+}
+
 .tree-fit-btn:hover {
     background-color: var(--primary-blue-pale);
     color: var(--primary-blue);
@@ -2878,7 +2908,7 @@ body {
 /* Log section */
 .grafos-log-section {
     flex: 1;
-    min-height: 0;
+    min-height: 100px;
     display: flex;
     flex-direction: column;
 }
@@ -2891,41 +2921,6 @@ body {
     flex-direction: column;
     gap: 8px;
     overflow: hidden;
-}
-
-/* ── Toggle Bar para G1/G2 ── */
-.grafos-toggle-bar {
-    display: flex;
-    justify-content: flex-end;
-    flex-shrink: 0;
-}
-
-.grafos-toggle-btn {
-    display: flex;
-    align-items: center;
-    gap: 6px;
-    padding: 4px 14px;
-    font-size: 0.74rem;
-    font-weight: 600;
-    color: var(--primary-blue);
-    background: var(--bg-card);
-    border: 1px solid var(--primary-blue-pale);
-    border-radius: 6px;
-    cursor: pointer;
-    transition: all 0.2s ease;
-    letter-spacing: 0.3px;
-}
-
-.grafos-toggle-btn:hover {
-    background: var(--primary-blue-pale);
-    border-color: var(--primary-blue);
-    box-shadow: 0 2px 6px rgba(43, 87, 154, 0.15);
-}
-
-.grafos-toggle-icon {
-    display: inline-block;
-    font-size: 0.6rem;
-    transition: transform 0.3s ease;
 }
 
 /* Fila superior: G1 y G2 (colapsable) */
@@ -3089,7 +3084,7 @@ body {
     flex-direction: column;
     gap: 4px;
     margin-top: 6px;
-    max-height: 120px;
+    max-height: 85px;
     overflow-y: auto;
 }
 .grafos-edge-item {
@@ -3104,7 +3099,7 @@ body {
     font-family: Consolas, monospace;
 }
 .grafos-edge-id {
-    color: var(--accent-orange);
+    color: #1B3A6B; /* Azul oscuro para el ID */
     font-weight: bold;
     margin-right: 4px;
 }

@@ -1,53 +1,68 @@
 /**
- * @fileoverview Vista principal de la sección Grafos.
- * Muestra tres canvas interactivos (G1, G2, Resultado) con pan/zoom,
- * un panel de control izquierdo para rellenar los grafos,
- * y un panel derecho para registrar paso a paso las operaciones.
- * @module views/GrafosView
+ * @class GrafosView
+ * @description Gestiona la interfaz de usuario y la visualización interactiva de la sección de Grafos.
+ * Permite la creación y edición de grafos G1 y G2, ejecución de operaciones lógicas
+ * y visualización interactiva (arrastre, zoom y maximización) en tres canvas.
+ * 
+ * @param {HTMLElement} containerEl - Contenedor principal de la aplicación.
  */
-
 class GrafosView {
-    /**
-     * @param {HTMLElement} containerEl
-     */
     constructor(containerEl) {
         this.container = containerEl;
 
-        /** @type {GraphModel} */
+        /** @type {GraphModel} - Instancia del Grafo 1 */
         this.g1 = new GraphModel();
-        /** @type {GraphModel} */
+        /** @type {GraphModel} - Instancia del Grafo 2 */
         this.g2 = new GraphModel();
-        /** @type {GraphModel|null} */
+        /** @type {GraphModel|null} - Grafo resultante de una operación */
         this.gResult = null;
 
-        /** @type {Object} Referencias DOM */
+        /** @type {Object} - Guardado de referencias a elementos del DOM */
         this.el = {};
 
-        /** @type {Array<{message:string,type:string}>} */
+        /** @type {Array} - Mensajes de actualización visual */
         this.logMessages = [];
+        /** @type {Array} - Pasos formales de las operaciones */
         this.opLogMessages = [];
         this._lastOperation = null;
 
-        // Estados de cámara independientes para cada canvas
+        // Estados de cámara (pan/zoom) independientes para cada canvas
         this._cam1 = this._newCam();
         this._cam2 = this._newCam();
         this._camR = this._newCam();
 
-        // Radios de nodo
+        // Radio base para los nodos de los grafos
         this._nodeRadius = 20;
 
+        /** @type {string} - Indica cuál grafo se está editando actualmente (g1 o g2) */
         this._activeGraph = 'g1';
         this._directed = false;
+
+        // Modos de arrastre manual e interfaz
+        this._dragModeG1 = false;
+        this._dragModeG2 = false;
+        this._dragModeR = false;
+        this._maximizedCanvas = null; // 'g1', 'g2', 'result' o null
+        this._draggingNode = null; // { graph: GraphModel, vertex: string }
     }
 
     // ─── Cámara ───────────────────────────────────────────────────────────────
 
+    /**
+     * Genera un objeto de estado de cámara predeterminado.
+     * @returns {Object} - Estado con offset, escala y variables de paneo.
+     * @private
+     */
     _newCam() {
         return { offsetX: 0, offsetY: 0, scale: 1, isPanning: false, startX: 0, startY: 0 };
     }
 
     // ─── Render ───────────────────────────────────────────────────────────────
 
+    /**
+     * Inicializa y muestra la vista de grafos en el contenedor.
+     * Configura el HTML base, captura elementos y enlaza eventos.
+     */
     show() {
         this.container.innerHTML = '';
         this.container.classList.remove('hidden');
@@ -165,22 +180,19 @@ class GrafosView {
 
                 <!-- ── Área de Canvas Centro ── -->
                 <div class="grafos-canvas-area">
-                    <div class="grafos-toggle-bar">
-                        <button class="grafos-toggle-btn" id="grafos-toggle-inputs" title="Ocultar/Mostrar grafos de entrada">
-                            <span class="grafos-toggle-icon" id="grafos-toggle-icon">▼</span>
-                            <span id="grafos-toggle-text">Ocultar G1 y G2</span>
-                        </button>
-                    </div>
-
                     <div class="grafos-top-row" id="grafos-top-row">
                         <div class="grafos-canvas-wrapper" id="grafos-wrap-g1">
                             <div class="grafos-canvas-label">Grafo 1 (G1)</div>
                             <canvas id="grafos-canvas-g1"></canvas>
+                            <button class="tree-fit-btn expand-btn" id="grafos-expand-g1" title="Maximizar vista G1">⛶</button>
+                            <button class="tree-fit-btn drag-toggle-btn" id="grafos-drag-g1" title="Mover nodos de G1">✥</button>
                             <button class="tree-fit-btn" id="grafos-fit-g1" title="Ajustar vista G1">⊞</button>
                         </div>
                         <div class="grafos-canvas-wrapper" id="grafos-wrap-g2">
                             <div class="grafos-canvas-label">Grafo 2 (G2)</div>
                             <canvas id="grafos-canvas-g2"></canvas>
+                            <button class="tree-fit-btn expand-btn" id="grafos-expand-g2" title="Maximizar vista G2">⛶</button>
+                            <button class="tree-fit-btn drag-toggle-btn" id="grafos-drag-g2" title="Mover nodos de G2">✥</button>
                             <button class="tree-fit-btn" id="grafos-fit-g2" title="Ajustar vista G2">⊞</button>
                         </div>
                     </div>
@@ -189,6 +201,8 @@ class GrafosView {
                         <div class="grafos-canvas-wrapper grafos-result-canvas" id="grafos-wrap-result">
                             <div class="grafos-canvas-label" id="grafos-result-label">Resultado</div>
                             <canvas id="grafos-canvas-result"></canvas>
+                            <button class="tree-fit-btn expand-btn" id="grafos-expand-result" title="Maximizar vista Resultado">⛶</button>
+                            <button class="tree-fit-btn drag-toggle-btn" id="grafos-drag-result" title="Mover nodos de Resultado">✥</button>
                             <button class="tree-fit-btn" id="grafos-fit-result" title="Ajustar vista Resultado">⊞</button>
                         </div>
                     </div>
@@ -217,11 +231,15 @@ class GrafosView {
         this._resizeAllCanvas();
         this._syncUI();
         this._drawAll();
-        // Emular creación vacía
+        // Inicializa con grafos vacíos pero creados
         this.g1.create([], []);
         this.g2.create([], []);
     }
 
+    /**
+     * Captura las referencias a los elementos del DOM necesarios para la interacción.
+     * @private
+     */
     _cacheElements() {
         this.el = {
             tabG1: document.getElementById('tab-g1'),
@@ -256,18 +274,27 @@ class GrafosView {
             resultLabel: document.getElementById('grafos-result-label'),
             topRow: document.getElementById('grafos-top-row'),
             resultRow: document.getElementById('grafos-result-row'),
-            toggleBtn: document.getElementById('grafos-toggle-inputs'),
-            toggleIcon: document.getElementById('grafos-toggle-icon'),
-            toggleText: document.getElementById('grafos-toggle-text')
+            dragG1: document.getElementById('grafos-drag-g1'),
+            dragG2: document.getElementById('grafos-drag-g2'),
+            dragResult: document.getElementById('grafos-drag-result'),
+            expandG1: document.getElementById('grafos-expand-g1'),
+            expandG2: document.getElementById('grafos-expand-g2'),
+            expandResult: document.getElementById('grafos-expand-result'),
+            wrapG1: document.getElementById('grafos-wrap-g1'),
+            wrapG2: document.getElementById('grafos-wrap-g2'),
+            wrapResult: document.getElementById('grafos-wrap-result')
         };
     }
 
+    /**
+     * Enlaza los eventos de usuario (clicks, teclados, observers) a sus controladores.
+     * @private
+     */
     _bindEvents() {
         const el = this.el;
 
         el.tabG1.addEventListener('click', () => this._switchTab('g1'));
         el.tabG2.addEventListener('click', () => this._switchTab('g2'));
-        el.toggleBtn.addEventListener('click', () => this._toggleInputGraphs());
 
         // Manejo de Vértices
         el.addVertexBtn.addEventListener('click', () => this._handleAddVertex());
@@ -290,14 +317,22 @@ class GrafosView {
         el.opTypeSelect.addEventListener('change', () => this._updateOpUI());
         el.opUnarySelect.addEventListener('change', () => this._updateOpUnaryParamsUI());
 
-        // Canvas pan/zoom
-        this._bindCanvasPanZoom(el.canvasG1, this._cam1, () => this._drawGraph(el.canvasG1, this.g1, this._cam1));
-        this._bindCanvasPanZoom(el.canvasG2, this._cam2, () => this._drawGraph(el.canvasG2, this.g2, this._cam2));
-        this._bindCanvasPanZoom(el.canvasResult, this._camR, () => this._drawGraph(el.canvasResult, this.gResult, this._camR));
+        // Canvas pan/zoom y drag
+        this._bindCanvasPanZoom(el.canvasG1, () => this.g1, this._cam1, () => this._dragModeG1, () => this._drawGraph(el.canvasG1, this.g1, this._cam1));
+        this._bindCanvasPanZoom(el.canvasG2, () => this.g2, this._cam2, () => this._dragModeG2, () => this._drawGraph(el.canvasG2, this.g2, this._cam2));
+        this._bindCanvasPanZoom(el.canvasResult, () => this.gResult, this._camR, () => this._dragModeR, () => this._drawGraph(el.canvasResult, this.gResult, this._camR));
 
         el.fitG1.addEventListener('click', () => { this._fitGraph(el.canvasG1, this.g1, this._cam1); this._drawGraph(el.canvasG1, this.g1, this._cam1); });
         el.fitG2.addEventListener('click', () => { this._fitGraph(el.canvasG2, this.g2, this._cam2); this._drawGraph(el.canvasG2, this.g2, this._cam2); });
-        el.fitResult.addEventListener('click', () => { this._fitGraph(el.canvasResult, this.gResult, this._camR); this._drawGraph(el.canvasResult, this.gResult, this._camR); });
+        el.fitResult.addEventListener('click', () => { if (this.gResult) { this._fitGraph(el.canvasResult, this.gResult, this._camR); this._drawGraph(el.canvasResult, this.gResult, this._camR); } });
+
+        el.dragG1.addEventListener('click', () => this._toggleDragMode('g1'));
+        el.dragG2.addEventListener('click', () => this._toggleDragMode('g2'));
+        el.dragResult.addEventListener('click', () => this._toggleDragMode('result'));
+
+        el.expandG1.addEventListener('click', () => this._toggleMaximize('g1'));
+        el.expandG2.addEventListener('click', () => this._toggleMaximize('g2'));
+        el.expandResult.addEventListener('click', () => this._toggleMaximize('result'));
 
         // ResizeObserver para canvas
         this._ro = new ResizeObserver(() => {
@@ -307,11 +342,102 @@ class GrafosView {
         [el.canvasG1, el.canvasG2, el.canvasResult].forEach(c => this._ro.observe(c.parentElement));
     }
 
+    /**
+     * Alterna el modo de arrastre manual para un contenedor de grafo.
+     * Cuando está activo, se permite mover nodos con el ratón.
+     * @param {string} canvasKey - Identificador del canvas ('g1', 'g2' o 'result').
+     * @private
+     */
+    _toggleDragMode(canvasKey) {
+        if (canvasKey === 'g1') {
+            this._dragModeG1 = !this._dragModeG1;
+            this.el.dragG1.classList.toggle('active', this._dragModeG1);
+        } else if (canvasKey === 'g2') {
+            this._dragModeG2 = !this._dragModeG2;
+            this.el.dragG2.classList.toggle('active', this._dragModeG2);
+        } else if (canvasKey === 'result') {
+            this._dragModeR = !this._dragModeR;
+            this.el.dragResult.classList.toggle('active', this._dragModeR);
+        }
+    }
+
+    /**
+     * Controla la expansión visual de un canvas para ocupar todo el espacio central.
+     * Aplica clases CSS para ocultar otros paneles y redimensiona el canvas.
+     * @param {string} target - El grafo objetivo ('g1', 'g2' o 'result').
+     * @private
+     */
+    _toggleMaximize(target) {
+        if (this._maximizedCanvas === target) {
+            this._maximizedCanvas = null;
+        } else {
+            this._maximizedCanvas = target;
+        }
+
+        // Limpiar estados previos
+        [this.el.topRow, this.el.resultRow].forEach(r => {
+            r.classList.remove('grafos-hidden-max');
+            r.classList.remove('grafos-full-row');
+        });
+        [this.el.wrapG1, this.el.wrapG2, this.el.wrapResult].forEach(w => w.classList.remove('grafos-hidden-max'));
+        [this.el.expandG1, this.el.expandG2, this.el.expandResult].forEach(b => b.classList.remove('active'));
+
+        // Aplicar lógica de expansión total
+        if (this._maximizedCanvas === 'g1') {
+            this.el.wrapG2.classList.add('grafos-hidden-max');
+            this.el.resultRow.classList.add('grafos-hidden-max');
+            this.el.topRow.classList.add('grafos-full-row');
+            this.el.expandG1.classList.add('active');
+        } else if (this._maximizedCanvas === 'g2') {
+            this.el.wrapG1.classList.add('grafos-hidden-max');
+            this.el.resultRow.classList.add('grafos-hidden-max');
+            this.el.topRow.classList.add('grafos-full-row');
+            this.el.expandG2.classList.add('active');
+        } else if (this._maximizedCanvas === 'result') {
+            this.el.topRow.classList.add('grafos-hidden-max');
+            this.el.resultRow.classList.add('grafos-full-row');
+            this.el.expandResult.classList.add('active');
+        }
+
+        // Forzar redimensionado interno de los canvas
+        this._resizeAllCanvas();
+
+        // Auto-Ajustar vista automáticamente (Auto-Fit) con retardo para esperar la animación de CSS
+        const applyFitArr = () => {
+            if (this._maximizedCanvas === 'g1') {
+                this._fitGraph(this.el.canvasG1, this.g1, this._cam1);
+            } else if (this._maximizedCanvas === 'g2') {
+                this._fitGraph(this.el.canvasG2, this.g2, this._cam2);
+            } else if (this._maximizedCanvas === 'result') {
+                if (this.gResult) this._fitGraph(this.el.canvasResult, this.gResult, this._camR);
+            } else {
+                // Si volvemos a la vista normal, reajustamos todos
+                this._fitGraph(this.el.canvasG1, this.g1, this._cam1);
+                this._fitGraph(this.el.canvasG2, this.g2, this._cam2);
+                if (this.gResult) this._fitGraph(this.el.canvasResult, this.gResult, this._camR);
+            }
+            this._drawAll();
+        };
+
+        // Primera llamada inmediata (aproximada)
+        applyFitArr();
+        // Segunda llamada tras terminar transición CSS (clase .grafos-full-row)
+        setTimeout(applyFitArr, 150);
+    }
+
+    /** @returns {GraphModel} - Retorna la instancia del grafo visualizado actualmente en el panel de edición. */
     _getActiveGraph() { return this._activeGraph === 'g1' ? this.g1 : this.g2; }
+
+    /** @returns {string} - Retorna la etiqueta ('G1' o 'G2') del grafo activo. */
     _getActiveGraphLabel() { return this._activeGraph === 'g1' ? 'G1' : 'G2'; }
 
     // ─── UI Sincronización y Dinámica ──────────────────────────────────────────
 
+    /**
+     * Cambia entre las pestañas de edición de G1 y G2.
+     * @param {string} target - 'g1' o 'g2'.
+     * @private
+     */
     _switchTab(target) {
         this._activeGraph = target;
         this.el.tabG1.classList.toggle('active', target === 'g1');
@@ -320,10 +446,15 @@ class GrafosView {
         this._updateOpUnaryParamsUI();
     }
 
+    /**
+     * Sincroniza la interfaz de usuario (chips de vértices, selectores y lista de aristas)
+     * con el estado actual del modelo del grafo activo.
+     * @private
+     */
     _syncUI() {
         const g = this._getActiveGraph();
-        
-        // Render Vértices
+
+        // Renderizar chips de vértices
         this.el.vertexList.innerHTML = '';
         g.vertices.forEach(v => {
             const chip = document.createElement('div');
@@ -333,7 +464,7 @@ class GrafosView {
             this.el.vertexList.appendChild(chip);
         });
 
-        // Actualizar Selects de Aristas
+        // Actualizar dropdowns para la creación de nuevas aristas
         this.el.edgeFrom.innerHTML = '<option value="">--</option>';
         this.el.edgeTo.innerHTML = '<option value="">--</option>';
         g.vertices.forEach(v => {
@@ -341,7 +472,7 @@ class GrafosView {
             this.el.edgeTo.add(new Option(v, v));
         });
 
-        // Render Aristas
+        // Renderizar lista interactiva de aristas
         this.el.edgeList.innerHTML = '';
         g.edges.forEach(edge => {
             const row = document.createElement('div');
@@ -355,6 +486,10 @@ class GrafosView {
         this._updateOpUnaryParamsUI();
     }
 
+    /**
+     * Actualiza la UI de operaciones según el tipo (binario o unario) seleccionado.
+     * @private
+     */
     _updateOpUI() {
         const type = this.el.opTypeSelect.value;
         if (type === 'binary') {
@@ -367,6 +502,11 @@ class GrafosView {
         }
     }
 
+    /**
+     * Actualiza dinámicamente los menús desplegables (V1, V2, Aristas) 
+     * para las operaciones unarias basándose en los datos del grafo.
+     * @private
+     */
     _updateOpUnaryParamsUI() {
         const g = this._getActiveGraph();
         const action = this.el.opUnarySelect.value;
@@ -400,6 +540,11 @@ class GrafosView {
 
     // ─── Input Handlers (Operaciones Directas) ───────────────────────────────
 
+    /**
+     * Procesa la adición de un nuevo vértice desde el panel lateral.
+     * Valida la entrada y actualiza tanto el modelo como la vista.
+     * @private
+     */
     _handleAddVertex() {
         const g = this._getActiveGraph();
         const raw = this.el.inputVertex.value.trim();
@@ -421,6 +566,11 @@ class GrafosView {
         }
     }
 
+    /**
+     * Elimina un vértice previa confirmación del usuario.
+     * @param {string} v - Nombre del vértice.
+     * @private
+     */
     async _handleRemoveVertex(v) {
         const g = this._getActiveGraph();
         const confirmed = await Validation.confirm(`¿Eliminar vértice ${v} y todas sus aristas en ${this._getActiveGraphLabel()}?`);
@@ -438,6 +588,10 @@ class GrafosView {
         }
     }
 
+    /**
+     * Procesa la creación de una nueva arista entre dos vértices.
+     * @private
+     */
     _handleAddEdge() {
         const g = this._getActiveGraph();
         const from = this.el.edgeFrom.value;
@@ -458,11 +612,16 @@ class GrafosView {
         }
     }
 
+    /**
+     * Elimina una arista del modelo por su ID.
+     * @param {string} id - Código identificador de la arista (ej: 'a').
+     * @private
+     */
     async _handleRemoveEdge(id) {
         const g = this._getActiveGraph();
         const confirmed = await Validation.confirm(`¿Eliminar arista ${id} de ${this._getActiveGraphLabel()}?`);
         if (!confirmed) return;
-        
+
         const res = g.removeEdge(id);
         if (res.success) {
             this._addUpdateLog(`Arista eliminada de ${this._getActiveGraphLabel()}.`, 'info');
@@ -476,13 +635,41 @@ class GrafosView {
 
     // ─── Botones Principales ──────────────────────────────────────────────────
 
-    _onCreate() {
+    /**
+     * Ejecuta la creación del grafo completo e informa del estado actual en el log.
+     * Se activa al pulsar el botón "CREAR".
+     * @private
+     */
+    /**
+     * Procesa la carga de una estructura desde un archivo JSON.
+     * @param {Object} data - Datos importados.
+     * @private
+     */
+    _onImport(data) {
         const g = this._getActiveGraph();
+        const label = this._getActiveGraphLabel();
         if (!g.created || g.vertices.length === 0) {
-            Validation.showError(`El grafo ${this._getActiveGraphLabel()} no tiene vértices.`);
+            Validation.showError(`El grafo ${label} no tiene vértices.`);
             return;
         }
-        this._addUpdateLog(`${this._getActiveGraphLabel()} actualizado: ${g.vertices.length} vértice(s), ${g.edges.length} arista(s).`, 'success');
+
+        // Mostrar resumen en el panel de operaciones de la derecha
+        this.el.opContent.innerHTML = '';
+        this.opLogMessages = [];
+        const tableHtml = GraphModel._singleGraphHtmlTable(g, `ESTADO ACTUAL DE ${label}`, label, label === 'G1' ? 'A1' : 'A2');
+
+        // Envolver en el estilo de las tarjetas de pasos
+        const wrapper = document.createElement('div');
+        wrapper.className = 'huffman-step-table';
+        wrapper.style.marginBottom = '12px';
+        wrapper.innerHTML = `
+            <div class="section-title" style="font-size: 0.8rem; background: var(--bg-main); border-bottom: 1px solid var(--border-light); border-top-left-radius: 4px; border-top-right-radius: 4px;">Información de la Estructura</div>
+            <div style="padding: 10px;">${tableHtml}</div>
+        `;
+
+        this.el.opContent.appendChild(wrapper);
+
+        this._addUpdateLog(`${label} actualizado: ${g.vertices.length} vértice(s), ${g.edges.length} arista(s).`, 'success');
         this._refreshActiveCanvas();
     }
 
@@ -522,7 +709,7 @@ class GrafosView {
             if (data) Validation.showError('El archivo no corresponde a Grafos / Operaciones.');
             return;
         }
-        
+
         const s = data.structure;
         if (s.g1) this.g1.fromJSON(s.g1); else this.g1.reset();
         if (s.g2) this.g2.fromJSON(s.g2); else this.g2.reset();
@@ -543,7 +730,7 @@ class GrafosView {
 
         this._syncUI();
         this._addUpdateLog('Datos y estructura de grafos recuperados correctamente.', 'success');
-        
+
         this._fitGraph(this.el.canvasG1, this.g1, this._cam1);
         this._fitGraph(this.el.canvasG2, this.g2, this._cam2);
         if (this.gResult) this._fitGraph(this.el.canvasResult, this.gResult, this._camR);
@@ -552,38 +739,48 @@ class GrafosView {
 
     // ─── Ejecutar Operaciones ─────────────────────────────────────────────────
 
+    /**
+     * Ejecuta la operación seleccionada (Binaria o Unaria). 
+     * @param {boolean} [isAuto=false] - Indica si la ejecución es disparada automáticamente por cambios en los grafos de entrada.
+     */
+    /**
+     * Orquesta la ejecución de la operación seleccionada (unión, suma, contracción, etc.)
+     * y gestiona la visualización del grafo resultante.
+     * @param {boolean} [isAuto=false] - Define si se disparan errores visuales.
+     * @private
+     */
     _onExecute(isAuto = false) {
         const isBinary = this.el.opTypeSelect.value === 'binary';
-        
+
         if (isBinary) {
             if (!this.g1.created || this.g1.vertices.length === 0) { if (!isAuto) Validation.showError('G1 no está definido o está vacío.'); return; }
             if (!this.g2.created || this.g2.vertices.length === 0) { if (!isAuto) Validation.showError('G2 no está definido o está vacío.'); return; }
             const op = this.el.opSelect.value;
             if (!GraphModel[op]) { if (!isAuto) Validation.showError('Operación desconocida.'); return; }
-            
+
             try {
                 this.el.opContent.innerHTML = ''; // Limpiar el panel derecho con cada ejecución binaria
                 this.opLogMessages = [];
                 this._lastBinaryOp = op;
-                
+
                 const res = GraphModel[op](this.g1, this.g2);
                 this.gResult = res.graph;
                 this.el.resultLabel.textContent = this.gResult.name || 'Resultado';
-                
-                // Agrupar los logs y darle un formato estructurado como en Huffman
+
+                // Agrupar los logs y darle un formato estructurado (tablas formales)
                 this._renderStyledOpLogs(res.log);
-                
+
                 if (!isAuto) {
                     this._addUpdateLog(`Operación ${this.gResult.name || ''} ejecutada con éxito.`, 'success');
                 }
-                
+
                 this._fitGraph(this.el.canvasResult, this.gResult, this._camR);
                 this._drawGraph(this.el.canvasResult, this.gResult, this._camR);
             } catch (e) {
                 if (!isAuto) Validation.showError('Error en operación binaria: ' + e.message);
             }
         } else {
-            // Unary Operations
+            // Operaciones Unarias (Edición en tiempo real)
             if (isAuto) return;
             const action = this.el.opUnarySelect.value;
 
@@ -607,7 +804,7 @@ class GrafosView {
                         this._addUpdateLog(`Contracción completada en ${this._getActiveGraphLabel()}.`, 'success');
                     }
                 }
-                
+
                 if (res && res.success) {
                     this._syncUI();
                     this._refreshActiveCanvas();
@@ -628,7 +825,7 @@ class GrafosView {
             this.opLogMessages = [];
             this.el.resultLabel.textContent = 'Resultado';
             const ctxR = this.el.canvasResult.getContext('2d');
-            ctxR.clearRect(0,0, this.el.canvasResult.width, this.el.canvasResult.height);
+            ctxR.clearRect(0, 0, this.el.canvasResult.width, this.el.canvasResult.height);
         }
     }
 
@@ -641,6 +838,10 @@ class GrafosView {
         }
     }
 
+    /**
+     * Refresca el canvas que está siendo editado actualmente por el usuario.
+     * @private
+     */
     _refreshActiveCanvas() {
         const canvas = this._activeGraph === 'g1' ? this.el.canvasG1 : this.el.canvasG2;
         const cam = this._activeGraph === 'g1' ? this._cam1 : this._cam2;
@@ -678,7 +879,13 @@ class GrafosView {
 
     // ─── Log System ───────────────────────────────────────────────────────────
 
-    _addUpdateLog(message, type = 'info') {
+    /**
+     * Añade un mensaje breve al log inferior de la sección.
+     * @param {string} msg - Mensaje a mostrar.
+     * @param {string} [type='info'] - Estilo visual (info, success, error).
+     * @private
+     */
+    _addUpdateLog(msg, type = 'info') {
         const entry = document.createElement('div');
         entry.classList.add('log-entry', `log-${type}`);
         entry.textContent = message;
@@ -696,6 +903,12 @@ class GrafosView {
         this._renderOpLogs();
     }
 
+    /**
+     * Renderiza los pasos detallados de una operación en el panel lateral derecho,
+     * utilizando tablas formales y etiquetas explicativas.
+     * @param {string[]} logs - Lista de hileras/HTML que representan los pasos.
+     * @private
+     */
     _renderStyledOpLogs(logsArray) {
         this.opLogMessages = [];
         logsArray.forEach(msg => {
@@ -712,7 +925,7 @@ class GrafosView {
     _renderOpLogs() {
         if (!this.el.opContent) return;
         this.el.opContent.innerHTML = '';
-        
+
         let html = '';
         this.opLogMessages.forEach((m, idx) => {
             if (m.type === 'header') {
@@ -731,7 +944,7 @@ class GrafosView {
         });
         if (this.opLogMessages.length > 0) html += `</div></div>`;
         else html = '<div class="huffman-empty-msg">Ejecute una operación para ver los pasos formales de G1 y G2 aquí.</div>';
-        
+
         this.el.opContent.innerHTML = html;
         this.el.opContent.scrollTop = this.el.opContent.scrollHeight;
     }
@@ -760,8 +973,43 @@ class GrafosView {
 
     // ─── Drawing / Canvas (Pan, Zoom, Fit) ───────────────────────────────────
 
-    _bindCanvasPanZoom(canvas, cam, redraw) {
+    /**
+     * Motor de interacción física para los grafos. Implementa:
+     * - Zoom con la rueda del ratón.
+     * - Paneo con el click central o arrastre libre.
+     * - Arrastre de nodos individuales (Drag Mode).
+     * @private
+     */
+    _bindCanvasPanZoom(canvas, getGraph, cam, isDragActive, redraw) {
         canvas.addEventListener('mousedown', (e) => {
+            const rect = canvas.getBoundingClientRect();
+            const mouseX = e.clientX - rect.left;
+            const mouseY = e.clientY - rect.top;
+            const graph = getGraph();
+
+            // Si el modo arrastre está activo, intentamos agarrar un nodo
+            if (isDragActive() && graph && graph.vertices.length > 0) {
+                // Convertir coordenadas de pantalla a coordenadas del mundo (grafo)
+                const worldX = (mouseX - cam.offsetX) / cam.scale;
+                const worldY = (mouseY - cam.offsetY) / cam.scale;
+
+                const cx = canvas.width / 2, cy = canvas.height / 2;
+                const positions = graph.getVertexPositions(cx, cy);
+                const r = this._nodeRadiusFor(graph);
+
+                for (const v of graph.vertices) {
+                    const pos = positions[v];
+                    if (!pos) continue;
+                    const dist = Math.sqrt((worldX - pos.x) ** 2 + (worldY - pos.y) ** 2);
+                    if (dist < r) {
+                        this._draggingNode = { graph, vertex: v };
+                        canvas.style.cursor = 'grabbing';
+                        return; // No iniciamos paneo
+                    }
+                }
+            }
+
+            // Si no agarramos nodo, iniciamos paneo
             cam.isPanning = true;
             cam.startX = e.clientX - cam.offsetX;
             cam.startY = e.clientY - cam.offsetY;
@@ -769,15 +1017,34 @@ class GrafosView {
         });
 
         canvas.addEventListener('mousemove', (e) => {
+            const graph = getGraph();
+            // Caso arrastre de nodo
+            if (this._draggingNode && this._draggingNode.graph === graph) {
+                const rect = canvas.getBoundingClientRect();
+                const mouseX = e.clientX - rect.left;
+                const mouseY = e.clientY - rect.top;
+                const worldX = (mouseX - cam.offsetX) / cam.scale;
+                const worldY = (mouseY - cam.offsetY) / cam.scale;
+
+                graph.setVertexPosition(this._draggingNode.vertex, worldX, worldY);
+                redraw();
+                return;
+            }
+
+            // Caso paneo
             if (!cam.isPanning) return;
             cam.offsetX = e.clientX - cam.startX;
             cam.offsetY = e.clientY - cam.startY;
             redraw();
         });
 
-        const stopPan = () => { cam.isPanning = false; canvas.style.cursor = 'grab'; };
-        canvas.addEventListener('mouseup', stopPan);
-        canvas.addEventListener('mouseleave', stopPan);
+        const stopInteraction = () => {
+            cam.isPanning = false;
+            this._draggingNode = null;
+            canvas.style.cursor = 'grab';
+        };
+        canvas.addEventListener('mouseup', stopInteraction);
+        canvas.addEventListener('mouseleave', stopInteraction);
 
         canvas.addEventListener('wheel', (e) => {
             e.preventDefault();
@@ -793,6 +1060,14 @@ class GrafosView {
         }, { passive: false });
     }
 
+    /**
+     * Calcula y aplica automáticamente el zoom y desplazamiento óptimo 
+     * para que todo el grafo sea visible dentro de las dimensiones actuales del canvas.
+     * @param {HTMLCanvasElement} canvas - Canvas para el cálculo.
+     * @param {GraphModel} graph - Grafo a encuadrar.
+     * @param {Object} cam - Cámara que será modificada.
+     * @private
+     */
     _fitGraph(canvas, graph, cam) {
         if (!graph || graph.vertices.length === 0) {
             cam.offsetX = 0; cam.offsetY = 0; cam.scale = 1; return;
@@ -820,15 +1095,23 @@ class GrafosView {
         cam.offsetY = canvas.height / 2 - cyTree * cam.scale;
     }
 
+    /**
+     * Ajusta el tamaño de resolución interna de todos los canvas a su tamaño CSS real.
+     * @private
+     */
     _resizeAllCanvas() {
-        [ [this.el.canvasG1, 'grafos-wrap-g1'], [this.el.canvasG2, 'grafos-wrap-g2'], [this.el.canvasResult, 'grafos-wrap-result'] ]
-        .forEach(([canvas]) => {
-            const parent = canvas.parentElement;
-            canvas.width = parent.clientWidth;
-            canvas.height = parent.clientHeight;
-        });
+        [[this.el.canvasG1, 'grafos-wrap-g1'], [this.el.canvasG2, 'grafos-wrap-g2'], [this.el.canvasResult, 'grafos-wrap-result']]
+            .forEach(([canvas]) => {
+                const parent = canvas.parentElement;
+                canvas.width = parent.clientWidth;
+                canvas.height = parent.clientHeight;
+            });
     }
 
+    /**
+     * Redibuja el contenido de todos los canvas visibles.
+     * @private
+     */
     _drawAll() {
         this._drawGraph(this.el.canvasG1, this.g1, this._cam1);
         this._drawGraph(this.el.canvasG2, this.g2, this._cam2);
@@ -841,10 +1124,24 @@ class GrafosView {
         return maxLabelLen > 5 ? 28 : 20;
     }
 
+    /**
+     * Dibuja un grafo completo en un canvas específico, considerando su estado de cámara.
+     * @param {HTMLCanvasElement} canvas 
+     * @param {GraphModel} graph 
+     * @param {Object} cam 
+     */
+    /**
+     * Función principal de dibujo para un grafo. Dibuja aristas primero y nodos después.
+     * @param {HTMLCanvasElement} canvas - Canvas objetivo.
+     * @param {GraphModel} graph - Modelo del grafo a dibujar.
+     * @param {Object} cam - Estado de cámara actual.
+     * @private
+     */
     _drawGraph(canvas, graph, cam) {
         const ctx = canvas.getContext('2d');
         ctx.clearRect(0, 0, canvas.width, canvas.height);
 
+        // Fondo y rejilla de puntos
         ctx.fillStyle = '#FAFBFD'; ctx.fillRect(0, 0, canvas.width, canvas.height);
         ctx.fillStyle = '#E0E4EA';
         const gridSize = 30 * cam.scale;
@@ -868,10 +1165,12 @@ class GrafosView {
         const cx = canvas.width / 2, cy = canvas.height / 2;
         const positions = graph.getVertexPositions(cx, cy);
 
+        // Aplicar transformaciones de cámara (pan & zoom)
         ctx.save();
         ctx.translate(cam.offsetX, cam.offsetY);
         ctx.scale(cam.scale, cam.scale);
 
+        // Contar aristas entre los mismos nodos para dibujar curvas si hay multiaristas
         const edgeCounts = {};
         for (const e of graph.edges) {
             const key = [e.from, e.to].sort().join('-');
@@ -879,6 +1178,7 @@ class GrafosView {
         }
         const edgeDrawn = {};
 
+        // 1. Dibujar Aristas
         for (const e of graph.edges) {
             const p1 = positions[e.from], p2 = positions[e.to];
             if (!p1 || !p2) continue;
@@ -890,16 +1190,31 @@ class GrafosView {
             this._drawEdge(ctx, p1, p2, e, graph.directed, r, isSelf, isMulti ? curveDir : 0);
         }
 
+        // 2. Dibujar Vértices (encima de las aristas)
         for (const v of graph.vertices) {
             const p = positions[v];
             if (!p) continue;
             this._drawVertex(ctx, p.x, p.y, v, r);
+            this._drawVertex(ctx, v, p.x, p.y, r);
         }
 
         ctx.restore();
     }
 
-    _drawEdge(ctx, p1, p2, edge, directed, r, isSelf, curvature) {
+    /**
+     * Dibuja una arista entre dos puntos. 
+     * Soporta visualización dirigida (flechas) y pesos.
+     * @param {CanvasRenderingContext2D} ctx - Contexto de dibujo.
+     * @param {Object} edge - Objeto de arista del modelo.
+     * @param {Object} p1 - Punto de inicio {x,y}.
+     * @param {Object} p2 - Punto de destino {x,y}.
+     * @param {boolean} directed - Si la arista es dirigida.
+     * @param {number} r - Radio del nodo.
+     * @param {boolean} isSelf - Si es un bucle.
+     * @param {number} curvature - Factor de curvatura.
+     * @private
+     */
+    _drawEdge(ctx, edge, p1, p2, directed, r, isSelf, curvature) {
         ctx.strokeStyle = '#8494AB'; ctx.lineWidth = 1.5; ctx.setLineDash([]);
         let sx, sy, ex, ey, midX, midY, uy, ux;
 
@@ -946,12 +1261,22 @@ class GrafosView {
         let labelTxt = edge.id; // Ya no hay peso
 
         ctx.font = 'bold 10px "Segoe UI", sans-serif';
-        ctx.fillStyle = '#C0392B'; // Reddish color for ID
+        ctx.fillStyle = '#1B3A6B'; // Azul oscuro para el ID
         ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
         ctx.fillText(labelTxt, labelX, labelY);
     }
 
-    _drawVertex(ctx, x, y, label, r) {
+    /**
+     * Dibuja un solo vértice (nodo) en el contexto del canvas.
+     * Incluye el círculo base, el borde y la etiqueta del nombre.
+     * @param {CanvasRenderingContext2D} ctx - Contexto de dibujo.
+     * @param {string} label - Nombre del vértice.
+     * @param {number} x - Posición X en mundo.
+     * @param {number} y - Posición Y en mundo.
+     * @param {number} r - Radio base del nodo.
+     * @private
+     */
+    _drawVertex(ctx, label, x, y, r) {
         const labelLen = label.length;
         const dynR = labelLen > 5 ? r + (labelLen - 5) * 4 : r;
 
