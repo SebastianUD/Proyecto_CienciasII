@@ -2741,8 +2741,8 @@ body {
     display: flex;
     flex-direction: column;
     gap: 10px;
-    width: 280px;
-    min-width: 240px;
+    width: 23%;
+    min-width: 220px;
     flex-shrink: 0;
     overflow: hidden;
 }
@@ -3125,7 +3125,8 @@ body {
 }
 
 .grafos-right-panel {
-    width: 280px;
+    width: 23%;
+    min-width: 220px;
     display: flex;
     flex-direction: column;
     gap: 15px;

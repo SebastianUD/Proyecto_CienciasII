@@ -83,7 +83,16 @@ const MenuModel = {
                 id: 'grafos',
                 label: 'Grafos',
                 children: [
-                    { id: 'grafos-operaciones', label: 'Operaciones entre Grafos', action: 'grafos-operaciones', enabled: true }
+                    { id: 'grafos-operaciones', label: 'Operaciones entre Grafos', action: 'grafos-operaciones', enabled: true },
+                    {
+                        id: 'algoritmos',
+                        label: 'Algoritmos',
+                        children: [
+                            { id: 'algoritmos-bellman', label: 'Bellman',      action: 'algoritmos-bellman', enabled: true },
+                            { id: 'algoritmos-dijkstra', label: 'Dijkstra',         action: 'algoritmos-dijkstra', enabled: true },
+                            { id: 'algoritmos-floyd',   label: 'Floyd',             action: 'algoritmos-floyd', enabled: true }
+                        ]
+                    }
                 ]
             }
         ];

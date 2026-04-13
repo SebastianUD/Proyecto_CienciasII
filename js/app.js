@@ -50,7 +50,10 @@
         'ext-dinamica-totales': ExtDinamicaTotalesView,
         'ext-dinamica-parciales': ExtDinamicaParcialesView,
         'ext-indices': IndicesView,
-        'grafos-operaciones': GrafosView
+        'grafos-operaciones': GrafosView,
+        'algoritmos-bellman':  BellmanView,
+        'algoritmos-dijkstra': DijkstraView,
+        'algoritmos-floyd':    FloydView
     };
 
     /**

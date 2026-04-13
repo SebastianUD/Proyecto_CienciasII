@@ -166,7 +166,7 @@ class GrafosView {
                                 </div>
                             </div>
 
-                            <button class="btn btn-primary grafos-btn-full" id="grafos-btn-execute">EJECUTAR</button>
+                            <button class="btn btn-primary grafos-btn-full" id="grafos-btn-execute">Calcular Operación</button>
                         </div>
                     </div>
 
@@ -638,14 +638,10 @@ class GrafosView {
     /**
      * Ejecuta la creación del grafo completo e informa del estado actual en el log.
      * Se activa al pulsar el botón "CREAR".
+     * Muestra el estado formal (tabla) en el panel derecho.
      * @private
      */
-    /**
-     * Procesa la carga de una estructura desde un archivo JSON.
-     * @param {Object} data - Datos importados.
-     * @private
-     */
-    _onImport(data) {
+    _onCreate() {
         const g = this._getActiveGraph();
         const label = this._getActiveGraphLabel();
         if (!g.created || g.vertices.length === 0) {
@@ -888,7 +884,7 @@ class GrafosView {
     _addUpdateLog(msg, type = 'info') {
         const entry = document.createElement('div');
         entry.classList.add('log-entry', `log-${type}`);
-        entry.textContent = message;
+        entry.textContent = msg;
         this.el.logContent.appendChild(entry);
         this.el.logContent.scrollTop = this.el.logContent.scrollHeight;
     }
@@ -1187,14 +1183,13 @@ class GrafosView {
             const isSelf = e.from === e.to;
             const isMulti = edgeCounts[key] > 1;
             const curveDir = edgeDrawn[key] % 2 === 0 ? 1 : -1;
-            this._drawEdge(ctx, p1, p2, e, graph.directed, r, isSelf, isMulti ? curveDir : 0);
+            this._drawEdge(ctx, e, p1, p2, graph.directed, r, isSelf, isMulti ? curveDir : 0);
         }
 
         // 2. Dibujar Vértices (encima de las aristas)
         for (const v of graph.vertices) {
             const p = positions[v];
             if (!p) continue;
-            this._drawVertex(ctx, p.x, p.y, v, r);
             this._drawVertex(ctx, v, p.x, p.y, r);
         }
 
