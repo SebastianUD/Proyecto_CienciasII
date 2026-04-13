@@ -111,23 +111,25 @@ class AlgorithmGraphView {
                     <div class="section-title">Definición del Grafo</div>
                     <div class="grafos-input-panel">
 
-                        <!-- Número de nodos -->
+                        <!-- Vértices -->
                         <div class="grafos-field-col">
-                            <label for="ag-node-count">Número de Nodos (2–20)</label>
+                            <label>Vértices</label>
                             <div class="grafos-vertex-input-row">
-                                <input type="number" id="ag-node-count" min="2" max="20" placeholder="Ej: 4">
-                                <button class="btn btn-primary" id="ag-create-btn" style="min-width:62px;">CREAR</button>
+                                <input type="text" id="ag-input-vertex" placeholder="Ej: A, B, C... Enter para añadir">
+                                <button class="btn btn-primary" id="ag-add-vertex-btn" style="min-width:40px; justify-content:center;">+</button>
                             </div>
+                            <div class="grafos-vertex-chips" id="ag-vertex-list"></div>
                         </div>
 
                         <!-- Aristas -->
-                        <div class="grafos-field-col" id="ag-edge-section" style="display:none; margin-top:8px;">
+                        <div class="grafos-field-col" id="ag-edge-section" style="margin-top:8px;">
                             <label>Aristas Dirigidas con Peso</label>
-                            <div style="display:flex; gap:4px; flex-wrap:wrap; margin-bottom:4px;">
-                                <select id="ag-edge-from" style="flex:1; min-width:44px;"><option value="">De</option></select>
-                                <select id="ag-edge-to"   style="flex:1; min-width:44px;"><option value="">A</option></select>
-                                <input  type="number" id="ag-edge-weight" placeholder="Peso" style="flex:1; min-width:50px;">
-                                <button class="btn btn-primary" id="ag-add-edge-btn" style="min-width:32px; padding:0 8px;">+</button>
+                            <div class="tag-edge-input-row" style="display:flex; margin-bottom:4px; align-items:center; gap:4px;">
+                                <select id="ag-edge-from" style="flex:1;"><option value="">--</option></select>
+                                <span style="flex-shrink:0;">→</span>
+                                <select id="ag-edge-to" style="flex:1;"><option value="">--</option></select>
+                                <input type="number" id="ag-edge-weight" placeholder="Peso" step="any" style="width:58px; flex-shrink:0;">
+                                <button class="btn btn-primary" id="ag-add-edge-btn" style="min-width:40px; justify-content:center;">+</button>
                             </div>
                             <div class="grafos-edge-list" id="ag-edge-list" style="max-height:140px; overflow-y:auto;"></div>
                         </div>
@@ -136,11 +138,12 @@ class AlgorithmGraphView {
                         ${this._extraInputHTML()}
 
                         <!-- Botones de acción -->
-                        <div id="ag-action-section" style="display:none; margin-top:10px;">
+                        <div id="ag-action-section" style="margin-top:10px;">
                             <button class="btn btn-primary grafos-btn-full" id="ag-execute-btn" style="margin-bottom:8px;">▶ CALCULAR</button>
                         </div>
 
                         <div class="grafos-btn-row" style="margin-top:10px;">
+                            <button class="btn" id="ag-enumerate-btn" style="background-color: #F57C00; color: white;">ENUMERAR</button>
                             <button class="btn btn-secondary" id="ag-clear-btn">LIMPIAR</button>
                             <button class="btn btn-success" id="ag-btn-save">GUARDAR</button>
                         </div>
@@ -195,8 +198,9 @@ class AlgorithmGraphView {
      */
     _cacheElements() {
         this.el = {
-            nodeCountInput: document.getElementById('ag-node-count'),
-            createBtn:      document.getElementById('ag-create-btn'),
+            inputVertex:    document.getElementById('ag-input-vertex'),
+            addVertexBtn:   document.getElementById('ag-add-vertex-btn'),
+            vertexList:     document.getElementById('ag-vertex-list'),
             edgeSection:    document.getElementById('ag-edge-section'),
             edgeFrom:       document.getElementById('ag-edge-from'),
             edgeTo:         document.getElementById('ag-edge-to'),
@@ -206,6 +210,7 @@ class AlgorithmGraphView {
             actionSection:  document.getElementById('ag-action-section'),
             executeBtn:     document.getElementById('ag-execute-btn'),
             clearBtn:       document.getElementById('ag-clear-btn'),
+            enumerateBtn:   document.getElementById('ag-enumerate-btn'),
             saveBtn:        document.getElementById('ag-btn-save'),
             loadBtn:        document.getElementById('ag-btn-load'),
             printBtn:       document.getElementById('ag-btn-print'),
@@ -225,10 +230,24 @@ class AlgorithmGraphView {
      */
     _bindEvents() {
         const el = this.el;
-        el.createBtn.addEventListener('click',   () => this._onCreate());
+        el.addVertexBtn.addEventListener('click',   () => this._onAddVertex());
+        el.inputVertex.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') this._onAddVertex();
+        });
         el.addEdgeBtn.addEventListener('click',  () => this._onAddEdge());
         el.clearBtn.addEventListener('click',    () => this._onClear());
-        el.executeBtn.addEventListener('click',  () => this._onExecute());
+        el.enumerateBtn.addEventListener('click',() => this._onEnumerate());
+        el.executeBtn.addEventListener('click',  () => {
+            if (!this._isEnumerated) {
+                if (typeof Validation !== 'undefined') {
+                    Validation.showError('Debes enumerar los nodos primero utilizando el botón ENUMERAR.');
+                } else {
+                    alert('Debes enumerar los nodos primero utilizando el botón ENUMERAR.');
+                }
+                return;
+            }
+            this._onExecute();
+        });
         
         el.saveBtn.addEventListener('click',     () => this._onSave());
         el.loadBtn.addEventListener('click',     () => this._onLoad());
@@ -305,6 +324,9 @@ class AlgorithmGraphView {
         });
 
         const stop = () => {
+            if (this._dragging !== null) {
+                this._isEnumerated = false;
+            }
             cam.isPanning = false;
             this._dragging = null;
             canvas.style.cursor = 'grab';
@@ -510,7 +532,13 @@ class AlgorithmGraphView {
         ctx.fillStyle    = hlColor ? (isLight ? '#1B3465' : '#fff') : '#2B579A';
         ctx.textAlign    = 'center';
         ctx.textBaseline = 'middle';
-        ctx.fillText(String(label), x, y);
+        
+        let vLabel = '';
+        for(let key in this.vertexIds) {
+            if (this.vertexIds[key] === label) { vLabel = key; break; }
+        }
+        let displayLabel = this._isEnumerated ? String(label) : (vLabel || String(label));
+        ctx.fillText(displayLabel, x, y);
 
         if (extraText) {
             ctx.font = 'bold 12px "Segoe UI", sans-serif';
@@ -667,41 +695,115 @@ class AlgorithmGraphView {
      * y actualiza la interfaz.
      * @private
      */
-    _onCreate() {
-        const n = parseInt(this.el.nodeCountInput.value);
-        if (isNaN(n) || n < 2 || n > 20) {
-            Validation.showError('El número de nodos debe estar entre 2 y 20.');
-            return;
+    _onAddVertex() {
+        const raw = this.el.inputVertex.value.trim();
+        if (!raw) return;
+        const letters = raw.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
+        let added = 0;
+        
+        if (!this.vertices) {
+            this.vertices = [];
+            this.vertexIds = {};
         }
 
-        this._isExecuted = false;
-        this.nodeCount  = n;
-        this.edges      = [];
-        this._manualPos = {};
-        this._nodeHL    = {};
-        this._edgeHL    = {};
-        this._nodeExtraLabel = {};
+        for (const v of letters) {
+            if (!this.vertices.includes(v)) {
+                this.vertices.push(v);
+                this.nodeCount = this.vertices.length;
+                this.vertexIds[v] = this.nodeCount;
+                added++;
+            }
+        }
+        
+        if (added > 0) {
+            this.el.inputVertex.value = '';
+            this._isEnumerated = false;
+            this._isExecuted = false;
+            this._nodeHL = {};
+            this._edgeHL = {};
+            this._nodeExtraLabel = {};
+            this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
+            
+            if (this.nodeCount === added && added > 0) {
+                 this._onCreateExtra();
+            }
 
-        // Actualizar selectores de aristas
+            this._syncUI();
+            this._drawGraph();
+        }
+    }
+    
+    _handleRemoveVertex(v) {
+        const idx = this.vertices.indexOf(v);
+        if (idx === -1) return;
+        
+        this.edges = this.edges.filter(e => e.originalFrom !== v && e.originalTo !== v);
+        
+        this.vertices.splice(idx, 1);
+        delete this.vertexIds[v];
+        this.nodeCount = this.vertices.length;
+        
+        let newIds = {};
+        this.vertices.forEach((label, i) => {
+            newIds[label] = i + 1;
+        });
+        
+        for (let e of this.edges) {
+            e.from = newIds[e.originalFrom];
+            e.to = newIds[e.originalTo];
+        }
+        
+        let newPos = {};
+        for(let lbl in this.vertexIds) {
+            let oldI = this.vertexIds[lbl];
+            let newI = newIds[lbl];
+            if (this._manualPos[oldI]) newPos[newI] = this._manualPos[oldI];
+        }
+        this._manualPos = newPos;
+        this.vertexIds = newIds;
+        
+        this._isEnumerated = false;
+        this._isExecuted = false;
+        this._nodeHL = {};
+        this._edgeHL = {};
+        this._nodeExtraLabel = {};
+        this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
+        
+        this._syncUI();
+        this._drawGraph();
+    }
+    
+    _syncExtraUI() {}
+
+    _syncUI() {
+        const list = this.el.vertexList;
+        list.innerHTML = '';
+        this.vertices.forEach(v => {
+            const chip = document.createElement('div');
+            chip.className = 'grafos-vertex-chip';
+            let labelText = this._isEnumerated ? `${v} : ${this.vertexIds[v]}` : v;
+            chip.innerHTML = `<span>${labelText}</span><button data-v="${v}">×</button>`;
+            chip.querySelector('button').addEventListener('click', (e) => this._handleRemoveVertex(e.currentTarget.getAttribute('data-v')));
+            list.appendChild(chip);
+        });
+        
         const from = this.el.edgeFrom;
         const to   = this.el.edgeTo;
-        from.innerHTML = '<option value="">De</option>';
-        to.innerHTML   = '<option value="">A</option>';
-        for (let i = 1; i <= n; i++) {
-            from.add(new Option(String(i), i));
-            to.add(new Option(String(i), i));
-        }
-
-        this.el.edgeSection.style.display   = '';
-        this.el.actionSection.style.display = '';
-
-        this._onCreateExtra();
+        const oldFrom = from.value;
+        const oldTo = to.value;
+        
+        from.innerHTML = '<option value="">--</option>';
+        to.innerHTML   = '<option value="">--</option>';
+        this.vertices.forEach(v => {
+            const labelText = this._isEnumerated ? `${v} : ${this.vertexIds[v]}` : v;
+            from.add(new Option(labelText, v));
+            to.add(new Option(labelText, v));
+        });
+        if (this.vertices.includes(oldFrom)) from.value = oldFrom;
+        if (this.vertices.includes(oldTo)) to.value = oldTo;
+        
+        this._syncExtraUI();
         this._renderEdgeList();
-        this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
-        this.el.logContent.innerHTML = '';
-        this._fitGraph();
-        this._drawGraph();
-        this._addLog(`Grafo creado con ${n} nodo(s). Añada aristas y ejecute el algoritmo.`, 'success');
     }
 
     /**
@@ -709,15 +811,15 @@ class AlgorithmGraphView {
      * @private
      */
     _onAddEdge() {
-        const from   = parseInt(this.el.edgeFrom.value);
-        const to     = parseInt(this.el.edgeTo.value);
+        const fromStr   = this.el.edgeFrom.value;
+        const toStr     = this.el.edgeTo.value;
         const weight = parseFloat(this.el.edgeWeight.value);
 
-        if (!from || !to) {
+        if (!fromStr || !toStr) {
             Validation.showError('Seleccione el nodo de origen y destino.');
             return;
         }
-        if (from === to) {
+        if (fromStr === toStr) {
             Validation.showError('No se permiten aristas que apunten al mismo vértice.');
             return;
         }
@@ -729,18 +831,22 @@ class AlgorithmGraphView {
             Validation.showError('No se permiten pesos negativos en estas operaciones.');
             return;
         }
+        
+        const fromId = this.vertexIds[fromStr];
+        const toId = this.vertexIds[toStr];
 
-        const existingIdx = this.edges.findIndex(e => e.from === from && e.to === to);
+        const existingIdx = this.edges.findIndex(e => e.originalFrom === fromStr && e.originalTo === toStr);
         if (existingIdx >= 0) {
             this.edges[existingIdx].weight = weight;
-            this._addLog(`Arista ${from}→${to} actualizada: peso ${weight}.`, 'info');
+            this._addLog(`Arista ${fromStr}→${toStr} actualizada: peso ${weight}.`, 'info');
         } else {
-            this.edges.push({ from, to, weight });
-            this._addLog(`Arista ${from}→${to} con peso ${weight} añadida.`, 'success');
+            this.edges.push({ originalFrom: fromStr, originalTo: toStr, from: fromId, to: toId, weight });
+            this._addLog(`Arista ${fromStr}→${toStr} con peso ${weight} añadida.`, 'success');
         }
 
+        this._isEnumerated = false;
         this.el.edgeWeight.value = '';
-        this._renderEdgeList();
+        this._syncUI();
         this._drawGraph();
     }
 
@@ -757,13 +863,19 @@ class AlgorithmGraphView {
             row.className = 'grafos-edge-item';
             row.innerHTML = `
                 <span class="grafos-edge-id">${i + 1})</span>
-                <strong>${e.from}</strong>&nbsp;→&nbsp;<strong>${e.to}</strong>
+                <strong>${e.originalFrom}</strong>&nbsp;→&nbsp;<strong>${e.originalTo}</strong>
                 <span style="color:var(--accent-primary); font-weight:600; margin-left:4px;">[${e.weight}]</span>
                 <button class="edge-remove" data-idx="${i}">×</button>`;
 
             row.querySelector('.edge-remove').addEventListener('click', () => {
                 this.edges.splice(i, 1);
-                this._renderEdgeList();
+                this._isExecuted = false;
+                this._isEnumerated = false;
+                this._nodeHL = {};
+                this._edgeHL = {};
+                this._nodeExtraLabel = {};
+                this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Grafo modificado (arista eliminada). Ejecute el algoritmo nuevamente.</div>';
+                this._syncUI();
                 this._drawGraph();
             });
             list.appendChild(row);
@@ -776,23 +888,94 @@ class AlgorithmGraphView {
      */
     _onClear() {
         this._isExecuted = false;
+        this._isEnumerated = false;
         this.nodeCount  = 0;
+        this.vertices   = [];
+        this.vertexIds  = {};
         this.edges      = [];
         this._manualPos = {};
         this._nodeHL    = {};
         this._edgeHL    = {};
         this._nodeExtraLabel = {};
 
-        this.el.nodeCountInput.value         = '';
-        this.el.edgeSection.style.display    = 'none';
-        this.el.actionSection.style.display  = 'none';
+        if (this.el.inputVertex) this.el.inputVertex.value = '';
         this.el.edgeList.innerHTML           = '';
         this.el.logContent.innerHTML         = '';
         this.el.opContent.innerHTML          = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
 
+        this._syncUI();
         this._onClearExtra();
         this._fitGraph();
         this._drawGraph();
+    }
+
+    /**
+     * Enumera los nodos topológicamente (por dependencias) y luego espacialmente.
+     * @private
+     */
+    _onEnumerate() {
+        if (this.nodeCount === 0) return;
+        
+        let n = this.nodeCount;
+        let levels = {};
+        for(let v of this.vertices) levels[this.vertexIds[v]] = 0;
+        
+        for (let iter = 0; iter < n; iter++) {
+            let changed = false;
+            for (let e of this.edges) {
+                if (levels[e.from] + 1 > levels[e.to]) {
+                    levels[e.to] = levels[e.from] + 1;
+                    changed = true;
+                }
+            }
+            if (!changed) break;
+        }
+        
+        let pos = this._positions();
+        
+        let nodes = [...this.vertices];
+        
+        nodes.sort((aLabel, bLabel) => {
+            let a = this.vertexIds[aLabel];
+            let b = this.vertexIds[bLabel];
+            
+            if (levels[a] !== levels[b]) {
+                return levels[a] - levels[b];
+            }
+            if (Math.abs(pos[a].x - pos[b].x) > 1) {
+                return pos[b].x - pos[a].x;
+            }
+            return pos[a].y - pos[b].y;
+        });
+        
+        let newVertexIds = {};
+        nodes.forEach((label, idx) => {
+            newVertexIds[label] = idx + 1;
+        });
+        
+        for (let e of this.edges) {
+            e.from = newVertexIds[e.originalFrom];
+            e.to = newVertexIds[e.originalTo];
+        }
+        
+        let newManualPos = {};
+        for(let label in this.vertexIds) {
+            let oldI = this.vertexIds[label];
+            let newI = newVertexIds[label];
+            if (this._manualPos[oldI]) newManualPos[newI] = this._manualPos[oldI];
+        }
+        this._manualPos = newManualPos;
+        this.vertexIds = newVertexIds;
+        
+        this._nodeHL = {};
+        this._edgeHL = {};
+        this._nodeExtraLabel = {};
+        this._isExecuted = false;
+        this._isEnumerated = true;
+        
+        this._syncUI();
+        this._drawGraph();
+        this._addLog('Nodos enumerados correctamente.', 'success');
     }
 
     /**
@@ -814,6 +997,8 @@ class AlgorithmGraphView {
             algorithm: type,
             structure: {
                 nodeCount: this.nodeCount,
+                vertices: this.vertices,
+                vertexIds: this.vertexIds,
                 edges: this.edges,
                 manualPos: this._manualPos,
             }
@@ -860,30 +1045,18 @@ class AlgorithmGraphView {
 
         const s = data.structure;
         this._isExecuted = false;
+        this._isEnumerated = false;
         this.nodeCount = s.nodeCount;
+        this.vertices = s.vertices || [];
+        this.vertexIds = s.vertexIds || {};
         this.edges = Array.isArray(s.edges) ? s.edges : [];
         this._manualPos = s.manualPos || {};
         this._nodeHL = {};
         this._edgeHL = {};
         this._nodeExtraLabel = {};
 
-        this.el.nodeCountInput.value = this.nodeCount;
-        
-        // Actualizar selectores de aristas
-        const from = this.el.edgeFrom;
-        const to   = this.el.edgeTo;
-        from.innerHTML = '<option value="">De</option>';
-        to.innerHTML   = '<option value="">A</option>';
-        for (let i = 1; i <= this.nodeCount; i++) {
-            from.add(new Option(String(i), i));
-            to.add(new Option(String(i), i));
-        }
-
-        this.el.edgeSection.style.display   = '';
-        this.el.actionSection.style.display = '';
-
         this._onCreateExtra();
-        this._renderEdgeList();
+        this._syncUI();
         this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
         this.el.logContent.innerHTML = '';
         this._fitGraph();

@@ -35,19 +35,36 @@ class BellmanView extends AlgorithmGraphView {
         this.el.tgtNode    = document.getElementById('ag-bf-target');
     }
 
-    /** @override */
     _onCreateExtra() {
         if (!this.el.srcSection) return;
         this.el.srcSection.style.display = '';
-        this.el.srcNode.innerHTML = '<option value="">-- Seleccione inicial --</option>';
-        this.el.tgtNode.innerHTML = '<option value="">-- Seleccione final --</option>';
-        for (let i = 1; i <= this.nodeCount; i++) {
-            this.el.srcNode.add(new Option(String(i), i));
-            this.el.tgtNode.add(new Option(String(i), i));
-        }
+        this._syncExtraUI();
         
         // Recalcular el grafo cuando cambie el inicial para organizar niveles
         this.el.srcNode.addEventListener('change', () => this._drawGraph());
+    }
+
+    /** @override */
+    _syncExtraUI() {
+        if (!this.el.srcNode || !this.el.tgtNode) return;
+        const oldSrc = this.el.srcNode.value;
+        const oldTgt = this.el.tgtNode.value;
+        this.el.srcNode.innerHTML = '<option value="">-- Seleccione inicial --</option>';
+        this.el.tgtNode.innerHTML = '<option value="">-- Seleccione final --</option>';
+        
+        if (this.vertices && this.vertexIds) {
+            this.vertices.forEach(v => {
+                const val = this.vertexIds[v];
+                const labelText = this._isEnumerated ? `${v} : ${val}` : v;
+                this.el.srcNode.add(new Option(labelText, val));
+                this.el.tgtNode.add(new Option(labelText, val));
+            });
+        }
+        
+        // Mantener valores seleccionados si siguen existiendo sus ids correspondientes
+        const currentVals = this.vertices ? this.vertices.map(v => String(this.vertexIds[v])) : [];
+        if (currentVals.includes(oldSrc)) this.el.srcNode.value = oldSrc;
+        if (currentVals.includes(oldTgt)) this.el.tgtNode.value = oldTgt;
     }
 
     /** @override */

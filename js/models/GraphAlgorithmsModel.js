@@ -9,16 +9,24 @@ class GraphAlgorithmsModel {
 
     // ─── ALGORITMO DE FLOYD ────────────────────────────────────────────────
 
-    static executeFloyd(nodeCount, D) {
+    static executeFloyd(nodeCount, D, src = null, tgt = null) {
         const n = nodeCount;
         const INF = Infinity;
+        const D0 = D.map(row => [...row]);
+        const P = Array.from({length: n}, () => new Array(n).fill(-1));
+
+        for (let i = 0; i < n; i++) {
+            for (let k = 0; k < n; k++) {
+                if (i !== k && D[i][k] !== INF) P[i][k] = i;
+            }
+        }
 
         let html = `<div style="padding:10px 10px 4px; font-size:0.8rem; color:var(--text-secondary); font-style:italic;">
             Se evaluará la condición <b>Dij + Djk &lt; Dik</b> para j = 1..${n}.<br>
             Los valores en <b style="color:#E53935;">rojo</b> fueron actualizados en esa iteración.
         </div>`;
 
-        html += this._floydMatrixHTML(D, n, `Matriz Inicial — D<sup>0</sup>`, null, -1, null);
+        html += this._floydMatrixHTML(D, n, `Matriz Inicial`, null, -1, null);
 
         let totalChanges = 0;
 
@@ -31,6 +39,7 @@ class GraphAlgorithmsModel {
                         const via = D[i][j] + D[j][k];
                         if (via < D[i][k]) {
                             D[i][k] = via;
+                            P[i][k] = P[j][k];
                             if (!changed[i]) changed[i] = new Set();
                             changed[i].add(k);
                             totalChanges++;
@@ -47,14 +56,52 @@ class GraphAlgorithmsModel {
             html += this._floydMatrixHTML(D, n, `Iteración j = ${j + 1}`, changed, j, note);
         }
 
-        const nodeHL = {};
+        const finalChanged = {};
+        for (let i = 0; i < n; i++) {
+            for (let k = 0; k < n; k++) {
+                if (D[i][k] !== D0[i][k]) {
+                    if (!finalChanged[i]) finalChanged[i] = new Set();
+                    finalChanged[i].add(k);
+                }
+            }
+        }
+        html += this._floydMatrixHTML(D, n, `Matriz Final`, finalChanged, -1, null);
+
+        let edgeHL = {};
+        let nodeHL = {};
+        let isPathFound = false;
+
+        if (src !== null && tgt !== null && src > 0 && tgt > 0) {
+            let s = src - 1;
+            let t = tgt - 1;
+            if (D[s][t] !== INF) {
+                isPathFound = true;
+                let curr = t;
+                let pathNodes = [t + 1];
+                while (curr !== s) {
+                    let prev = P[s][curr];
+                    if (prev === -1) { isPathFound = false; break; }
+                    edgeHL[`${prev + 1}-${curr + 1}`] = '#E53935';
+                    curr = prev;
+                    pathNodes.push(curr + 1);
+                }
+                if (isPathFound) {
+                    for (let nodeNum of pathNodes) {
+                        nodeHL[nodeNum] = '#FFCDD2';
+                    }
+                    nodeHL[src] = '#4CAF50';
+                    nodeHL[tgt] = '#F44336';
+                }
+            }
+        }
+
         for (let i = 0; i < n; i++) {
             if (D[i][i] < 0) {
                 nodeHL[i + 1] = '#EF5350'; // Ciclo negativo
             }
         }
 
-        return { html, nodeHL, edgeHL: {}, nodeExtraLabel: {}, totalChanges };
+        return { html, nodeHL, edgeHL, nodeExtraLabel: {}, totalChanges, isPathFound, finalDist: (src && tgt) ? D[src - 1][tgt - 1] : 0 };
     }
 
     static _floydMatrixHTML(D, n, title, changed, pivotIdx, note) {
@@ -194,11 +241,11 @@ class GraphAlgorithmsModel {
                             labels[v].push({ d: newDist, p: u });
                             
                             let lblStr = `[${newDist}, ${u}]`;
-                            html += `<li>Conexión ${u}→${v} (peso ${e.weight}): Genera etiqueta <span style="color:#E53935; font-weight:bold;">${lblStr}</span> en Nodo ${v}. ${(oldLabels ? 'Anula etiquetas anteriores: ' + oldLabels : '')}</li>`;
+                            html += `<li>Arista ${u}→${v} (peso ${e.weight}): Genera etiqueta <span style="color:#E53935; font-weight:bold;">${lblStr}</span> en Nodo ${v}. ${(oldLabels ? 'Anula etiquetas anteriores: ' + oldLabels : '')}</li>`;
                             relaxed = true;
                         } else {
                             labels[v].push({ d: newDist, p: u, isDiscarded: true });
-                            html += `<li style="color:#777;">Conexión ${u}→${v} (peso ${e.weight}): Etiqueta [${newDist}, ${u}] en Nodo ${v} descartada (X) por ser mayor o igual a [${dist[v]}, ${pred[v]}].</li>`;
+                            html += `<li style="color:#777;">Arista ${u}→${v} (peso ${e.weight}): Etiqueta [${newDist}, ${u}] en Nodo ${v} descartada (X) por ser mayor o igual a [${dist[v]}, ${pred[v]}].</li>`;
                             relaxed = true;
                         }
                     }
