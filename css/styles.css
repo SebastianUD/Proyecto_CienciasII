@@ -1187,11 +1187,13 @@ body {
 }
 
 .drag-toggle-btn {
-    right: 54px; /* Posicionado junto al botón de ajuste */
+    right: 54px;
+    /* Posicionado junto al botón de ajuste */
 }
 
 .expand-btn {
-    right: 96px; /* A la izquierda del botón de arrastre */
+    right: 96px;
+    /* A la izquierda del botón de arrastre */
 }
 
 .expand-btn.active {
@@ -3038,11 +3040,13 @@ body {
 }
 
 /* Grafos Dynamic UI */
-.grafos-vertex-input-row, .grafos-edge-input-row {
+.grafos-vertex-input-row,
+.grafos-edge-input-row {
     display: flex;
     gap: 4px;
     align-items: center;
 }
+
 .grafos-vertex-input-row input {
     flex: 1;
 }
@@ -3053,6 +3057,7 @@ body {
     gap: 6px;
     margin-top: 6px;
 }
+
 .grafos-vertex-chip {
     display: inline-flex;
     align-items: center;
@@ -3063,6 +3068,7 @@ body {
     font-size: 0.75rem;
     font-weight: bold;
 }
+
 .grafos-vertex-chip button {
     background: none;
     border: none;
@@ -3071,6 +3077,7 @@ body {
     cursor: pointer;
     font-weight: bold;
 }
+
 .grafos-vertex-chip button:hover {
     color: red;
 }
@@ -3087,6 +3094,7 @@ body {
     max-height: 85px;
     overflow-y: auto;
 }
+
 .grafos-edge-item {
     display: flex;
     align-items: center;
@@ -3098,11 +3106,14 @@ body {
     font-size: 0.8rem;
     font-family: Consolas, monospace;
 }
+
 .grafos-edge-id {
-    color: #1B3A6B; /* Azul oscuro para el ID */
+    color: #1B3A6B;
+    /* Azul oscuro para el ID */
     font-weight: bold;
     margin-right: 4px;
 }
+
 .grafos-edge-item button.edge-remove {
     background: none;
     border: none;
@@ -3110,9 +3121,11 @@ body {
     cursor: pointer;
     font-weight: bold;
 }
+
 .grafos-edge-item button.edge-remove:hover {
     color: red;
 }
+
 .unary-select-inline {
     flex: 1;
 }
@@ -3149,7 +3162,12 @@ body {
 }
 
 @media print {
-    .grafos-left-panel, .grafos-right-panel, .grafos-toggle-bar, .tree-fit-btn, .footer-buttons {
+
+    .grafos-left-panel,
+    .grafos-right-panel,
+    .grafos-toggle-bar,
+    .tree-fit-btn,
+    .footer-buttons {
         display: none !important;
     }
 
@@ -3162,9 +3180,158 @@ body {
         page-break-inside: avoid;
     }
 
-    .grafos-top-row, .grafos-result-row {
+    .grafos-top-row,
+    .grafos-result-row {
         height: 400px !important;
         margin-bottom: 20px;
         page-break-inside: avoid;
     }
+}
+
+/* ===========================
+   ÁRBOLES COMO GRAFOS (tag)
+   =========================== */
+
+/* Fila de input de aristas con campo de peso */
+.tag-edge-input-row {
+    /* pon de la misma altura el boton + */
+    height: 36px;
+    display: flex;
+    gap: 4px;
+    align-items: center;
+}
+
+.tag-edge-input-row select {
+    flex: 1;
+    min-width: 0;
+}
+
+.tag-edge-input-row input[type="number"] {
+    width: 58px;
+    flex-shrink: 0;
+    padding: 5px 6px;
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 0.8rem;
+    outline: none;
+    background-color: var(--bg-card);
+    color: var(--text-primary);
+    text-align: center;
+}
+
+.tag-edge-input-row input[type="number"]:focus {
+    border-color: var(--primary-blue);
+    box-shadow: 0 0 0 2px var(--primary-blue-pale);
+}
+
+/* Badge de peso en la lista de aristas */
+.tag-edge-weight-badge {
+    color: var(--primary-blue);
+    font-weight: 700;
+    font-size: 0.78rem;
+    margin-left: 2px;
+    padding: 1px 4px;
+    background: var(--primary-blue-pale);
+    border-radius: 4px;
+}
+
+/* Advertencia de requisitos funcionalidad */
+.tag-func-warning {
+    background: #FFF3CD;
+    border: 1px solid #FFCA2C;
+    border-left: 4px solid #F0A500;
+    border-radius: var(--border-radius);
+    padding: 8px 10px;
+    font-size: 0.78rem;
+    color: #664D03;
+    line-height: 1.4;
+    transition: opacity 0.25s;
+}
+
+.tag-func-warning.hidden {
+    display: none;
+}
+
+/* Navegación de pasos (Centro/Bicentro) */
+.tag-step-nav {
+    position: absolute;
+    bottom: 12px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    border: 1px solid var(--border-color);
+    border-radius: 24px;
+    padding: 6px 16px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+    z-index: 10;
+    white-space: nowrap;
+}
+
+.tag-step-nav.hidden {
+    display: none;
+}
+
+.tag-step-nav span {
+    font-size: 0.78rem;
+    font-weight: 600;
+    color: var(--primary-blue);
+    min-width: 80px;
+    text-align: center;
+}
+
+.tag-step-btn {
+    background: var(--primary-blue);
+    color: white;
+    border: none;
+    border-radius: 50%;
+    width: 28px;
+    height: 28px;
+    cursor: pointer;
+    font-size: 0.85rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background 0.2s, transform 0.15s;
+    flex-shrink: 0;
+}
+
+.tag-step-btn:hover:not(:disabled) {
+    background: #1a4a8a;
+    transform: scale(1.1);
+}
+
+.tag-step-btn:disabled {
+    background: var(--border-color);
+    cursor: not-allowed;
+    opacity: 0.6;
+    transform: none;
+}
+
+/* Maximizar canvas (grafos-hidden-max / grafos-full-row ya existen en GrafosView) */
+.grafos-hidden-max {
+    display: none !important;
+}
+
+.grafos-full-row {
+    flex: 1 !important;
+}
+
+/* Resultado: dos canvas side-by-side */
+.grafos-result-row {
+    gap: 8px;
+}
+
+/* Canvas resultado 2 (intersección para Distancia y T' para Rango) */
+#tag-wrap-result2 {
+    border: 2px solid #FF7043;
+    box-shadow: 0 2px 10px rgba(255, 112, 67, 0.1);
+}
+
+#tag-wrap-result2 .grafos-canvas-label {
+    background: linear-gradient(135deg, rgba(255, 112, 67, 0.9), rgba(255, 87, 34, 0.9));
+    color: white;
+    border-color: transparent;
 }
