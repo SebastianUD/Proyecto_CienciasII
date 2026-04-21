@@ -166,7 +166,7 @@ class GrafosView {
                                 </div>
                             </div>
 
-                            <button class="btn btn-primary grafos-btn-full" id="grafos-btn-execute">Calcular Operación</button>
+                            <button class="btn btn-primary grafos-btn-full" id="grafos-btn-execute" style="margin-bottom:8px;">▶ CALCULAR</button>
                         </div>
                     </div>
 
