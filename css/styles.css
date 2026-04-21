@@ -3194,8 +3194,6 @@ body {
 
 /* Fila de input de aristas con campo de peso */
 .tag-edge-input-row {
-    /* pon de la misma altura el boton + */
-    height: 36px;
     display: flex;
     gap: 4px;
     align-items: center;
@@ -3252,20 +3250,19 @@ body {
     display: none;
 }
 
-/* Navegación de pasos (Centro/Bicentro) */
+/* Navegación de pasos (Centro/Bicentro y Distancia G1/G2) */
 .tag-step-nav {
     position: absolute;
     bottom: 12px;
-    left: 50%;
-    transform: translateX(-50%);
+    left: 8px;
     display: flex;
     align-items: center;
-    gap: 10px;
-    background: rgba(255, 255, 255, 0.9);
+    gap: 6px;
+    background: rgba(255, 255, 255, 0.92);
     border: 1px solid var(--border-color);
-    border-radius: 24px;
-    padding: 6px 16px;
-    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.12);
+    border-radius: 16px;
+    padding: 5px 10px;
+    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
     z-index: 10;
     white-space: nowrap;
 }
@@ -3275,10 +3272,10 @@ body {
 }
 
 .tag-step-nav span {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
     font-weight: 600;
     color: var(--primary-blue);
-    min-width: 80px;
+    min-width: 70px;
     text-align: center;
 }
 
@@ -3326,7 +3323,7 @@ body {
 
 /* Canvas resultado 2 (intersección para Distancia y T' para Rango) */
 #tag-wrap-result2 {
-    border: 2px solid #FF7043;
+    border: 2px solid #fdc3b2;
     box-shadow: 0 2px 10px rgba(255, 112, 67, 0.1);
 }
 

@@ -40,6 +40,7 @@ class ArbolesGrafosView {
         this._dragModeG1 = false;
         this._dragModeG2 = false;
         this._dragModeR = false;
+        this._dragModeR2 = false;
         this._draggingNode = null;
         this._maximizedCanvas = null;
 
@@ -57,6 +58,13 @@ class ArbolesGrafosView {
         // Highlightes canvas resultado 2
         this._result2HighlightVertices = {};
         this._result2HighlightEdges = {};
+
+        // Estado Distancia: pasos navegables en G1 y G2
+        this._distModeActive = false;
+        this._distStepsG1 = [];   // [{graph, label, hlEdges, hlVertices}]
+        this._distStepIdxG1 = 0;
+        this._distStepsG2 = [];
+        this._distStepIdxG2 = 0;
     }
 
     // ─── Cámara ───────────────────────────────────────────────────────────────
@@ -174,18 +182,28 @@ class ArbolesGrafosView {
             <div class="grafos-canvas-area">
                 <div class="grafos-top-row" id="tag-top-row">
                     <div class="grafos-canvas-wrapper" id="tag-wrap-g1">
-                        <div class="grafos-canvas-label">Grafo 1 (G1)</div>
+                        <div class="grafos-canvas-label" id="tag-label-g1">Grafo 1 (G1)</div>
                         <canvas id="tag-canvas-g1"></canvas>
                         <button class="tree-fit-btn expand-btn" id="tag-expand-g1" title="Maximizar G1">⛶</button>
                         <button class="tree-fit-btn drag-toggle-btn" id="tag-drag-g1" title="Mover nodos G1">✥</button>
                         <button class="tree-fit-btn" id="tag-fit-g1" title="Ajustar vista G1">⊞</button>
+                        <div id="tag-dist-nav-g1" class="tag-step-nav hidden">
+                            <button id="tag-dist-prev-g1" class="tag-step-btn">◀</button>
+                            <span id="tag-dist-label-g1">Paso 1 de 2</span>
+                            <button id="tag-dist-next-g1" class="tag-step-btn">▶</button>
+                        </div>
                     </div>
                     <div class="grafos-canvas-wrapper" id="tag-wrap-g2">
-                        <div class="grafos-canvas-label">Grafo 2 (G2)</div>
+                        <div class="grafos-canvas-label" id="tag-label-g2">Grafo 2 (G2)</div>
                         <canvas id="tag-canvas-g2"></canvas>
                         <button class="tree-fit-btn expand-btn" id="tag-expand-g2" title="Maximizar G2">⛶</button>
                         <button class="tree-fit-btn drag-toggle-btn" id="tag-drag-g2" title="Mover nodos G2">✥</button>
                         <button class="tree-fit-btn" id="tag-fit-g2" title="Ajustar vista G2">⊞</button>
+                        <div id="tag-dist-nav-g2" class="tag-step-nav hidden">
+                            <button id="tag-dist-prev-g2" class="tag-step-btn">◀</button>
+                            <span id="tag-dist-label-g2">Paso 1 de 2</span>
+                            <button id="tag-dist-next-g2" class="tag-step-btn">▶</button>
+                        </div>
                     </div>
                 </div>
 
@@ -208,6 +226,8 @@ class ArbolesGrafosView {
                     <div class="grafos-canvas-wrapper grafos-result-canvas" id="tag-wrap-result2" style="flex:1;display:none;">
                         <div class="grafos-canvas-label" id="tag-result2-label">Intersección</div>
                         <canvas id="tag-canvas-result2"></canvas>
+                        <button class="tree-fit-btn expand-btn" id="tag-expand-result2" title="Maximizar">⛶</button>
+                        <button class="tree-fit-btn drag-toggle-btn" id="tag-drag-result2" title="Mover nodos">✥</button>
                         <button class="tree-fit-btn" id="tag-fit-result2" title="Ajustar vista">⊞</button>
                     </div>
                 </div>
@@ -272,9 +292,11 @@ class ArbolesGrafosView {
             dragG1: document.getElementById('tag-drag-g1'),
             dragG2: document.getElementById('tag-drag-g2'),
             dragResult: document.getElementById('tag-drag-result'),
+            dragResult2: document.getElementById('tag-drag-result2'),
             expandG1: document.getElementById('tag-expand-g1'),
             expandG2: document.getElementById('tag-expand-g2'),
             expandResult: document.getElementById('tag-expand-result'),
+            expandResult2: document.getElementById('tag-expand-result2'),
             wrapG1: document.getElementById('tag-wrap-g1'),
             wrapG2: document.getElementById('tag-wrap-g2'),
             wrapResult: document.getElementById('tag-wrap-result'),
@@ -282,7 +304,17 @@ class ArbolesGrafosView {
             stepNav: document.getElementById('tag-step-nav'),
             stepPrev: document.getElementById('tag-step-prev'),
             stepNext: document.getElementById('tag-step-next'),
-            stepLabel: document.getElementById('tag-step-label')
+            stepLabel: document.getElementById('tag-step-label'),
+            canvasLabelG1: document.getElementById('tag-label-g1'),
+            canvasLabelG2: document.getElementById('tag-label-g2'),
+            distNavG1: document.getElementById('tag-dist-nav-g1'),
+            distPrevG1: document.getElementById('tag-dist-prev-g1'),
+            distNextG1: document.getElementById('tag-dist-next-g1'),
+            distLabelG1: document.getElementById('tag-dist-label-g1'),
+            distNavG2: document.getElementById('tag-dist-nav-g2'),
+            distPrevG2: document.getElementById('tag-dist-prev-g2'),
+            distNextG2: document.getElementById('tag-dist-next-g2'),
+            distLabelG2: document.getElementById('tag-dist-label-g2')
         };
     }
 
@@ -308,28 +340,36 @@ class ArbolesGrafosView {
 
         el.funcSelect.addEventListener('change', () => this._validateRequirements());
 
-        el.fitG1.addEventListener('click', () => { this._fitGraph(el.canvasG1, this.g1, this._cam1); this._drawGraph(el.canvasG1, this.g1, this._cam1); });
-        el.fitG2.addEventListener('click', () => { this._fitGraph(el.canvasG2, this.g2, this._cam2); this._drawGraph(el.canvasG2, this.g2, this._cam2); });
+        el.fitG1.addEventListener('click', () => { const g = this._getDistDisplayG1(); this._fitGraph(el.canvasG1, g, this._cam1); this._redrawG1(); });
+        el.fitG2.addEventListener('click', () => { const g = this._getDistDisplayG2(); this._fitGraph(el.canvasG2, g, this._cam2); this._redrawG2(); });
         el.fitResult.addEventListener('click', () => { if (this.gResult) { this._fitGraph(el.canvasResult, this.gResult, this._camR); this._drawResultCanvas(); } });
         el.fitResult2.addEventListener('click', () => { if (this.gResult2) { this._fitGraph(el.canvasResult2, this.gResult2, this._camR2); this._drawGraph(el.canvasResult2, this.gResult2, this._camR2, this._result2HighlightVertices, this._result2HighlightEdges); } });
 
         el.dragG1.addEventListener('click', () => this._toggleDragMode('g1'));
         el.dragG2.addEventListener('click', () => this._toggleDragMode('g2'));
         el.dragResult.addEventListener('click', () => this._toggleDragMode('result'));
+        el.dragResult2.addEventListener('click', () => this._toggleDragMode('result2'));
 
         el.expandG1.addEventListener('click', () => this._toggleMaximize('g1'));
         el.expandG2.addEventListener('click', () => this._toggleMaximize('g2'));
         el.expandResult.addEventListener('click', () => this._toggleMaximize('result'));
+        el.expandResult2.addEventListener('click', () => this._toggleMaximize('result2'));
 
         // Navegación de pasos (Centro/Bicentro)
         el.stepPrev.addEventListener('click', () => this._navigateStep(-1));
         el.stepNext.addEventListener('click', () => this._navigateStep(1));
 
+        // Navegación de pasos distancia (G1 y G2)
+        el.distPrevG1.addEventListener('click', () => this._navigateDistStep('g1', -1));
+        el.distNextG1.addEventListener('click', () => this._navigateDistStep('g1', 1));
+        el.distPrevG2.addEventListener('click', () => this._navigateDistStep('g2', -1));
+        el.distNextG2.addEventListener('click', () => this._navigateDistStep('g2', 1));
+
         // Pan/zoom canvas
-        this._bindCanvasPanZoom(el.canvasG1, () => this.g1, this._cam1, () => this._dragModeG1, () => this._drawGraph(el.canvasG1, this.g1, this._cam1));
-        this._bindCanvasPanZoom(el.canvasG2, () => this.g2, this._cam2, () => this._dragModeG2, () => this._drawGraph(el.canvasG2, this.g2, this._cam2));
+        this._bindCanvasPanZoom(el.canvasG1, () => this._getDistDisplayG1(), this._cam1, () => this._dragModeG1, () => this._redrawG1());
+        this._bindCanvasPanZoom(el.canvasG2, () => this._getDistDisplayG2(), this._cam2, () => this._dragModeG2, () => this._redrawG2());
         this._bindCanvasPanZoom(el.canvasResult, () => this.gResult, this._camR, () => this._dragModeR, () => this._drawResultCanvas());
-        this._bindCanvasPanZoom(el.canvasResult2, () => this.gResult2, this._camR2, () => false, () => this._drawGraph(el.canvasResult2, this.gResult2, this._camR2, this._result2HighlightVertices, this._result2HighlightEdges));
+        this._bindCanvasPanZoom(el.canvasResult2, () => this.gResult2, this._camR2, () => this._dragModeR2, () => this._drawGraph(el.canvasResult2, this.gResult2, this._camR2, this._result2HighlightVertices, this._result2HighlightEdges));
 
         // ResizeObserver
         this._ro = new ResizeObserver(() => { this._resizeAllCanvas(); this._drawAll(); });
@@ -397,11 +437,13 @@ class ArbolesGrafosView {
         const g2Ready = this.g2.created && this.g2.vertices.length > 0;
 
         if (func === 'center') {
-            if (!g1Ready) {
-                msg = '⚠ Centro/Bicentro requiere un árbol en G1. Ingrese los vértices y aristas del árbol.';
+            const gActive = this._getActiveGraph();
+            const gLabel = this._getActiveGraphLabel();
+            if (!gActive.created || gActive.vertices.length === 0) {
+                msg = `⚠ Centro/Bicentro requiere un árbol en ${gLabel}. Ingrese los vértices y aristas.`;
             } else {
-                const check = TreeGraphModel.isTree(this.g1);
-                if (!check.isTree) msg = `⚠ G1 no es un árbol: ${check.reason}`;
+                const check = TreeGraphModel.isTree(gActive);
+                if (!check.isTree) msg = `⚠ ${gLabel} no es un árbol: ${check.reason}`;
             }
         } else if (func === 'mst' || func === 'maxst') {
             if (!g1Ready) {
@@ -411,12 +453,10 @@ class ArbolesGrafosView {
             }
         } else if (func === 'distance') {
             if (!g1Ready || !g2Ready) {
-                msg = '⚠ Distancia entre árboles requiere dos árboles en G1 y G2.';
+                msg = '⚠ Distancia requiere grafos en G1 y G2 (conexos o árboles).';
             } else {
-                const c1 = TreeGraphModel.isTree(this.g1);
-                const c2 = TreeGraphModel.isTree(this.g2);
-                if (!c1.isTree) msg = `⚠ G1 no es un árbol: ${c1.reason}`;
-                else if (!c2.isTree) msg = `⚠ G2 no es un árbol: ${c2.reason}`;
+                if (!TreeGraphModel.isConnected(this.g1)) msg = '⚠ G1 no es conexo.';
+                else if (!TreeGraphModel.isConnected(this.g2)) msg = '⚠ G2 no es conexo.';
             }
         } else if (func === 'rank') {
             if (!g1Ready) {
@@ -544,6 +584,14 @@ class ArbolesGrafosView {
         this._resultHighlightEdges = {};
         this._result2HighlightVertices = {};
         this._result2HighlightEdges = {};
+        // Reset dist mode
+        this._distModeActive = false;
+        this._distStepsG1 = []; this._distStepIdxG1 = 0;
+        this._distStepsG2 = []; this._distStepIdxG2 = 0;
+        if (this.el.distNavG1) this.el.distNavG1.classList.add('hidden');
+        if (this.el.distNavG2) this.el.distNavG2.classList.add('hidden');
+        if (this.el.canvasLabelG1) this.el.canvasLabelG1.textContent = 'Grafo 1 (G1)';
+        if (this.el.canvasLabelG2) this.el.canvasLabelG2.textContent = 'Grafo 2 (G2)';
         this.el.resultLabel.textContent = 'Resultado';
         this.el.result2Label.textContent = 'Intersección';
         this.el.stepNav.classList.add('hidden');
@@ -588,7 +636,11 @@ class ArbolesGrafosView {
     // ─── Funcionalidad 1: Centro / Bicentro ───────────────────────────────────
 
     _executeCenterBicenter() {
-        const result = TreeGraphModel.findCenterBicenter(this.g1);
+        const gSrc = this._getActiveGraph();
+        const gLabel = this._getActiveGraphLabel();
+        this._centerSourceGraph = gSrc; // guardar referencia para herencia de posiciones
+
+        const result = TreeGraphModel.findCenterBicenter(gSrc);
 
         this._centerSteps = result.steps;
         this._centerStepIdx = 0;
@@ -612,7 +664,7 @@ class ArbolesGrafosView {
 
         // Descripción formal
         this._renderDescription([
-            { title: 'Árbol Original (G1)', items: [{ graph: this.g1, label: 'T', isTree: true }] },
+            { title: `Árbol Original (${gLabel})`, items: [{ graph: gSrc, label: 'T', isTree: true }] },
             {
                 title: centerLabel,
                 html: this._buildCenterDescHTML(result)
@@ -638,6 +690,11 @@ class ArbolesGrafosView {
         this._centerStepIdx = newIdx;
         this._updateStepNav();
         this._renderCenterStep(this._centerStepIdx);
+        // Auto-fit si el canvas de resultado está maximizado
+        if (this._maximizedCanvas === 'result' && this.gResult) {
+            this._fitGraph(this.el.canvasResult, this.gResult, this._camR);
+            this._drawResultCanvas();
+        }
     }
 
     _updateStepNav() {
@@ -659,8 +716,9 @@ class ArbolesGrafosView {
         const snapGraph = new GraphModel();
         snapGraph._build_internal(step.vertices, step.edges, false, step.label || 'Paso');
 
-        // Heredar posiciones del grafo original G1 para preservar el layout del usuario
-        this._inheritPositions(this.g1, snapGraph);
+        // Heredar posiciones del grafo fuente (activo al calcular) para preservar el layout
+        const srcGraph = this._centerSourceGraph || this.g1;
+        this._inheritPositions(srcGraph, snapGraph);
 
         this.gResult = snapGraph;
 
@@ -734,34 +792,92 @@ class ArbolesGrafosView {
     // ─── Funcionalidad 3: Distancia entre 2 Árboles ───────────────────────────
 
     _executeDistance() {
-        const result = TreeGraphModel.spanningTreeDistance(this.g1, this.g2);
+        // ── 1. Determinar árboles de trabajo T1 y T2 ──────────────────────────
+        const check1 = TreeGraphModel.isTree(this.g1);
+        const check2 = TreeGraphModel.isTree(this.g2);
 
-        // Heredar posiciones de G1 y G2 a sus grafos resultado
-        this._inheritPositions(this.g1, result.unionGraph);
-        this._inheritPositions(this.g2, result.unionGraph);
-        this._inheritPositions(this.g1, result.intersectionGraph);
+        let t1, mst1Log = [], t1IsNew = false;
+        if (check1.isTree) {
+            t1 = this.g1;
+        } else {
+            const r1 = TreeGraphModel.kruskal(this.g1, false);
+            t1 = new GraphModel();
+            t1._build_internal(this.g1.vertices, r1.treeEdges, false, 'T₁ (MST de G1)');
+            this._inheritPositions(this.g1, t1);
+            mst1Log = r1.log;
+            t1IsNew = true;
+        }
 
-        // Grafo unión (en canvas principal)
+        let t2, mst2Log = [], t2IsNew = false;
+        if (check2.isTree) {
+            t2 = this.g2;
+        } else {
+            const r2 = TreeGraphModel.kruskal(this.g2, false);
+            t2 = new GraphModel();
+            t2._build_internal(this.g2.vertices, r2.treeEdges, false, 'T₂ (MST de G2)');
+            this._inheritPositions(this.g2, t2);
+            mst2Log = r2.log;
+            t2IsNew = true;
+        }
+
+        // ── 2. Pasos navegables en canvas G1 y G2 ─────────────────────────────
+        this._distModeActive = true;
+
+        if (t1IsNew) {
+            this._distStepsG1 = [
+                { graph: this.g1, label: 'Grafo 1 (G1) — Original', hlEdges: {}, hlVertices: {} },
+                { graph: t1, label: 'T₁ — Árbol de Expansión Mínimo', hlEdges: this._buildMSTHighlights(t1), hlVertices: {} }
+            ];
+        } else {
+            this._distStepsG1 = [
+                { graph: this.g1, label: 'G1 — Árbol de Entrada (T₁)', hlEdges: {}, hlVertices: {} }
+            ];
+        }
+        this._distStepIdxG1 = t1IsNew ? 1 : 0; // mostrar MST si fue generado
+
+        if (t2IsNew) {
+            this._distStepsG2 = [
+                { graph: this.g2, label: 'Grafo 2 (G2) — Original', hlEdges: {}, hlVertices: {} },
+                { graph: t2, label: 'T₂ — Árbol de Expansión Mínimo', hlEdges: this._buildMSTHighlights(t2), hlVertices: {} }
+            ];
+        } else {
+            this._distStepsG2 = [
+                { graph: this.g2, label: 'G2 — Árbol de Entrada (T₂)', hlEdges: {}, hlVertices: {} }
+            ];
+        }
+        this._distStepIdxG2 = t2IsNew ? 1 : 0;
+
+        this._updateDistNav('g1');
+        this._updateDistNav('g2');
+        this._redrawG1();
+        this._redrawG2();
+
+        // ── 3. Calcular distancia entre T1 y T2 ───────────────────────────────
+        const result = TreeGraphModel.spanningTreeDistance(t1, t2);
+
+        this._inheritPositions(t1, result.unionGraph);
+        this._inheritPositions(t2, result.unionGraph);
+        this._inheritPositions(t1, result.intersectionGraph);
+
+        // Grafo unión (canvas principal)
         this.gResult = result.unionGraph;
-        this.el.resultLabel.textContent = 'G₁∪G₂ (Unión)';
+        this.el.resultLabel.textContent = 'T₁∪T₂ (Unión)';
         this._resultHighlightVertices = {};
         this._resultHighlightEdges = {};
 
-        // Colorear aristas: en G1 azul, en G2 naranja, en intersección verde
-        const edgeMap1 = new Set(this.g1.edges.map(e => [e.from, e.to].sort().join('-')));
-        const edgeMap2 = new Set(this.g2.edges.map(e => [e.from, e.to].sort().join('-')));
+        const edgeMapT1 = new Set(t1.edges.map(e => [e.from, e.to].sort().join('-')));
+        const edgeMapT2 = new Set(t2.edges.map(e => [e.from, e.to].sort().join('-')));
         for (const e of result.unionEdges) {
             const key = [e.from, e.to].sort().join('-');
-            const inG1 = edgeMap1.has(key);
-            const inG2 = edgeMap2.has(key);
-            if (inG1 && inG2) this._resultHighlightEdges[key] = '#26A65B'; // verde
-            else if (inG1) this._resultHighlightEdges[key] = '#2B7BE0';   // azul
-            else this._resultHighlightEdges[key] = '#FF7043';              // naranja
+            const inT1 = edgeMapT1.has(key), inT2 = edgeMapT2.has(key);
+            if (inT1 && inT2) this._resultHighlightEdges[key] = '#26A65B';
+            else if (inT1)    this._resultHighlightEdges[key] = '#2B7BE0';
+            else              this._resultHighlightEdges[key] = '#FF7043';
         }
 
-        // Grafo intersección (en canvas resultado 2)
+        // Grafo intersección (canvas resultado 2)
         this.gResult2 = result.intersectionGraph;
-        this.el.result2Label.textContent = 'G₁∩G₂ (Intersección)';
+        this.el.result2Label.textContent = 'T₁∩T₂ (Intersección)';
         this._result2HighlightVertices = {};
         this._result2HighlightEdges = {};
         for (const e of result.intersectionEdges) {
@@ -769,7 +885,6 @@ class ArbolesGrafosView {
             this._result2HighlightEdges[key] = '#26A65B';
         }
 
-        // Mostrar canvas 2
         this.el.wrapResult2.style.display = 'flex';
         this._resizeAllCanvas();
 
@@ -778,37 +893,99 @@ class ArbolesGrafosView {
         this._drawResultCanvas();
         this._drawGraph(this.el.canvasResult2, this.gResult2, this._camR2, this._result2HighlightVertices, this._result2HighlightEdges);
 
-        // Log
+        // ── 4. Log ─────────────────────────────────────────────────────────────
+        if (t1IsNew) { this._addLog('— MST de G1 —', 'info'); mst1Log.forEach(m => this._addLog(m, 'info')); }
+        if (t2IsNew) { this._addLog('— MST de G2 —', 'info'); mst2Log.forEach(m => this._addLog(m, 'info')); }
         result.log.forEach(msg => this._addLog(msg, 'info'));
         this._addLog(`✔ Distancia: D = ${result.distance}`, 'success');
 
-        // Descripción formal completa
-        const sumA = this.g1.edges.reduce((s, e) => s + ((e.weight !== null && e.weight !== undefined) ? e.weight : 1), 0);
-        const sumB = this.g2.edges.reduce((s, e) => s + ((e.weight !== null && e.weight !== undefined) ? e.weight : 1), 0);
+        // ── 5. Descripción formal ──────────────────────────────────────────────
+        const sumT1 = t1.edges.reduce((s, e) => s + ((e.weight !== null && e.weight !== undefined) ? e.weight : 1), 0);
+        const sumT2 = t2.edges.reduce((s, e) => s + ((e.weight !== null && e.weight !== undefined) ? e.weight : 1), 0);
 
         const distDescHTML = `
             <div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:8px;background:rgba(43,87,154,0.04);border-radius:4px;border-left:3px solid var(--accent-primary);">
-                D(A) - D(B) ⇒ D(A) = {${this.g1.edges.map(e => `${[e.from, e.to].sort().join('-')}:${(e.weight !== null && e.weight !== undefined) ? e.weight : 1}`).join(', ')}} = ${sumA}<br>
-                &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;D(B) = {${this.g2.edges.map(e => `${[e.from, e.to].sort().join('-')}:${(e.weight !== null && e.weight !== undefined) ? e.weight : 1}`).join(', ')}} = ${sumB}<br><br>
-                A₁∪A₂ = (${sumA} + ${sumB}) - ${result.sumIntersection} = <strong>${result.sumUnion}</strong><br>
+                D(T₁) = {${t1.edges.map(e => `${[e.from, e.to].sort().join('-')}:${(e.weight ?? 1)}`).join(', ')}} = ${sumT1}<br>
+                D(T₂) = {${t2.edges.map(e => `${[e.from, e.to].sort().join('-')}:${(e.weight ?? 1)}`).join(', ')}} = ${sumT2}<br><br>
+                A₁∪A₂ = (${sumT1} + ${sumT2}) − ${result.sumIntersection} = <strong>${result.sumUnion}</strong><br>
                 A₁∩A₂ = <strong>${result.sumIntersection}</strong><br><br>
-                D = (A₁∪A₂ - A₁∩A₂) / 2<br>
-                D = (${result.sumUnion} - ${result.sumIntersection}) / 2<br>
+                D = (A₁∪A₂ − A₁∩A₂) / 2 = (${result.sumUnion} − ${result.sumIntersection}) / 2<br>
                 <strong style="font-size:1rem;color:var(--accent-primary);">D = ${result.distance}</strong>
-            </div>
-        `;
+            </div>`;
 
-        this._renderDescription([
-            { title: 'Árbol A (G1) — T₁', items: [{ graph: this.g1, label: 'T₁', isTree: true }] },
-            { title: 'Árbol B (G2) — T₂', items: [{ graph: this.g2, label: 'T₂', isTree: true }] },
-            { title: 'Cálculo de la Distancia', html: distDescHTML },
-            {
-                title: 'Unión e Intersección', items: [
-                    { graph: result.unionGraph, label: 'G₃=G₁∪G₂', isTree: false },
-                    { graph: result.intersectionGraph, label: 'G₃=G₁∩G₂', isTree: false }
-                ]
+        const descSections = [];
+        if (t1IsNew) {
+            descSections.push({ title: 'Grafo G1 (Entrada)', items: [{ graph: this.g1, label: 'G1', isTree: false }] });
+            descSections.push({ title: 'T₁ — MST de G1', items: [{ graph: t1, label: 'T₁', isTree: true }] });
+        } else {
+            descSections.push({ title: 'T₁ — Árbol G1 (Entrada)', items: [{ graph: t1, label: 'T₁', isTree: true }] });
+        }
+        if (t2IsNew) {
+            descSections.push({ title: 'Grafo G2 (Entrada)', items: [{ graph: this.g2, label: 'G2', isTree: false }] });
+            descSections.push({ title: 'T₂ — MST de G2', items: [{ graph: t2, label: 'T₂', isTree: true }] });
+        } else {
+            descSections.push({ title: 'T₂ — Árbol G2 (Entrada)', items: [{ graph: t2, label: 'T₂', isTree: true }] });
+        }
+        descSections.push({ title: 'Cálculo de la Distancia', html: distDescHTML });
+        descSections.push({ title: 'Unión e Intersección', items: [
+            { graph: result.unionGraph, label: 'T₁∪T₂', isTree: false },
+            { graph: result.intersectionGraph, label: 'T₁∩T₂', isTree: false }
+        ]});
+        this._renderDescription(descSections);
+    }
+
+    // ─── Helpers para navegación en modo Distancia ────────────────────────────
+
+    _buildMSTHighlights(treeGraph) {
+        const hlEdges = {};
+        for (const e of treeGraph.edges) {
+            hlEdges[[e.from, e.to].sort().join('-')] = '#26A65B';
+        }
+        return hlEdges;
+    }
+
+    _updateDistNav(which) {
+        const steps    = which === 'g1' ? this._distStepsG1    : this._distStepsG2;
+        const idx      = which === 'g1' ? this._distStepIdxG1  : this._distStepIdxG2;
+        const navEl    = which === 'g1' ? this.el.distNavG1    : this.el.distNavG2;
+        const prevEl   = which === 'g1' ? this.el.distPrevG1   : this.el.distPrevG2;
+        const nextEl   = which === 'g1' ? this.el.distNextG1   : this.el.distNextG2;
+        const labelEl  = which === 'g1' ? this.el.distLabelG1  : this.el.distLabelG2;
+        const titleEl  = which === 'g1' ? this.el.canvasLabelG1 : this.el.canvasLabelG2;
+        if (!navEl) return;
+        if (steps.length <= 1) {
+            navEl.classList.add('hidden');
+        } else {
+            navEl.classList.remove('hidden');
+            labelEl.textContent = `Paso ${idx + 1} de ${steps.length}`;
+            prevEl.disabled = idx === 0;
+            nextEl.disabled = idx === steps.length - 1;
+        }
+        if (titleEl && steps[idx]) titleEl.textContent = steps[idx].label;
+    }
+
+    _navigateDistStep(which, dir) {
+        if (which === 'g1') {
+            const newIdx = this._distStepIdxG1 + dir;
+            if (newIdx < 0 || newIdx >= this._distStepsG1.length) return;
+            this._distStepIdxG1 = newIdx;
+            this._updateDistNav('g1');
+            // Auto-fit si G1 está maximizado
+            if (this._maximizedCanvas === 'g1') {
+                this._fitGraph(this.el.canvasG1, this._getDistDisplayG1(), this._cam1);
             }
-        ]);
+            this._redrawG1();
+        } else {
+            const newIdx = this._distStepIdxG2 + dir;
+            if (newIdx < 0 || newIdx >= this._distStepsG2.length) return;
+            this._distStepIdxG2 = newIdx;
+            this._updateDistNav('g2');
+            // Auto-fit si G2 está maximizado
+            if (this._maximizedCanvas === 'g2') {
+                this._fitGraph(this.el.canvasG2, this._getDistDisplayG2(), this._cam2);
+            }
+            this._redrawG2();
+        }
     }
 
     // ─── Funcionalidad 4: Rango y Nulidad ─────────────────────────────────────
@@ -987,9 +1164,10 @@ class ArbolesGrafosView {
     // ─── Drag Mode ────────────────────────────────────────────────────────────
 
     _toggleDragMode(key) {
-        if (key === 'g1') { this._dragModeG1 = !this._dragModeG1; this.el.dragG1.classList.toggle('active', this._dragModeG1); }
-        else if (key === 'g2') { this._dragModeG2 = !this._dragModeG2; this.el.dragG2.classList.toggle('active', this._dragModeG2); }
-        else if (key === 'result') { this._dragModeR = !this._dragModeR; this.el.dragResult.classList.toggle('active', this._dragModeR); }
+        if (key === 'g1')      { this._dragModeG1 = !this._dragModeG1; this.el.dragG1.classList.toggle('active', this._dragModeG1); }
+        else if (key === 'g2')      { this._dragModeG2 = !this._dragModeG2; this.el.dragG2.classList.toggle('active', this._dragModeG2); }
+        else if (key === 'result')  { this._dragModeR  = !this._dragModeR;  this.el.dragResult.classList.toggle('active', this._dragModeR); }
+        else if (key === 'result2') { this._dragModeR2 = !this._dragModeR2; this.el.dragResult2.classList.toggle('active', this._dragModeR2); }
     }
 
     // ─── Maximizar canvas ─────────────────────────────────────────────────────
@@ -997,11 +1175,14 @@ class ArbolesGrafosView {
     _toggleMaximize(target) {
         this._maximizedCanvas = this._maximizedCanvas === target ? null : target;
 
-        [this.el.topRow, this.el.resultRow].forEach(r => {
-            r.classList.remove('grafos-hidden-max', 'grafos-full-row');
-        });
+        // Reset all
+        [this.el.topRow, this.el.resultRow].forEach(r => r.classList.remove('grafos-hidden-max', 'grafos-full-row'));
         [this.el.wrapG1, this.el.wrapG2, this.el.wrapResult].forEach(w => w.classList.remove('grafos-hidden-max'));
-        [this.el.expandG1, this.el.expandG2, this.el.expandResult].forEach(b => b.classList.remove('active'));
+        // result2: solo ocultar si estaba visible (no forzar display)
+        if (this.el.wrapResult2.style.display !== 'none') {
+            this.el.wrapResult2.classList.remove('grafos-hidden-max');
+        }
+        [this.el.expandG1, this.el.expandG2, this.el.expandResult, this.el.expandResult2].forEach(b => { if (b) b.classList.remove('active'); });
 
         if (this._maximizedCanvas === 'g1') {
             this.el.wrapG2.classList.add('grafos-hidden-max');
@@ -1016,18 +1197,26 @@ class ArbolesGrafosView {
         } else if (this._maximizedCanvas === 'result') {
             this.el.topRow.classList.add('grafos-hidden-max');
             this.el.resultRow.classList.add('grafos-full-row');
+            if (this.el.wrapResult2.style.display !== 'none') this.el.wrapResult2.classList.add('grafos-hidden-max');
             this.el.expandResult.classList.add('active');
+        } else if (this._maximizedCanvas === 'result2') {
+            this.el.topRow.classList.add('grafos-hidden-max');
+            this.el.resultRow.classList.add('grafos-full-row');
+            this.el.wrapResult.classList.add('grafos-hidden-max');
+            if (this.el.expandResult2) this.el.expandResult2.classList.add('active');
         }
 
         this._resizeAllCanvas();
         const applyFit = () => {
-            if (this._maximizedCanvas === 'g1') { this._fitGraph(this.el.canvasG1, this.g1, this._cam1); }
-            else if (this._maximizedCanvas === 'g2') { this._fitGraph(this.el.canvasG2, this.g2, this._cam2); }
-            else if (this._maximizedCanvas === 'result' && this.gResult) { this._fitGraph(this.el.canvasResult, this.gResult, this._camR, true); }
+            if (this._maximizedCanvas === 'g1') { this._fitGraph(this.el.canvasG1, this._getDistDisplayG1(), this._cam1); }
+            else if (this._maximizedCanvas === 'g2') { this._fitGraph(this.el.canvasG2, this._getDistDisplayG2(), this._cam2); }
+            else if (this._maximizedCanvas === 'result' && this.gResult) { this._fitGraph(this.el.canvasResult, this.gResult, this._camR); }
+            else if (this._maximizedCanvas === 'result2' && this.gResult2) { this._fitGraph(this.el.canvasResult2, this.gResult2, this._camR2); }
             else {
-                this._fitGraph(this.el.canvasG1, this.g1, this._cam1);
-                this._fitGraph(this.el.canvasG2, this.g2, this._cam2);
-                if (this.gResult) this._fitGraph(this.el.canvasResult, this.gResult, this._camR, true);
+                this._fitGraph(this.el.canvasG1, this._getDistDisplayG1(), this._cam1);
+                this._fitGraph(this.el.canvasG2, this._getDistDisplayG2(), this._cam2);
+                if (this.gResult) this._fitGraph(this.el.canvasResult, this.gResult, this._camR);
+                if (this.gResult2) this._fitGraph(this.el.canvasResult2, this.gResult2, this._camR2);
             }
             this._drawAll();
         };
@@ -1178,11 +1367,13 @@ class ArbolesGrafosView {
     }
 
     _refreshActiveCanvas() {
-        const canvas = this._activeGraph === 'g1' ? this.el.canvasG1 : this.el.canvasG2;
-        const cam = this._activeGraph === 'g1' ? this._cam1 : this._cam2;
-        const g = this._getActiveGraph();
-        this._fitGraph(canvas, g, cam);
-        this._drawGraph(canvas, g, cam);
+        if (this._activeGraph === 'g1') {
+            this._fitGraph(this.el.canvasG1, this.g1, this._cam1);
+            this._redrawG1();
+        } else {
+            this._fitGraph(this.el.canvasG2, this.g2, this._cam2);
+            this._redrawG2();
+        }
     }
 
     // ─── Layout Jerárquico para Árboles ──────────────────────────────────────
@@ -1265,11 +1456,41 @@ class ArbolesGrafosView {
     // ─── Draw ────────────────────────────────────────────────────────────────
 
     _drawAll() {
-        this._drawGraph(this.el.canvasG1, this.g1, this._cam1);
-        this._drawGraph(this.el.canvasG2, this.g2, this._cam2);
+        this._redrawG1();
+        this._redrawG2();
         this._drawResultCanvas();
         if (this.gResult2) {
-            this._drawGraph(this.el.canvasResult2, this.gResult2, this._camR2, this._result2HighlightVertices, this._result2HighlightEdges, true);
+            this._drawGraph(this.el.canvasResult2, this.gResult2, this._camR2, this._result2HighlightVertices, this._result2HighlightEdges);
+        }
+    }
+
+    _getDistDisplayG1() {
+        if (this._distModeActive && this._distStepsG1.length > 0)
+            return this._distStepsG1[this._distStepIdxG1].graph;
+        return this.g1;
+    }
+
+    _getDistDisplayG2() {
+        if (this._distModeActive && this._distStepsG2.length > 0)
+            return this._distStepsG2[this._distStepIdxG2].graph;
+        return this.g2;
+    }
+
+    _redrawG1() {
+        if (this._distModeActive && this._distStepsG1.length > 0) {
+            const s = this._distStepsG1[this._distStepIdxG1];
+            this._drawGraph(this.el.canvasG1, s.graph, this._cam1, s.hlVertices || {}, s.hlEdges || {});
+        } else {
+            this._drawGraph(this.el.canvasG1, this.g1, this._cam1);
+        }
+    }
+
+    _redrawG2() {
+        if (this._distModeActive && this._distStepsG2.length > 0) {
+            const s = this._distStepsG2[this._distStepIdxG2];
+            this._drawGraph(this.el.canvasG2, s.graph, this._cam2, s.hlVertices || {}, s.hlEdges || {});
+        } else {
+            this._drawGraph(this.el.canvasG2, this.g2, this._cam2);
         }
     }
 
