@@ -88,11 +88,8 @@ const MenuModel = {
                     {
                         id: 'algoritmos',
                         label: 'Algoritmos',
-                        children: [
-                            { id: 'algoritmos-bellman', label: 'Bellman',      action: 'algoritmos-bellman', enabled: true },
-                            { id: 'algoritmos-dijkstra', label: 'Dijkstra',         action: 'algoritmos-dijkstra', enabled: true },
-                            { id: 'algoritmos-floyd',   label: 'Floyd',             action: 'algoritmos-floyd', enabled: true }
-                        ]
+                        action: 'algoritmos',
+                        enabled: true
                     }
                 ]
             }

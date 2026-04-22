@@ -53,29 +53,8 @@ class AlgorithmGraphView {
         this.el = {};
     }
 
-    // ─── Métodos Sobreescribibles ─────────────────────────────────────────────
-
-    /** @returns {string} Título a mostrar en la vista. */
-    _title() { return 'Algoritmo'; }
-
-    /** @returns {string} HTML adicional para el panel izquierdo (ej. nodo fuente). */
-    _extraInputHTML() { return ''; }
-
-    /** Cachea elementos extra del DOM después del render. @protected */
-    _cacheExtra() {}
-
-    /** Vincula eventos extra. @protected */
-    _bindExtra() {}
-
-    /** Ejecuta acciones tras la creación del grafo. @protected */
-    _onCreateExtra() {}
-
-    /** Ejecuta acciones tras limpiar el grafo. @protected */
-    _onClearExtra() {}
-
-    /** Implementación del algoritmo — debe sobreescribirse. @protected @abstract */
-    _onExecute() {}
-
+    // ─── Constructor extra ─────────────────────────────────────────────
+    
     // ─── Ciclo de vida ────────────────────────────────────────────────────────
 
     /**
@@ -101,7 +80,7 @@ class AlgorithmGraphView {
      */
     _buildHTML() {
         return `
-        <div class="algo-title">${this._title()}</div>
+        <div class="algo-title">Algoritmos de Grafos</div>
         <div class="grafos-layout">
 
             <!-- ── Panel Izquierdo ── -->
@@ -111,11 +90,21 @@ class AlgorithmGraphView {
                     <div class="section-title">Definición del Grafo</div>
                     <div class="grafos-input-panel">
 
+                        <!-- Selección de Algoritmo -->
+                        <div class="grafos-field-col" style="margin-bottom:8px;">
+                            <label for="ag-algo-select">Algoritmo</label>
+                            <select id="ag-algo-select" style="width:100%; font-weight:bold; color:var(--text-main);">
+                                <option value="bellman">Bellman</option>
+                                <option value="dijkstra">Dijkstra</option>
+                                <option value="floyd">Floyd</option>
+                            </select>
+                        </div>
+
                         <!-- Vértices -->
                         <div class="grafos-field-col">
                             <label>Vértices</label>
                             <div class="grafos-vertex-input-row">
-                                <input type="text" id="ag-input-vertex" placeholder="Ej: A, B, C... Enter para añadir">
+                                <input type="text" id="ag-input-vertex" placeholder="Ej: a, b, c... Enter para añadir">
                                 <button class="btn btn-primary" id="ag-add-vertex-btn" style="min-width:40px; justify-content:center;">+</button>
                             </div>
                             <div class="grafos-vertex-chips" id="ag-vertex-list"></div>
@@ -134,8 +123,17 @@ class AlgorithmGraphView {
                             <div class="grafos-edge-list" id="ag-edge-list" style="max-height:140px; overflow-y:auto;"></div>
                         </div>
 
-                        <!-- HTML adicional de la subclase (nodo fuente, etc.) -->
-                        ${this._extraInputHTML()}
+                        <!-- Inputs adicionales -->
+                        <div class="grafos-field-col" id="ag-extra-inputs" style="margin-top:10px;">
+                            <label for="ag-source">Nodo Inicial</label>
+                            <select id="ag-source" style="width:100%; margin-bottom:6px;">
+                                <option value="">-- Seleccione inicial --</option>
+                            </select>
+                            <label for="ag-target">Nodo Final</label>
+                            <select id="ag-target" style="width:100%;">
+                                <option value="">-- Seleccione final --</option>
+                            </select>
+                        </div>
 
                         <!-- Botones de acción -->
                         <div id="ag-action-section" style="margin-top:10px;">
@@ -143,7 +141,7 @@ class AlgorithmGraphView {
                         </div>
 
                         <div class="grafos-btn-row" style="margin-top:10px;">
-                            <button class="btn" id="ag-enumerate-btn" style="background-color: #F57C00; color: white;">ENUMERAR</button>
+                            <button class="btn" id="ag-enumerate-btn" style="background-color: #F57C00; color: white;">FUNCIÓN ORDINAL</button>
                             <button class="btn btn-secondary" id="ag-clear-btn">LIMPIAR</button>
                             <button class="btn btn-success" id="ag-btn-save">GUARDAR</button>
                         </div>
@@ -163,7 +161,7 @@ class AlgorithmGraphView {
             <div class="grafos-canvas-area">
                 <div class="grafos-result-row" style="flex:1;">
                     <div class="grafos-canvas-wrapper grafos-result-canvas" id="ag-canvas-wrap">
-                        <div class="grafos-canvas-label">${this._title()}</div>
+                        <div class="grafos-canvas-label">Algoritmo</div>
                         <canvas id="ag-canvas"></canvas>
                         <button class="tree-fit-btn drag-toggle-btn" id="ag-drag-btn" title="Mover nodos" style="right:54px;">✥</button>
                         <button class="tree-fit-btn" id="ag-fit-btn" title="Ajustar vista">⊞</button>
@@ -219,9 +217,13 @@ class AlgorithmGraphView {
             canvasWrap:     document.getElementById('ag-canvas-wrap'),
             canvas:         document.getElementById('ag-canvas'),
             fitBtn:         document.getElementById('ag-fit-btn'),
-            dragBtn:        document.getElementById('ag-drag-btn')
+            dragBtn:        document.getElementById('ag-drag-btn'),
+            algoSelect:     document.getElementById('ag-algo-select'),
+            srcNode:        document.getElementById('ag-source'),
+            tgtNode:        document.getElementById('ag-target'),
+            extraInputs:    document.getElementById('ag-extra-inputs'),
+            canvasLabel:    this.container.querySelector('.grafos-canvas-label')
         };
-        this._cacheExtra();
     }
 
     /**
@@ -234,15 +236,18 @@ class AlgorithmGraphView {
         el.inputVertex.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this._onAddVertex();
         });
+        el.inputVertex.addEventListener('input', () => {
+            el.inputVertex.value = el.inputVertex.value.toLowerCase();
+        });
         el.addEdgeBtn.addEventListener('click',  () => this._onAddEdge());
         el.clearBtn.addEventListener('click',    () => this._onClear());
         el.enumerateBtn.addEventListener('click',() => this._onEnumerate());
         el.executeBtn.addEventListener('click',  () => {
             if (!this._isEnumerated) {
                 if (typeof Validation !== 'undefined') {
-                    Validation.showError('Debes enumerar los nodos primero utilizando el botón ENUMERAR.');
+                    Validation.showError('Debe calcular antes la FUNCIÓN ORDINAL.');
                 } else {
-                    alert('Debes enumerar los nodos primero utilizando el botón ENUMERAR.');
+                    alert('Debe calcular antes la FUNCIÓN ORDINAL.');
                 }
                 return;
             }
@@ -259,7 +264,8 @@ class AlgorithmGraphView {
             el.dragBtn.classList.toggle('active', this._dragMode);
         });
 
-        this._bindExtra();
+        el.algoSelect.addEventListener('change', () => this._onAlgoChange());
+        el.srcNode.addEventListener('change', () => this._drawGraph());
         this._bindCanvas();
 
         // Redimensionar canvas cuando cambie el tamaño del contenedor
@@ -483,9 +489,6 @@ class AlgorithmGraphView {
         // 2. Nodos encima
         const isExecuted = this._isExecuted || false;
         for (let n = 1; n <= this.nodeCount; n++) {
-            const hasConnection = this.edges.some(e => e.from === n || e.to === n);
-            if (!hasConnection && !isExecuted) continue;
-
             const p  = pos[n];
             const hl = this._nodeHL[n] || null;
             const extra = this._nodeExtraLabel && this._nodeExtraLabel[n] ? this._nodeExtraLabel[n] : null;
@@ -698,7 +701,7 @@ class AlgorithmGraphView {
     _onAddVertex() {
         const raw = this.el.inputVertex.value.trim();
         if (!raw) return;
-        const letters = raw.split(',').map(s => s.trim().toUpperCase()).filter(s => s);
+        const letters = raw.split(',').map(s => s.trim().toLowerCase()).filter(s => s);
         let added = 0;
         
         if (!this.vertices) {
@@ -725,7 +728,7 @@ class AlgorithmGraphView {
             this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
             
             if (this.nodeCount === added && added > 0) {
-                 this._onCreateExtra();
+                 // Acciones iniciales al agregar el primer nodo, si se necesitan.
             }
 
             this._syncUI();
@@ -773,7 +776,41 @@ class AlgorithmGraphView {
         this._drawGraph();
     }
     
-    _syncExtraUI() {}
+    _onAlgoChange() {
+        const algo = this.el.algoSelect.value;
+        if (algo === 'floyd') {
+            this.el.extraInputs.style.display = 'none';
+        } else {
+            this.el.extraInputs.style.display = '';
+        }
+        this._isExecuted = false;
+        this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
+        this._nodeHL = {};
+        this._edgeHL = {};
+        this._nodeExtraLabel = {};
+        this._drawGraph();
+    }
+
+    _syncExtraUI() {
+        if (!this.el.srcNode || !this.el.tgtNode) return;
+        const oldSrc = this.el.srcNode.value;
+        const oldTgt = this.el.tgtNode.value;
+        this.el.srcNode.innerHTML = '<option value="">-- Seleccione inicial --</option>';
+        this.el.tgtNode.innerHTML = '<option value="">-- Seleccione final --</option>';
+        
+        if (this.vertices && this.vertexIds) {
+            this.vertices.forEach(v => {
+                const val = this.vertexIds[v];
+                const labelText = this._isEnumerated ? `${v} : ${val}` : v;
+                this.el.srcNode.add(new Option(labelText, val));
+                this.el.tgtNode.add(new Option(labelText, val));
+            });
+        }
+        
+        const currentVals = this.vertices ? this.vertices.map(v => String(this.vertexIds[v])) : [];
+        if (currentVals.includes(oldSrc)) this.el.srcNode.value = oldSrc;
+        if (currentVals.includes(oldTgt)) this.el.tgtNode.value = oldTgt;
+    }
 
     _syncUI() {
         const list = this.el.vertexList;
@@ -845,6 +882,12 @@ class AlgorithmGraphView {
         }
 
         this._isEnumerated = false;
+        this._isExecuted = false;
+        this._nodeHL = {};
+        this._edgeHL = {};
+        this._nodeExtraLabel = {};
+        this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
+        
         this.el.edgeWeight.value = '';
         this._syncUI();
         this._drawGraph();
@@ -880,6 +923,8 @@ class AlgorithmGraphView {
             });
             list.appendChild(row);
         });
+        
+        this.el.edgeList.scrollTop = this.el.edgeList.scrollHeight;
     }
 
     /**
@@ -904,7 +949,6 @@ class AlgorithmGraphView {
         this.el.opContent.innerHTML          = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
 
         this._syncUI();
-        this._onClearExtra();
         this._fitGraph();
         this._drawGraph();
     }
@@ -929,6 +973,19 @@ class AlgorithmGraphView {
                 }
             }
             if (!changed) break;
+        }
+
+        let hasCycle = false;
+        for (let e of this.edges) {
+            if (levels[e.from] + 1 > levels[e.to]) {
+                hasCycle = true;
+                break;
+            }
+        }
+
+        if (hasCycle) {
+            Validation.showError('El grafo contiene ciclos. No se puede aplicar la Función Ordinal.');
+            return;
         }
         
         let pos = this._positions();
@@ -988,10 +1045,7 @@ class AlgorithmGraphView {
             return;
         }
 
-        let type = 'algoritmo-general';
-        if (this instanceof BellmanView) type = 'bellman';
-        if (this instanceof DijkstraView) type = 'dijkstra';
-        if (this instanceof FloydView) type = 'floyd';
+        let type = this.el.algoSelect.value;
 
         const data = {
             algorithm: type,
@@ -1047,15 +1101,21 @@ class AlgorithmGraphView {
         this._isExecuted = false;
         this._isEnumerated = false;
         this.nodeCount = s.nodeCount;
-        this.vertices = s.vertices || [];
-        this.vertexIds = s.vertexIds || {};
-        this.edges = Array.isArray(s.edges) ? s.edges : [];
+        this.vertices = (s.vertices || []).map(v => String(v).toLowerCase());
+        this.vertexIds = {};
+        if (s.vertexIds) {
+            for (let k in s.vertexIds) this.vertexIds[k.toLowerCase()] = s.vertexIds[k];
+        }
+        this.edges = (Array.isArray(s.edges) ? s.edges : []).map(e => ({
+            ...e,
+            originalFrom: String(e.originalFrom).toLowerCase(),
+            originalTo: String(e.originalTo).toLowerCase()
+        }));
         this._manualPos = s.manualPos || {};
         this._nodeHL = {};
         this._edgeHL = {};
         this._nodeExtraLabel = {};
 
-        this._onCreateExtra();
         this._syncUI();
         this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
         this.el.logContent.innerHTML = '';
@@ -1087,6 +1147,71 @@ class AlgorithmGraphView {
     _setOps(html) {
         this.el.opContent.innerHTML = html;
         this.el.opContent.scrollTop = 0;
+    }
+
+    // ─── Ejecución del Algoritmo ──────────────────────────────────────────────
+
+    _onExecute() {
+        const n = this.nodeCount;
+        const algo = this.el.algoSelect.value;
+        const src = parseInt(this.el.srcNode ? this.el.srcNode.value : 0);
+        const tgt = parseInt(this.el.tgtNode ? this.el.tgtNode.value : 0);
+
+        if (n === 0)  { Validation.showError('Cree el grafo primero.'); return; }
+        if (this.edges.length === 0) {
+            Validation.showWarning('El grafo no tiene aristas.');
+            return;
+        }
+
+        if (algo !== 'floyd') {
+            if (!src) { Validation.showError('Seleccione el nodo inicial.'); return; }
+            if (!tgt) { Validation.showError('Seleccione el nodo final.'); return; }
+        }
+
+        let result;
+        if (algo === 'bellman') {
+            result = GraphAlgorithmsModel.executeBellman(n, this.edges, src, tgt);
+        } else if (algo === 'dijkstra') {
+            result = GraphAlgorithmsModel.executeDijkstra(n, this.edges, src, tgt);
+        } else if (algo === 'floyd') {
+            const D = this._adjMatrix();
+            result = GraphAlgorithmsModel.executeFloyd(n, D, src || null, tgt || null);
+        }
+
+        if (result.error) {
+            Validation.showError(result.error);
+            return;
+        }
+
+        this._nodeExtraLabel = result.nodeExtraLabel;
+        this._edgeHL = result.edgeHL;
+        this._nodeHL = result.nodeHL;
+
+        if (algo !== 'floyd' || (src && tgt)) {
+            if (result.isPathFound) {
+                this._addLog(`Camino más corto encontrado con costo: ${result.finalDist}`, 'success');
+            } else {
+                this._addLog(`El nodo final no es alcanzable desde el inicial.`, 'warning');
+            }
+        } else if (algo === 'floyd') {
+            this._addLog(`Algoritmo ejecutado. ${result.totalChanges} actualizaciones realizadas.`, 'success');
+        }
+
+        this._isExecuted = true;
+        this._setOps(result.html);
+        
+        let algoName = 'Algoritmo';
+        if (algo === 'bellman') algoName = 'Bellman';
+        if (algo === 'dijkstra') algoName = 'Dijkstra';
+        if (algo === 'floyd') algoName = 'Floyd';
+        if (this.el.canvasLabel) this.el.canvasLabel.textContent = algoName;
+
+        this._drawGraph();
+        
+        // Formatear MathJax si está en el proyecto
+        if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
+            MathJax.typesetPromise([this.el.opContent]);
+        }
     }
 
     // ─── Utilidad: Matriz de Adyacencia ──────────────────────────────────────

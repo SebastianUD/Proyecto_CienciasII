@@ -118,7 +118,7 @@ class ArbolesGrafosView {
                         <div class="grafos-field-col">
                             <label>Vértices</label>
                             <div class="grafos-vertex-input-row">
-                                <input type="text" id="tag-input-vertex" placeholder="Ej: A, B, C… Enter para añadir">
+                                <input type="text" id="tag-input-vertex" placeholder="Ej: a, b, c… Enter para añadir">
                                 <button class="btn btn-primary" id="tag-add-vertex-btn" style="min-width:40px;justify-content:center;">+</button>
                             </div>
                             <div class="grafos-vertex-chips" id="tag-vertex-list"></div>
@@ -139,8 +139,8 @@ class ArbolesGrafosView {
 
                         <!-- Botones Crear / Limpiar -->
                         <div class="grafos-btn-row">
-                            <button class="btn btn-primary" id="tag-btn-create">CREAR</button>
-                            <button class="btn btn-secondary" id="tag-btn-clear-graph">LIMPIAR</button>
+                            <button class="btn btn-primary" id="tag-btn-create" title="Limpiar todos los grafos y resultados" style="background-color: #d32f2f; color: white; border: none;">LIMPIAR TODO</button>
+                            <button class="btn btn-secondary" id="tag-btn-clear-graph">LIMPIAR GRAFO</button>
                         </div>
 
                     </div>
@@ -328,6 +328,9 @@ class ArbolesGrafosView {
 
         el.addVertexBtn.addEventListener('click', () => this._handleAddVertex());
         el.inputVertex.addEventListener('keypress', e => { if (e.key === 'Enter') this._handleAddVertex(); });
+        el.inputVertex.addEventListener('input', () => {
+            el.inputVertex.value = el.inputVertex.value.toLowerCase();
+        });
 
         el.addEdgeBtn.addEventListener('click', () => this._handleAddEdge());
 
@@ -550,16 +553,17 @@ class ArbolesGrafosView {
 
     // ─── Botones Principales ──────────────────────────────────────────────────
 
-    _onCreate() {
-        const g = this._getActiveGraph();
-        const label = this._getActiveGraphLabel();
-        if (!g.created || g.vertices.length === 0) {
-            Validation.showError(`${label} no tiene vértices.`);
-            return;
-        }
-        this._addLog(`${label} creado: ${g.vertices.length} vértice(s), ${g.edges.length} arista(s).`, 'success');
-        this._validateRequirements();
-        this._refreshActiveCanvas();
+    async _onCreate() {
+        const confirmed = await Validation.confirm('Se limpiarán completamente G1, G2 y todos los resultados. ¿Continuar?');
+        if (!confirmed) return;
+        
+        this.g1.reset();
+        this.g2.reset();
+        this._invalidateResult();
+        
+        this._syncUI();
+        this._drawAll();
+        this._addLog('Todos los grafos y resultados han sido limpiados.', 'info');
     }
 
     async _onClearGraph() {
@@ -1569,9 +1573,29 @@ class ArbolesGrafosView {
             if (!p1 || !p2) continue;
             const key = [e.from, e.to].sort().join('-');
             edgeDrawn[key] = (edgeDrawn[key] || 0) + 1;
-            const curveDir = edgeDrawn[key] % 2 === 0 ? 1 : -1;
+
+            let curvature = 0;
+            const total = edgeCounts[key];
+            if (total > 1) {
+                const idx = edgeDrawn[key] - 1;
+                if (total % 2 === 1) {
+                    if (idx === 0) curvature = 0;
+                    else {
+                        const mag = Math.floor((idx + 1) / 2);
+                        curvature = idx % 2 === 1 ? mag : -mag;
+                    }
+                } else {
+                    const mag = Math.floor(idx / 2) + 0.5;
+                    curvature = idx % 2 === 0 ? mag : -mag;
+                }
+
+                if (e.from > e.to) {
+                    curvature = -curvature;
+                }
+            }
+
             const hlColor = hlEdges[key] || null;
-            this._drawEdge(ctx, e, p1, p2, false, r, e.from === e.to, edgeCounts[key] > 1 ? curveDir : 0, hlColor);
+            this._drawEdge(ctx, e, p1, p2, false, r, e.from === e.to, curvature, hlColor);
         }
 
         // 2. Vértices

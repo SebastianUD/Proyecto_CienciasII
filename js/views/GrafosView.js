@@ -98,7 +98,7 @@ class GrafosView {
                             <div class="grafos-field-col">
                                 <label>Vértices</label>
                                 <div class="grafos-vertex-input-row">
-                                    <input type="text" id="grafos-input-vertex" placeholder="Ej: A, B, C... Enter para añadir">
+                                    <input type="text" id="grafos-input-vertex" placeholder="Ej: a, b, c... Enter para añadir">
                                     <button class="btn btn-primary" id="grafos-add-vertex-btn" style="min-width: 40px; justify-content: center;">+</button>
                                 </div>
                                 <div class="grafos-vertex-chips" id="grafos-vertex-list">
@@ -122,8 +122,8 @@ class GrafosView {
 
                             <!-- Botones -->
                             <div class="grafos-btn-row">
-                                <button class="btn btn-primary" id="grafos-btn-create" title="Sincronizar modelo actual con UI">CREAR</button>
-                                <button class="btn btn-secondary" id="grafos-btn-clear-graph">LIMPIAR</button>
+                                <button class="btn btn-primary" id="grafos-btn-create" title="Limpiar todos los grafos y resultados" style="background-color: #d32f2f; color: white; border: none;">LIMPIAR TODO</button>
+                                <button class="btn btn-secondary" id="grafos-btn-clear-graph">LIMPIAR GRAFO</button>
                             </div>
 
                         </div>
@@ -159,6 +159,7 @@ class GrafosView {
                                 <select id="grafos-op-unary-select">
                                     <option value="mergeVertices">Fusión de vértices</option>
                                     <option value="contractEdge">Contracción de arista</option>
+                                    <option value="complement">Complemento</option>
                                 </select>
                                 
                                 <div id="grafos-op-unary-params" style="margin-top: 8px;">
@@ -300,6 +301,9 @@ class GrafosView {
         el.addVertexBtn.addEventListener('click', () => this._handleAddVertex());
         el.inputVertex.addEventListener('keypress', (e) => {
             if (e.key === 'Enter') this._handleAddVertex();
+        });
+        el.inputVertex.addEventListener('input', () => {
+            el.inputVertex.value = el.inputVertex.value.toLowerCase();
         });
 
         // Manejo de Aristas
@@ -535,6 +539,11 @@ class GrafosView {
                 sel.add(new Option(`${e.id}) ${e.from}-${e.to}`, e.id));
             });
             container.appendChild(sel);
+        } else if (action === 'complement') {
+            const help = document.createElement('div');
+            help.style.fontSize = '0.75rem'; help.style.color = '#555'; help.style.marginBottom = '5px';
+            help.textContent = 'Se generará el complemento del grafo actual, conectando los vértices que no tenían arista entre sí.';
+            container.appendChild(help);
         }
     }
 
@@ -636,37 +645,24 @@ class GrafosView {
     // ─── Botones Principales ──────────────────────────────────────────────────
 
     /**
-     * Ejecuta la creación del grafo completo e informa del estado actual en el log.
-     * Se activa al pulsar el botón "CREAR".
-     * Muestra el estado formal (tabla) en el panel derecho.
+     * Limpia todos los grafos y resultados (Botón LIMPIAR TODO).
      * @private
      */
-    _onCreate() {
-        const g = this._getActiveGraph();
-        const label = this._getActiveGraphLabel();
-        if (!g.created || g.vertices.length === 0) {
-            Validation.showError(`El grafo ${label} no tiene vértices.`);
-            return;
-        }
-
-        // Mostrar resumen en el panel de operaciones de la derecha
-        this.el.opContent.innerHTML = '';
+    async _onCreate() {
+        const confirmed = await Validation.confirm('Se limpiarán completamente G1, G2 y todos los resultados. ¿Continuar?');
+        if (!confirmed) return;
+        
+        this.g1.reset();
+        this.g2.reset();
+        this._invalidateResult();
+        this._lastBinaryOp = null;
+        
+        this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute una operación para ver los pasos formales de G1 y G2 aquí.</div>';
         this.opLogMessages = [];
-        const tableHtml = GraphModel._singleGraphHtmlTable(g, `ESTADO ACTUAL DE ${label}`, label, label === 'G1' ? 'A1' : 'A2');
-
-        // Envolver en el estilo de las tarjetas de pasos
-        const wrapper = document.createElement('div');
-        wrapper.className = 'huffman-step-table';
-        wrapper.style.marginBottom = '12px';
-        wrapper.innerHTML = `
-            <div class="section-title" style="font-size: 0.8rem; background: var(--bg-main); border-bottom: 1px solid var(--border-light); border-top-left-radius: 4px; border-top-right-radius: 4px;">Información de la Estructura</div>
-            <div style="padding: 10px;">${tableHtml}</div>
-        `;
-
-        this.el.opContent.appendChild(wrapper);
-
-        this._addUpdateLog(`${label} actualizado: ${g.vertices.length} vértice(s), ${g.edges.length} arista(s).`, 'success');
-        this._refreshActiveCanvas();
+        
+        this._syncUI();
+        this._drawAll();
+        this._addUpdateLog('Todos los grafos y resultados han sido limpiados.', 'info');
     }
 
     async _onClearGraph() {
@@ -788,23 +784,25 @@ class GrafosView {
                     const v1 = document.getElementById('unary-param-v1').value;
                     const v2 = document.getElementById('unary-param-v2').value;
                     if (!v1 || !v2) { Validation.showError('Debe seleccionar V1 y V2.'); return; }
-                    res = g.mergeVertices(v1, v2);
-                    if (res.success) {
-                        this._addUpdateLog(`Fusión completada en ${this._getActiveGraphLabel()}.`, 'success');
-                    }
+                    res = g.mergeVerticesOp(v1, v2);
                 } else if (action === 'contractEdge') {
                     const edgeId = document.getElementById('unary-param-edge').value;
                     if (!edgeId) { Validation.showError('Debe seleccionar una arista.'); return; }
-                    res = g.contractEdge(edgeId);
-                    if (res.success) {
-                        this._addUpdateLog(`Contracción completada en ${this._getActiveGraphLabel()}.`, 'success');
-                    }
+                    res = g.contractEdgeOp(edgeId);
+                } else if (action === 'complement') {
+                    res = g.complementOp();
                 }
 
                 if (res && res.success) {
-                    this._syncUI();
-                    this._refreshActiveCanvas();
-                    this._autoUpdateResult();
+                    this.el.opContent.innerHTML = '';
+                    this.opLogMessages = [];
+                    this.gResult = res.graph;
+                    this.el.resultLabel.textContent = this.gResult.name || 'Resultado';
+                    this._renderStyledOpLogs(res.log);
+                    this._addUpdateLog(`Operación unaria completada con éxito.`, 'success');
+                    
+                    this._fitGraph(this.el.canvasResult, this.gResult, this._camR);
+                    this._drawGraph(this.el.canvasResult, this.gResult, this._camR);
                 } else if (res) {
                     Validation.showError(res.error);
                 }
@@ -1181,9 +1179,28 @@ class GrafosView {
             const key = [e.from, e.to].sort().join('-');
             edgeDrawn[key] = (edgeDrawn[key] || 0) + 1;
             const isSelf = e.from === e.to;
-            const isMulti = edgeCounts[key] > 1;
-            const curveDir = edgeDrawn[key] % 2 === 0 ? 1 : -1;
-            this._drawEdge(ctx, e, p1, p2, graph.directed, r, isSelf, isMulti ? curveDir : 0);
+            
+            let curvature = 0;
+            const total = edgeCounts[key];
+            if (total > 1) {
+                const idx = edgeDrawn[key] - 1;
+                if (total % 2 === 1) {
+                    if (idx === 0) curvature = 0;
+                    else {
+                        const mag = Math.floor((idx + 1) / 2);
+                        curvature = idx % 2 === 1 ? mag : -mag;
+                    }
+                } else {
+                    const mag = Math.floor(idx / 2) + 0.5;
+                    curvature = idx % 2 === 0 ? mag : -mag;
+                }
+
+                if (e.from > e.to) {
+                    curvature = -curvature;
+                }
+            }
+
+            this._drawEdge(ctx, e, p1, p2, graph.directed, r, isSelf, curvature);
         }
 
         // 2. Dibujar Vértices (encima de las aristas)
@@ -1248,17 +1265,8 @@ class GrafosView {
             }
         }
 
-        // Draw Edge Label (ID)
-        const perp = curvature !== 0 ? curvature * 10 : 8;
-        const labelX = midX - uy * perp;
-        const labelY = midY + ux * perp;
-
-        let labelTxt = edge.id; // Ya no hay peso
-
-        ctx.font = 'bold 10px "Segoe UI", sans-serif';
-        ctx.fillStyle = '#1B3A6B'; // Azul oscuro para el ID
-        ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
-        ctx.fillText(labelTxt, labelX, labelY);
+        // Draw Edge Label (ID) - REMOVED PER USER REQUEST
+        // No deben mostrarse los nombres automáticamente en el canvas
     }
 
     /**

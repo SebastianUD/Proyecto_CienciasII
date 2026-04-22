@@ -89,17 +89,9 @@ class GraphModel {
                 return { success: false, error: `El vértice "${e.to}" en la arista "${e.from}-${e.to}" no existe.` };
         }
 
-        // Deduplicar aristas para evitar redundancia visual y lógica
-        const seenE = new Set();
-        const deduped = [];
-        for (const e of edges) {
-            const key = directed ? `${e.from}->${e.to}` : [e.from, e.to].sort().join('-');
-            if (!seenE.has(key)) { seenE.add(key); deduped.push(e); }
-        }
-
         this.vertices = [...vertices];
         this.edges = GraphModel.reindexEdgeIds(
-            deduped.map(e => ({ from: e.from, to: e.to, weight: e.weight ?? null }))
+            edges.map(e => ({ from: e.from, to: e.to, weight: e.weight ?? null }))
         );
         this.directed = directed;
         this.created = true;
@@ -123,7 +115,7 @@ class GraphModel {
      * @returns {{success: boolean, error?: string}}
      */
     addVertex(v) {
-        v = String(v).trim().toUpperCase();
+        v = String(v).trim().toLowerCase();
         if (!v) return { success: false, error: 'El nombre no puede estar vacío.' };
         if (this.vertices.includes(v)) return { success: false, error: `El vértice "${v}" ya existe.` };
         this.vertices.push(v);
@@ -183,11 +175,6 @@ class GraphModel {
     addEdge(from, to, weight = null) {
         if (!this.vertices.includes(from)) return { success: false, error: `El vértice "${from}" no existe.` };
         if (!this.vertices.includes(to)) return { success: false, error: `El vértice "${to}" no existe.` };
-        const key = this.directed ? `${from}->${to}` : [from, to].sort().join('-');
-        for (const e of this.edges) {
-            const k = this.directed ? `${e.from}->${e.to}` : [e.from, e.to].sort().join('-');
-            if (k === key) return { success: false, error: `La arista ${from}-${to} ya existe (ID: "${e.id}").` };
-        }
         const newId = GraphModel.edgeIdFromIndex(this.edges.length);
         this.edges.push({ id: newId, from, to, weight });
         return { success: true, edgeId: newId };
@@ -219,6 +206,118 @@ class GraphModel {
         return this.mergeVertices(from, to);
     }
 
+    /**
+     * Fusiona dos vértices originando G3, sin modificar el original.
+     */
+    mergeVerticesOp(v1, v2) {
+        if (!this.vertices.includes(v1)) return { success: false, error: `El vértice "${v1}" no existe.` };
+        if (!this.vertices.includes(v2)) return { success: false, error: `El vértice "${v2}" no existe.` };
+        if (v1 === v2) return { success: false, error: 'Los vértices deben ser distintos.' };
+
+        const newV = `(${v1},${v2})`;
+        const newVertices = this.vertices.filter(v => v !== v1 && v !== v2);
+        newVertices.push(newV);
+
+        let newEdges = this.edges.map(e => ({
+            ...e,
+            from: (e.from === v1 || e.from === v2) ? newV : e.from,
+            to: (e.to === v1 || e.to === v2) ? newV : e.to
+        })).filter(e => e.from !== e.to); // Remove loops that might form
+
+        const g3 = GraphModel._build(newVertices, newEdges, this.directed, 'G3');
+        const log = [
+            '--- Operación ---',
+            `Fusión de vértices: ${v1} y ${v2} -> ${newV}`,
+            '--- Grafo Original ---',
+            GraphModel._singleGraphHtmlTable(this, 'GRAFO ORIGINAL', 'S', 'A'),
+            '--- Resultado ---',
+            GraphModel._singleGraphHtmlTable(g3, 'GRAFO 3', 'S3', 'A3')
+        ];
+        return { success: true, graph: g3, log };
+    }
+
+    /**
+     * Contrae una arista originando G3, sin modificar el original.
+     */
+    contractEdgeOp(edgeId) {
+        const edge = this.edges.find(e => e.id === edgeId);
+        if (!edge) return { success: false, error: `La arista "${edgeId}" no existe.` };
+        
+        const { from, to } = edge;
+        const newV = `(${from},${to})`;
+        const newVertices = this.vertices.filter(v => v !== from && v !== to);
+        newVertices.push(newV);
+
+        let newEdges = [];
+        let skippedCount = 0;
+        for (const e of this.edges) {
+            // Drop exactly one instance of the contracted edge if multiple exist
+            let isTargetEdge = false;
+            // The edge could be matched by ID
+            if (e.id === edgeId && skippedCount === 0) {
+                skippedCount++;
+                isTargetEdge = true;
+            }
+            if (isTargetEdge) continue;
+
+            const nFrom = (e.from === from || e.from === to) ? newV : e.from;
+            const nTo = (e.to === from || e.to === to) ? newV : e.to;
+            if (nFrom !== nTo) {
+                newEdges.push({ ...e, from: nFrom, to: nTo });
+            }
+        }
+
+        const g3 = GraphModel._build(newVertices, newEdges, this.directed, 'G3');
+        const log = [
+            '--- Operación ---',
+            `Contracción de arista: ${from}-${to} -> ${newV}`,
+            '--- Grafo Original ---',
+            GraphModel._singleGraphHtmlTable(this, 'GRAFO ORIGINAL', 'S', 'A'),
+            '--- Resultado ---',
+            GraphModel._singleGraphHtmlTable(g3, 'GRAFO 3', 'S3', 'A3')
+        ];
+        return { success: true, graph: g3, log };
+    }
+
+    /**
+     * Complemento del grafo actual, originando G3.
+     */
+    complementOp() {
+        const newVertices = [...this.vertices];
+        const newEdges = [];
+        
+        if (this.directed) {
+            for (const u of this.vertices) {
+                for (const v of this.vertices) {
+                    if (u !== v && !this.hasEdge(u, v)) {
+                        newEdges.push({ from: u, to: v, weight: null });
+                    }
+                }
+            }
+        } else {
+            for (let i = 0; i < this.vertices.length; i++) {
+                for (let j = i + 1; j < this.vertices.length; j++) {
+                    const u = this.vertices[i];
+                    const v = this.vertices[j];
+                    if (!this.hasEdge(u, v)) {
+                        newEdges.push({ from: u, to: v, weight: null });
+                    }
+                }
+            }
+        }
+
+        const g3 = GraphModel._build(newVertices, newEdges, this.directed, 'G3');
+        const log = [
+            '--- Operación ---',
+            `Complemento del grafo`,
+            '--- Grafo Original ---',
+            GraphModel._singleGraphHtmlTable(this, 'GRAFO ORIGINAL', 'S', 'A'),
+            '--- Resultado ---',
+            GraphModel._singleGraphHtmlTable(g3, 'GRAFO 3 (COMPLEMENTO)', 'S3', 'A3')
+        ];
+        return { success: true, graph: g3, log };
+    }
+
     // ─── Parse ────────────────────────────────────────────────────────────────
 
     /**
@@ -227,7 +326,7 @@ class GraphModel {
      * @returns {string[]} - Lista de nombres de vértices normalizados (mayúsculas).
      */
     static parseVertices(raw) {
-        return raw.split(/[\s,;]+/).map(s => s.trim().toUpperCase()).filter(s => s.length > 0);
+        return raw.split(/[\s,;]+/).map(s => s.trim().toLowerCase()).filter(s => s.length > 0);
     }
 
     /**
@@ -241,8 +340,8 @@ class GraphModel {
         const edges = [], errors = [];
         for (const token of tokens) {
             const m = token.match(/^([A-Za-z0-9]+)\s*[-–→]\s*([A-Za-z0-9]+)(?:\s*:\s*(-?[\d.]+))?$/);
-            if (!m) { errors.push(`Formato inválido: "${token}" (use A-B o A-B:5)`); continue; }
-            edges.push({ from: m[1].toUpperCase(), to: m[2].toUpperCase(), weight: m[3] !== undefined ? parseFloat(m[3]) : null });
+            if (!m) { errors.push(`Formato inválido: "${token}" (use a-b o a-b:5)`); continue; }
+            edges.push({ from: m[1].toLowerCase(), to: m[2].toLowerCase(), weight: m[3] !== undefined ? parseFloat(m[3]) : null });
         }
         return { edges, errors };
     }
@@ -268,7 +367,9 @@ class GraphModel {
         const startX = cx - ((cols - 1) * spacing) / 2;
         const startY = cy - ((rows - 1) * spacing) / 2;
 
-        this.vertices.forEach((v, i) => {
+        const sortedVertices = [...this.vertices].sort();
+
+        sortedVertices.forEach((v, i) => {
             if (this.manualPositions[v]) {
                 positions[v] = { ...this.manualPositions[v], label: v };
             } else {
@@ -345,11 +446,11 @@ class GraphModel {
      * @param {Object} data - Datos cargados.
      */
     fromJSON(data) {
-        this.vertices = data.vertices || [];
+        this.vertices = (data.vertices || []).map(v => String(v).toLowerCase());
         this.edges = (data.edges || []).map((e, i) => ({
             id: e.id || GraphModel.edgeIdFromIndex(i),
-            from: e.from,
-            to: e.to,
+            from: String(e.from).toLowerCase(),
+            to: String(e.to).toLowerCase(),
             weight: e.weight !== undefined ? e.weight : null
         }));
         this.directed = data.directed || false;
@@ -386,13 +487,20 @@ class GraphModel {
         return result;
     }
 
-    /**
-     * Genera una tabla HTML para un solo grafo.
-     */
     static _singleGraphHtmlTable(g, title, sLabel, aLabel) {
         const vStr = g.vertices.join(', ');
-        const eStr = g.edges.map(e => e.id).join(', ');
-        return `<div style="flex: 1; border: 1px solid var(--border-light); border-radius: 4px; overflow: hidden;"><table class="data-table huffman-ct-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0;"><thead style="background:#2B579A; color:white;"><tr><th colspan="2" style="padding:6px; border-bottom:1px solid var(--border-light); font-weight:600;">${title}</th></tr></thead><tbody style="background:transparent;"><tr><td style="font-weight:bold; padding:6px 10px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); width:45%;">Vértices (${sLabel})</td><td style="padding:6px 10px; border-bottom:1px solid var(--border-light);">{${vStr || '∅'}}</td></tr><tr><td style="font-weight:bold; padding:6px 10px; border-right:1px solid var(--border-light);">Aristas (${aLabel})</td><td style="padding:6px 10px;">{${eStr || '∅'}}</td></tr></tbody></table></div>`;
+        
+        const formattedEdges = [];
+        const counts = {};
+        for (const e of g.edges) {
+            const base = g.directed ? `${e.from}→${e.to}` : [e.from, e.to].sort().join('–');
+            const c = counts[base] || 0;
+            counts[base] = c + 1;
+            formattedEdges.push(base + "'".repeat(c));
+        }
+        const eStr = formattedEdges.join(', ');
+        
+        return `<div style="flex: 1; border: 1px solid var(--border-light); border-radius: 4px; overflow: hidden;"><table class="data-table huffman-ct-table" style="width: 100%; border-collapse: collapse; margin: 0; padding: 0;"><thead style="background:#2B579A; color:white;"><tr><th colspan="2" style="padding:6px; border-bottom:1px solid var(--border-light); font-weight:600;">${title}</th></tr></thead><tbody style="background:transparent;"><tr><td style="font-weight:bold; padding:6px 10px; border-bottom:1px solid var(--border-light); border-right:1px solid var(--border-light); width:35%;">Vértices (${sLabel})<br><small style="color:#666; font-weight:normal;">|${sLabel}| = ${g.vertices.length}</small></td><td style="padding:6px 10px; border-bottom:1px solid var(--border-light);">{${vStr || '∅'}}</td></tr><tr><td style="font-weight:bold; padding:6px 10px; border-right:1px solid var(--border-light);">Aristas (${aLabel})<br><small style="color:#666; font-weight:normal;">|${aLabel}| = ${g.edges.length}</small></td><td style="padding:6px 10px;">{${eStr || '∅'}}</td></tr></tbody></table></div>`;
     }
 
     /**
@@ -478,10 +586,6 @@ class GraphModel {
         return { graph: result, log };
     }
 
-    /**
-     * Suma (Unión completa): G1 + G2.
-     * G1 ∪ G2 más aristas entre todo vertice de G1 y todo vertice de G2.
-     */
     static sum(g1, g2) {
         const log = [];
         log.push('--- Operación ---');
@@ -491,15 +595,32 @@ class GraphModel {
         log.push('--- Suma ---');
 
         const directed = g1.directed || g2.directed;
-        const vertices = Array.from(new Set([...g1.vertices, ...g2.vertices]));
-        const raw = [...g1.edges, ...g2.edges];
+
+        const vertices2 = [];
+        const map2 = {};
+        for (const v of g2.vertices) {
+            let newV = v;
+            while(g1.vertices.includes(newV) || vertices2.includes(newV)) {
+                newV += "'";
+            }
+            vertices2.push(newV);
+            map2[v] = newV;
+        }
+
+        const vertices = [...g1.vertices, ...vertices2];
+        const raw = [...g1.edges];
+        
+        for (const e of g2.edges) {
+            raw.push({ from: map2[e.from], to: map2[e.to], weight: e.weight });
+        }
+
         for (const v1 of g1.vertices) {
-            for (const v2 of g2.vertices) {
-                if (v1 !== v2) raw.push({ from: v1, to: v2, weight: null });
+            for (const v2 of vertices2) {
+                raw.push({ from: v1, to: v2, weight: null });
             }
         }
 
-        const result = GraphModel._build(vertices, GraphModel._dedupEdges(raw, directed), directed, 'G3');
+        const result = GraphModel._build(vertices, raw, directed, 'G3');
 
         log.push(GraphModel._singleGraphHtmlTable(result, 'GRAFO 3', 'S3', 'A3'));
         return { graph: result, log };
