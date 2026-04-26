@@ -3332,3 +3332,15 @@ body {
     color: white;
     border-color: transparent;
 }
+
+/* Alias para canvas resultado 2 en GrafosView unificado */
+#grafos-wrap-result2 {
+    border: 2px solid #fdc3b2;
+    box-shadow: 0 2px 10px rgba(255, 112, 67, 0.1);
+}
+
+#grafos-wrap-result2 .grafos-canvas-label {
+    background: linear-gradient(135deg, rgba(255, 112, 67, 0.9), rgba(255, 87, 34, 0.9));
+    color: white;
+    border-color: transparent;
+}

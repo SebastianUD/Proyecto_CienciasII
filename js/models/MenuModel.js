@@ -84,7 +84,6 @@ const MenuModel = {
                 label: 'Grafos',
                 children: [
                     { id: 'grafos-operaciones', label: 'Operaciones entre Grafos', action: 'grafos-operaciones', enabled: true },
-                    { id: 'arboles-grafos', label: 'Árboles como Grafos', action: 'arboles-grafos', enabled: true },
                     {
                         id: 'algoritmos',
                         label: 'Algoritmos',

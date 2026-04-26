@@ -51,7 +51,6 @@
         'ext-dinamica-parciales': ExtDinamicaParcialesView,
         'ext-indices': IndicesView,
         'grafos-operaciones': GrafosView,
-        'arboles-grafos':      ArbolesGrafosView,
         'algoritmos':          AlgorithmGraphView
     };
 
