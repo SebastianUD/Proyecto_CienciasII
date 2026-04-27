@@ -111,6 +111,7 @@ class GrafosView {
                                     <option value="unary">Modificar grafo activo</option>
                                     <option value="tree">Árboles como Grafos</option>
                                     <option value="matrix">Cálculo de Matrices</option>
+                                    <option value="coloring">Colorear Grafo</option>
                                 </select>
                             </div>
                             <div class="grafos-field-col" id="grafos-op-binary-col">
@@ -161,6 +162,14 @@ class GrafosView {
                                         <option value="g3">G3</option>
                                     </select>
                                 </div>
+                            </div>
+                            <div class="grafos-field-col hidden" id="grafos-op-coloring-col">
+                                <label for="grafos-op-coloring-source">Grafo a colorear</label>
+                                <select id="grafos-op-coloring-source">
+                                    <option value="g1">Grafo 1 (G1)</option>
+                                    <option value="g2">Grafo 2 (G2)</option>
+                                    <option value="g3">Grafo 3 (Resultado)</option>
+                                </select>
                             </div>
                             <button class="btn btn-primary grafos-btn-full" id="grafos-btn-execute" style="margin-bottom:8px;">▶ CALCULAR</button>
                         </div>
@@ -323,8 +332,13 @@ class GrafosView {
             edgeArrow: document.getElementById('grafos-edge-arrow'),
             opMatrixRow: document.getElementById('grafos-op-matrix-row'),
             opMatrixSelect: document.getElementById('grafos-op-matrix-select'),
-            opMatrixSource: document.getElementById('grafos-op-matrix-source')
+            opMatrixSource: document.getElementById('grafos-op-matrix-source'),
+            opColoringCol: document.getElementById('grafos-op-coloring-col'),
+            opColoringSource: document.getElementById('grafos-op-coloring-source')
         };
+        this._coloringVertexColors = {};
+        this._coloringEdgeColors = {};
+        this._coloringSource = null;
     }
 
     _bindEvents() {
@@ -372,6 +386,7 @@ class GrafosView {
         this._bindCanvasPanZoom(el.canvasG2, () => this._getDistDisplayG2(), this._cam2, () => this._dragModeG2, () => this._redrawG2());
         this._bindCanvasPanZoom(el.canvasResult, () => this.gResult, this._camR, () => this._dragModeR, () => this._drawResultCanvas());
         this._bindCanvasPanZoom(el.canvasResult2, () => this.gResult2, this._camR2, () => this._dragModeR2, () => this._drawGraph(el.canvasResult2, this.gResult2, this._camR2, this._result2HighlightVertices, this._result2HighlightEdges));
+
 
         this._ro = new ResizeObserver(() => { this._resizeAllCanvas(); this._drawAll(); });
         [el.canvasG1, el.canvasG2, el.canvasResult, el.canvasResult2].forEach(c => this._ro.observe(c.parentElement));
@@ -470,11 +485,14 @@ class GrafosView {
         this.el.opUnaryCol.classList.toggle('hidden', type !== 'unary');
         this.el.opTreeCol.classList.toggle('hidden', type !== 'tree');
         this.el.opMatrixRow.classList.toggle('hidden', type !== 'matrix');
+        this.el.opColoringCol.classList.toggle('hidden', type !== 'coloring');
         if (type === 'unary') this._updateOpUnaryParamsUI();
         if (this.el.rightPanelTitle) {
-            this.el.rightPanelTitle.textContent = type === 'tree'
-                ? 'Descripción de los Grafos'
-                : 'Operaciones de la Estructura';
+            if (type === 'tree' || type === 'coloring') {
+                this.el.rightPanelTitle.textContent = 'Descripción del Grafo';
+            } else {
+                this.el.rightPanelTitle.textContent = 'Operaciones de la Estructura';
+            }
         }
     }
 
@@ -492,13 +510,13 @@ class GrafosView {
         const opTypeSelect = this.el.opTypeSelect;
         const options = opTypeSelect.querySelectorAll('option');
         options.forEach(opt => {
-            if (directed && opt.value !== 'matrix') {
+            if (directed && opt.value !== 'matrix' && opt.value !== 'coloring') {
                 opt.hidden = true;
             } else {
                 opt.hidden = false;
             }
         });
-        if (directed) opTypeSelect.value = 'matrix';
+        if (directed && opTypeSelect.value !== 'coloring') opTypeSelect.value = 'matrix';
         this._updateOpUI();
         this._drawAll();
     }
@@ -654,9 +672,12 @@ class GrafosView {
 
     _onExecute(isAuto = false) {
         const type = this.el.opTypeSelect.value;
-        if (type === 'tree') { if (!isAuto) this._onExecuteTree(); return; }
-        if (type === 'matrix') { if (!isAuto) this._onExecuteMatrix(); return; }
+        if (type === 'tree') { if (!isAuto) { this._clearColoringState(); this._onExecuteTree(); } return; }
+        if (type === 'matrix') { if (!isAuto) { this._clearColoringState(); this._onExecuteMatrix(); } return; }
+        if (type === 'coloring') { if (!isAuto) this._onExecuteColoring(); return; }
 
+        // Non-coloring operation: clear any active coloring
+        this._clearColoringState();
         if (type === 'binary') {
             if (!this.g1.created || this.g1.vertices.length === 0) { if (!isAuto) Validation.showError('G1 no está definido o está vacío.'); return; }
             if (!this.g2.created || this.g2.vertices.length === 0) { if (!isAuto) Validation.showError('G2 no está definido o está vacío.'); return; }
@@ -785,6 +806,16 @@ class GrafosView {
         }
     }
 
+    _clearColoringState() {
+        if (this._coloringSource) {
+            this._coloringVertexColors = {};
+            this._coloringEdgeColors = {};
+            this._coloringSource = null;
+            this._redrawG1();
+            this._redrawG2();
+        }
+    }
+
     _invalidateResult() {
 
         this.gResult = null;
@@ -792,6 +823,7 @@ class GrafosView {
         this._centerSteps = []; this._centerStepIdx = 0;
         this._resultHighlightVertices = {}; this._resultHighlightEdges = {};
         this._result2HighlightVertices = {}; this._result2HighlightEdges = {};
+        this._coloringVertexColors = {}; this._coloringEdgeColors = {}; this._coloringSource = null;
         this._distModeActive = false;
         this._distStepsG1 = []; this._distStepIdxG1 = 0;
         this._distStepsG2 = []; this._distStepIdxG2 = 0;
@@ -1085,6 +1117,141 @@ class GrafosView {
         ]);
     }
 
+    _onExecuteColoring() {
+        const src = this.el.opColoringSource.value;
+        let graph;
+        let graphLabel;
+        if (src === 'g1') { graph = this.g1; graphLabel = 'Grafo 1 (G1)'; }
+        else if (src === 'g2') { graph = this.g2; graphLabel = 'Grafo 2 (G2)'; }
+        else { graph = this.gResult; graphLabel = 'Grafo 3 (Resultado)'; }
+
+        if (!graph || !graph.created || graph.vertices.length === 0) {
+            Validation.showError('El grafo seleccionado está vacío o no ha sido definido.');
+            return;
+        }
+
+        try {
+            const result = GraphColoringModel.computeAll(graph);
+            this._addUpdateLog(`✔ Coloreado de ${graphLabel} calculado. χ(G)=${result.chi}, χ'(G)=${result.chiPrime}`, 'success');
+
+            // Build vertex highlight colors for canvas
+            const hlVertices = {};
+            for (const [v, cIdx] of Object.entries(result.coloring)) {
+                hlVertices[v] = GraphColoringModel.getColor(cIdx);
+            }
+
+            // Build edge highlight colors for canvas (use edge ID key for parallel edges)
+            const hlEdges = {};
+            for (const e of graph.edges) {
+                const cIdx = result.edgeColoring[e.id];
+                if (cIdx !== undefined) {
+                    hlEdges[`eid:${e.id}`] = GraphColoringModel.getColor(cIdx);
+                }
+            }
+
+            // Store coloring state and draw on appropriate canvas
+            this._coloringVertexColors = hlVertices;
+            this._coloringEdgeColors = hlEdges;
+            this._coloringSource = src;
+            if (src === 'g1') {
+                this._drawGraph(this.el.canvasG1, this.g1, this._cam1, hlVertices, hlEdges);
+            } else if (src === 'g2') {
+                this._drawGraph(this.el.canvasG2, this.g2, this._cam2, hlVertices, hlEdges);
+            } else if (this.gResult) {
+                this._resultHighlightVertices = hlVertices;
+                this._resultHighlightEdges = hlEdges;
+                this._drawResultCanvas();
+            }
+
+            // Render description
+            this._renderColoringDescription(graph, graphLabel, result);
+        } catch (err) {
+            Validation.showError('Error al calcular coloreado: ' + err.message);
+            console.error(err);
+        }
+    }
+
+    _renderColoringDescription(graph, graphLabel, result) {
+        const sections = [];
+
+        // 1. Graph info
+        sections.push({
+            title: `Grafo Seleccionado — ${graphLabel}`,
+            items: [{ graph: graph, label: graphLabel.replace(/\s*\(.*\)/, ''), isTree: false }]
+        });
+
+        // 2. Chromatic Number
+        let chiHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        chiHTML += `<strong style="font-size:0.95rem;">Número Cromático χ(G) = <span style="font-size:1.1rem;">${result.chi}</span></strong><br><br>`;
+        chiHTML += `<strong>Asignación de colores a vértices:</strong><br>`;
+        for (const [v, cIdx] of Object.entries(result.coloring)) {
+            const color = GraphColoringModel.getColor(cIdx);
+            const name = GraphColoringModel.getColorName(cIdx);
+            chiHTML += `<div style="display:flex;align-items:center;gap:6px;margin:3px 0;">`;
+            chiHTML += `<span style="width:12px;height:12px;border-radius:50%;background:${color};display:inline-block;border:1px solid rgba(0,0,0,0.2);"></span>`;
+            chiHTML += `${v} → ${name}`;
+            chiHTML += `</div>`;
+        }
+        chiHTML += `</div>`;
+        sections.push({ title: 'Número Cromático χ(G)', html: chiHTML });
+
+        // 3. Chromatic Index
+        let chiPrimeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        chiPrimeHTML += `<strong style="font-size:0.95rem;">Índice Cromático χ'(G) = <span style="font-size:1.1rem;">${result.chiPrime}</span></strong><br><br>`;
+        if (graph.edges.length > 0) {
+            chiPrimeHTML += `<strong>Asignación de colores a aristas:</strong><br>`;
+            for (const e of graph.edges) {
+                const cIdx = result.edgeColoring[e.id];
+                if (cIdx !== undefined) {
+                    const color = GraphColoringModel.getColor(cIdx);
+                    const name = GraphColoringModel.getColorName(cIdx);
+                    chiPrimeHTML += `<div style="display:flex;align-items:center;gap:6px;margin:3px 0;">`;
+                    chiPrimeHTML += `<span style="width:12px;height:12px;border-radius:50%;background:${color};display:inline-block;border:1px solid rgba(0,0,0,0.2);"></span>`;
+                    chiPrimeHTML += `${e.from}–${e.to} → ${name}`;
+                    chiPrimeHTML += `</div>`;
+                }
+            }
+        }
+        chiPrimeHTML += `</div>`;
+        sections.push({ title: "Índice Cromático χ'(G)", html: chiPrimeHTML });
+
+        // 4. Chromatic Polynomial
+        const poly = result.polynomial;
+        const graphTypeName = GraphColoringModel.getGraphTypeName(poly.type);
+        let polyHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        polyHTML += `<div style="font-size:0.85rem;margin-bottom:4px;color:var(--text-secondary);">Tipo: <strong>${graphTypeName}</strong></div>`;
+        polyHTML += `<div>λ = χ(G) = ${result.chi}</div>`;
+        polyHTML += `<div style="margin-bottom:6px;">n = ${poly.n}</div>`;
+        polyHTML += `<div style="font-size:0.9rem;margin:4px 0;">${poly.formula}</div>`;
+        polyHTML += `<div style="font-size:0.95rem;margin-top:8px;"><strong>${poly.evaluated}</strong></div>`;
+        polyHTML += `</div>`;
+        sections.push({ title: 'POLINOMIO CROMÁTICO', html: polyHTML });
+
+        // 5. Chromatic Partitioning (Now containing Chromatic Class and Independent Sets)
+        let partHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        
+        // Chromatic Class (using chi instead of chiPrime/delta)
+        partHTML += `<strong style="font-size:0.9rem;">Clase Cromática:</strong> χ(G) = ${result.chi}<br><br>`;
+        
+        // Fundamental Independent Sets
+        partHTML += `<strong style="font-size:0.9rem;">Conjuntos Independientes Fundamentales:</strong><br>`;
+        if (result.independentSets.length === 0) {
+            partHTML += `<em>No se encontraron conjuntos independientes.</em>`;
+        } else {
+            for (let i = 0; i < result.independentSets.length; i++) {
+                const s = result.independentSets[i];
+                partHTML += `<div style="margin:4px 0;display:flex;align-items:center;gap:6px;">`;
+                partHTML += `<span style="width:14px;height:14px;border-radius:3px;background:${s.color};display:inline-block;border:1px solid rgba(0,0,0,0.15);"></span>`;
+                partHTML += `Cind<sub>${i + 1}</sub>(${s.colorName}): {${s.vertices.join(', ')}}`;
+                partHTML += `</div>`;
+            }
+        }
+        partHTML += `</div>`;
+        sections.push({ title: 'Particionamiento Cromático', html: partHTML });
+
+        this._renderDescription(sections);
+    }
+
     _renderDescription(sections) {
         this.el.opContent.innerHTML = '';
         for (const section of sections) {
@@ -1097,17 +1264,17 @@ class GrafosView {
                 for (const item of section.items) {
                     const g = item.graph; const lbl = item.label || 'G'; const isTree = item.isTree || false;
                     const vStr = g.vertices.join(', ');
-                    const edgeStrs = g.edges.map(e => { const w = (e.weight !== null && e.weight !== undefined) ? e.weight : 1; return `${e.from}${e.to}:${w}`; });
+                    const edgeStrs = g.edges.map(e => { const w = (e.weight !== null && e.weight !== undefined) ? e.weight : 1; return `${e.from}–${e.to}:${w}`; });
                     const aStr = edgeStrs.join(', ');
                     const totalW = g.edges.reduce((s, e) => s + ((e.weight !== null && e.weight !== undefined) ? e.weight : 1), 0);
-                    const dL = isTree ? `δ<sub>${lbl}</sub>` : 'δ';
+                    const dL = isTree ? `S<sub>${lbl}</sub>` : 'S';
                     const aL = isTree ? `A<sub>${lbl}</sub>` : 'A';
                     const gDef = isTree ? `T<sub>${lbl}</sub>` : lbl;
-                    html += `<div style="margin-bottom:10px;padding:8px;background:rgba(43,87,154,0.04);border-radius:4px;border-left:3px solid var(--accent-primary);">`;
+                    html += `<div style="margin-bottom:10px;padding:8px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
                     html += `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;">`;
                     html += `<strong>${g.name || gDef} = (${dL}, ${aL})</strong><br>`;
                     html += `${dL} = {${vStr || '∅'}}<br>${aL} = {${aStr || '∅'}}`;
-                    if (g.edges.length > 0) html += `<br><span style="color:var(--accent-primary);font-weight:600;">Peso: ${totalW} &nbsp;|&nbsp; Long: ${g.edges.length}</span>`;
+                    if (g.edges.length > 0) html += `<br><span style="color:var(--accent-primary);font-weight:600;">Peso: ${totalW}</span>`;
                     html += `</div></div>`;
                 }
             }
@@ -1140,13 +1307,21 @@ class GrafosView {
         if (this._distModeActive && this._distStepsG1.length > 0) {
             const s = this._distStepsG1[this._distStepIdxG1];
             this._drawGraph(this.el.canvasG1, s.graph, this._cam1, s.hlVertices || {}, s.hlEdges || {});
-        } else this._drawGraph(this.el.canvasG1, this.g1, this._cam1);
+        } else {
+            const hlV = this._coloringSource === 'g1' ? this._coloringVertexColors : {};
+            const hlE = this._coloringSource === 'g1' ? this._coloringEdgeColors : {};
+            this._drawGraph(this.el.canvasG1, this.g1, this._cam1, hlV, hlE);
+        }
     }
     _redrawG2() {
         if (this._distModeActive && this._distStepsG2.length > 0) {
             const s = this._distStepsG2[this._distStepIdxG2];
             this._drawGraph(this.el.canvasG2, s.graph, this._cam2, s.hlVertices || {}, s.hlEdges || {});
-        } else this._drawGraph(this.el.canvasG2, this.g2, this._cam2);
+        } else {
+            const hlV = this._coloringSource === 'g2' ? this._coloringVertexColors : {};
+            const hlE = this._coloringSource === 'g2' ? this._coloringEdgeColors : {};
+            this._drawGraph(this.el.canvasG2, this.g2, this._cam2, hlV, hlE);
+        }
     }
     _drawResultCanvas() {
         this._drawGraph(this.el.canvasResult, this.gResult, this._camR, this._resultHighlightVertices, this._resultHighlightEdges);
@@ -1340,7 +1515,7 @@ class GrafosView {
                 else { const mag = Math.floor(idx / 2) + 0.5; curvature = idx % 2 === 0 ? mag : -mag; }
                 if (e.from > e.to) curvature = -curvature;
             }
-            this._drawEdge(ctx, e, p1, p2, graph.directed, r, e.from === e.to, curvature, hlEdges[key] || null);
+            this._drawEdge(ctx, e, p1, p2, graph.directed, r, e.from === e.to, curvature, hlEdges[`eid:${e.id}`] || hlEdges[key] || null);
         }
         for (const v of graph.vertices) {
             const p = positions[v]; if (!p) continue;
@@ -1421,12 +1596,27 @@ class GrafosView {
     }
 
     _isLightColor(hex) {
-        try { const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16); return (r * 0.299 + g * 0.587 + b * 0.114) > 155; }
+        try {
+            if (hex.startsWith('hsl')) {
+                const m = hex.match(/hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)/);
+                return m ? parseFloat(m[3]) > 55 : true;
+            }
+            const r = parseInt(hex.slice(1, 3), 16), g = parseInt(hex.slice(3, 5), 16), b = parseInt(hex.slice(5, 7), 16);
+            return (r * 0.299 + g * 0.587 + b * 0.114) > 155;
+        }
         catch { return true; }
     }
 
     _darkenColor(hex) {
-        try { const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - 40), g = Math.max(0, parseInt(hex.slice(3, 5), 16) - 40), b = Math.max(0, parseInt(hex.slice(5, 7), 16) - 40); return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`; }
+        try {
+            if (hex.startsWith('hsl')) {
+                const m = hex.match(/hsl\(\s*([\d.]+)\s*,\s*([\d.]+)%\s*,\s*([\d.]+)%\s*\)/);
+                if (m) return `hsl(${m[1]}, ${m[2]}%, ${Math.max(0, parseFloat(m[3]) - 15)}%)`;
+                return '#1B3A6B';
+            }
+            const r = Math.max(0, parseInt(hex.slice(1, 3), 16) - 40), g = Math.max(0, parseInt(hex.slice(3, 5), 16) - 40), b = Math.max(0, parseInt(hex.slice(5, 7), 16) - 40);
+            return `#${r.toString(16).padStart(2, '0')}${g.toString(16).padStart(2, '0')}${b.toString(16).padStart(2, '0')}`;
+        }
         catch { return '#1B3A6B'; }
     }
 }
