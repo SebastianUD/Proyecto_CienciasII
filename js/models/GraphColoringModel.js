@@ -349,6 +349,57 @@ class GraphColoringModel {
         return sets;
     }
 
+    /**
+     * Find all maximal independent sets using Bron-Kerbosch algorithm.
+     * An independent set is maximal if it's not a subset of any other independent set.
+     */
+    static findAllMaximalIndependentSets(graph) {
+        const vertices = graph.vertices;
+        const adj = this._buildAdj(graph);
+        const maximalSets = [];
+
+        function bronKerbosch(r, p, x) {
+            if (p.size === 0 && x.size === 0) {
+                maximalSets.push([...r]);
+                return;
+            }
+
+            const pArray = [...p];
+            for (const v of pArray) {
+                const neighbors = adj[v];
+                
+                // New P: P \ {v} \ neighbors(v)
+                const nextP = new Set();
+                for (const node of p) {
+                    if (node !== v && !neighbors.has(node)) nextP.add(node);
+                }
+
+                // New X: X \ neighbors(v)
+                const nextX = new Set();
+                for (const node of x) {
+                    if (!neighbors.has(node)) nextX.add(node);
+                }
+
+                bronKerbosch(new Set([...r, v]), nextP, nextX);
+
+                p.delete(v);
+                x.add(v);
+            }
+        }
+
+        bronKerbosch(new Set(), new Set(vertices), new Set());
+        return maximalSets;
+    }
+
+    /**
+     * Find maximum independent sets (maximal sets with maximum size).
+     */
+    static findMaximumIndependentSets(maximalSets) {
+        if (maximalSets.length === 0) return [];
+        const maxSize = Math.max(...maximalSets.map(s => s.length));
+        return maximalSets.filter(s => s.length === maxSize);
+    }
+
     // ─── Random coloring variant (for polynomial variety) ────────────────
 
     /**
@@ -416,6 +467,12 @@ class GraphColoringModel {
 
         // 6. Independent sets
         const independentSets = this.fundamentalIndependentSets(graph, coloring);
+        const allMaximal = this.findAllMaximalIndependentSets(graph);
+        const maximumSets = this.findMaximumIndependentSets(allMaximal);
+
+        // 7. Edge Independent Sets (Matchings)
+        const allMaximalMatchings = this.findAllMaximalMatchings(graph);
+        const maximumMatchings = this.findMaximumMatchings(allMaximalMatchings);
 
         return {
             chi,
@@ -426,7 +483,68 @@ class GraphColoringModel {
             partitions,
             classNum,
             delta,
-            independentSets
+            independentSets,
+            maximalSets: allMaximal,
+            maximumSets: maximumSets,
+            maximalMatchings: allMaximalMatchings,
+            maximumMatchings: maximumMatchings
         };
+    }
+
+    /**
+     * Find all maximal matchings (maximal edge independent sets).
+     */
+    static findAllMaximalMatchings(graph) {
+        if (graph.edges.length === 0) return [];
+        const edges = graph.edges;
+        const maximalMatchings = [];
+
+        function backtrack(idx, currentMatching, coveredVertices) {
+            if (idx === edges.length) {
+                // Check if it's maximal: can any unused edge be added?
+                let isMaximal = true;
+                for (const e of edges) {
+                    if (!coveredVertices.has(e.from) && !coveredVertices.has(e.to)) {
+                        isMaximal = false;
+                        break;
+                    }
+                }
+                if (isMaximal) {
+                    // Avoid duplicates (different orderings)
+                    const sortedIds = [...currentMatching].map(e => e.id).sort().join(',');
+                    if (!maximalMatchings.some(m => m.map(e => e.id).sort().join(',') === sortedIds)) {
+                        maximalMatchings.push([...currentMatching]);
+                    }
+                }
+                return;
+            }
+
+            const e = edges[idx];
+            // Option 1: Include edge e if possible
+            if (!coveredVertices.has(e.from) && !coveredVertices.has(e.to)) {
+                coveredVertices.add(e.from);
+                coveredVertices.add(e.to);
+                currentMatching.push(e);
+                backtrack(idx + 1, currentMatching, coveredVertices);
+                currentMatching.pop();
+                coveredVertices.delete(e.from);
+                coveredVertices.delete(e.to);
+            }
+
+            // Option 2: Skip edge e
+            backtrack(idx + 1, currentMatching, coveredVertices);
+        }
+
+        backtrack(0, [], new Set());
+        return maximalMatchings;
+    }
+
+    /**
+     * Find maximum matchings (maximal matchings with maximum size).
+     */
+    static findMaximumMatchings(maximalMatchings) {
+        if (maximalMatchings.length === 0) return [];
+        const maxSize = Math.max(...maximalMatchings.map(m => m.length));
+        return maximalMatchings.filter(m => m.length === maxSize);
     }
 }

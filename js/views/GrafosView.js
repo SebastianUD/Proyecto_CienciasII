@@ -1249,6 +1249,60 @@ class GrafosView {
         partHTML += `</div>`;
         sections.push({ title: 'Particionamiento Cromático', html: partHTML });
 
+        // 6. Maximum Independent Sets
+        let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes (${result.maximumSets.length}):</strong><br>`;
+        if (result.maximumSets.length === 0) {
+            maxHTML += `<em>No se encontraron conjuntos.</em>`;
+        } else {
+            for (let i = 0; i < result.maximumSets.length; i++) {
+                maxHTML += `<div style="padding-left:10px;">S<sub>${i + 1}</sub>: {${result.maximumSets[i].join(', ')}}</div>`;
+            }
+        }
+        maxHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Máximos Independientes', html: maxHTML });
+
+        // 7. Maximal Independent Sets
+        let maximalHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        maximalHTML += `<strong style="font-size:0.9rem;">Conjuntos Maximales Independientes (${result.maximalSets.length}):</strong><br>`;
+        if (result.maximalSets.length === 0) {
+            maximalHTML += `<em>No se encontraron conjuntos.</em>`;
+        } else {
+            for (let i = 0; i < result.maximalSets.length; i++) {
+                maximalHTML += `<div style="padding-left:10px;">S<sub>${i + 1}</sub>: {${result.maximalSets[i].join(', ')}}</div>`;
+            }
+        }
+        maximalHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Maximales Independientes', html: maximalHTML });
+
+        // 8. Maximum Edge Independent Sets (Matchings)
+        let maxEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        maxEdgeHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes de Aristas (${result.maximumMatchings.length}):</strong><br>`;
+        if (result.maximumMatchings.length === 0) {
+            maxEdgeHTML += `<em>No se encontraron conjuntos.</em>`;
+        } else {
+            for (let i = 0; i < result.maximumMatchings.length; i++) {
+                const edgesStr = result.maximumMatchings[i].map(e => `${e.from}–${e.to}`).join(', ');
+                maxEdgeHTML += `<div style="padding-left:10px;">A<sub>${i + 1}</sub>: {${edgesStr}}</div>`;
+            }
+        }
+        maxEdgeHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Máximos Independientes de Aristas', html: maxEdgeHTML });
+
+        // 9. Maximal Edge Independent Sets (Matchings)
+        let maximalEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        maximalEdgeHTML += `<strong style="font-size:0.9rem;">Conjuntos Maximales Independientes de Aristas (${result.maximalMatchings.length}):</strong><br>`;
+        if (result.maximalMatchings.length === 0) {
+            maximalEdgeHTML += `<em>No se encontraron conjuntos.</em>`;
+        } else {
+            for (let i = 0; i < result.maximalMatchings.length; i++) {
+                const edgesStr = result.maximalMatchings[i].map(e => `${e.from}–${e.to}`).join(', ');
+                maximalEdgeHTML += `<div style="padding-left:10px;">A<sub>${i + 1}</sub>: {${edgesStr}}</div>`;
+            }
+        }
+        maximalEdgeHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Maximales Independientes de Aristas', html: maximalEdgeHTML });
+
         this._renderDescription(sections);
     }
 
