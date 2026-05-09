@@ -112,6 +112,9 @@ class GrafosView {
                                     <option value="tree">Árboles como Grafos</option>
                                     <option value="matrix">Cálculo de Matrices</option>
                                     <option value="coloring">Colorear Grafo</option>
+                                    <option value="independent">Conjuntos Independientes</option>
+                                    <option value="dominating">Conjunto Dominante</option>
+                                    <option value="connected_subsets">Conjuntos Conexos</option>
                                 </select>
                             </div>
                             <div class="grafos-field-col" id="grafos-op-binary-col">
@@ -166,6 +169,30 @@ class GrafosView {
                             <div class="grafos-field-col hidden" id="grafos-op-coloring-col">
                                 <label for="grafos-op-coloring-source">Grafo a colorear</label>
                                 <select id="grafos-op-coloring-source">
+                                    <option value="g1">Grafo 1 (G1)</option>
+                                    <option value="g2">Grafo 2 (G2)</option>
+                                    <option value="g3">Grafo 3 (Resultado)</option>
+                                </select>
+                            </div>
+                            <div class="grafos-field-col hidden" id="grafos-op-independent-col">
+                                <label for="grafos-op-independent-source">Grafo a analizar</label>
+                                <select id="grafos-op-independent-source">
+                                    <option value="g1">Grafo 1 (G1)</option>
+                                    <option value="g2">Grafo 2 (G2)</option>
+                                    <option value="g3">Grafo 3 (Resultado)</option>
+                                </select>
+                            </div>
+                            <div class="grafos-field-col hidden" id="grafos-op-dominating-col">
+                                <label for="grafos-op-dominating-source">Grafo a analizar</label>
+                                <select id="grafos-op-dominating-source">
+                                    <option value="g1">Grafo 1 (G1)</option>
+                                    <option value="g2">Grafo 2 (G2)</option>
+                                    <option value="g3">Grafo 3 (Resultado)</option>
+                                </select>
+                            </div>
+                            <div class="grafos-field-col hidden" id="grafos-op-connected-col">
+                                <label for="grafos-op-connected-source">Grafo a analizar</label>
+                                <select id="grafos-op-connected-source">
                                     <option value="g1">Grafo 1 (G1)</option>
                                     <option value="g2">Grafo 2 (G2)</option>
                                     <option value="g3">Grafo 3 (Resultado)</option>
@@ -334,7 +361,13 @@ class GrafosView {
             opMatrixSelect: document.getElementById('grafos-op-matrix-select'),
             opMatrixSource: document.getElementById('grafos-op-matrix-source'),
             opColoringCol: document.getElementById('grafos-op-coloring-col'),
-            opColoringSource: document.getElementById('grafos-op-coloring-source')
+            opColoringSource: document.getElementById('grafos-op-coloring-source'),
+            opIndependentCol: document.getElementById('grafos-op-independent-col'),
+            opIndependentSource: document.getElementById('grafos-op-independent-source'),
+            opDominatingCol: document.getElementById('grafos-op-dominating-col'),
+            opDominatingSource: document.getElementById('grafos-op-dominating-source'),
+            opConnectedCol: document.getElementById('grafos-op-connected-col'),
+            opConnectedSource: document.getElementById('grafos-op-connected-source')
         };
         this._coloringVertexColors = {};
         this._coloringEdgeColors = {};
@@ -486,9 +519,12 @@ class GrafosView {
         this.el.opTreeCol.classList.toggle('hidden', type !== 'tree');
         this.el.opMatrixRow.classList.toggle('hidden', type !== 'matrix');
         this.el.opColoringCol.classList.toggle('hidden', type !== 'coloring');
+        if (this.el.opIndependentCol) this.el.opIndependentCol.classList.toggle('hidden', type !== 'independent');
+        if (this.el.opDominatingCol) this.el.opDominatingCol.classList.toggle('hidden', type !== 'dominating');
+        if (this.el.opConnectedCol) this.el.opConnectedCol.classList.toggle('hidden', type !== 'connected_subsets');
         if (type === 'unary') this._updateOpUnaryParamsUI();
         if (this.el.rightPanelTitle) {
-            if (type === 'tree' || type === 'coloring') {
+            if (type === 'tree' || type === 'coloring' || type === 'independent' || type === 'dominating' || type === 'connected_subsets') {
                 this.el.rightPanelTitle.textContent = 'Descripción del Grafo';
             } else {
                 this.el.rightPanelTitle.textContent = 'Operaciones de la Estructura';
@@ -510,13 +546,13 @@ class GrafosView {
         const opTypeSelect = this.el.opTypeSelect;
         const options = opTypeSelect.querySelectorAll('option');
         options.forEach(opt => {
-            if (directed && opt.value !== 'matrix' && opt.value !== 'coloring') {
+            if (directed && opt.value !== 'matrix' && opt.value !== 'coloring' && opt.value !== 'independent' && opt.value !== 'dominating' && opt.value !== 'connected_subsets') {
                 opt.hidden = true;
             } else {
                 opt.hidden = false;
             }
         });
-        if (directed && opTypeSelect.value !== 'coloring') opTypeSelect.value = 'matrix';
+        if (directed && opTypeSelect.value !== 'coloring' && opTypeSelect.value !== 'independent' && opTypeSelect.value !== 'dominating' && opTypeSelect.value !== 'connected_subsets') opTypeSelect.value = 'matrix';
         this._updateOpUI();
         this._drawAll();
     }
@@ -675,6 +711,9 @@ class GrafosView {
         if (type === 'tree') { if (!isAuto) { this._clearColoringState(); this._onExecuteTree(); } return; }
         if (type === 'matrix') { if (!isAuto) { this._clearColoringState(); this._onExecuteMatrix(); } return; }
         if (type === 'coloring') { if (!isAuto) this._onExecuteColoring(); return; }
+        if (type === 'independent') { if (!isAuto) this._onExecuteIndependent(); return; }
+        if (type === 'dominating') { if (!isAuto) this._onExecuteDominating(); return; }
+        if (type === 'connected_subsets') { if (!isAuto) this._onExecuteConnectedSubsets(); return; }
 
         // Non-coloring operation: clear any active coloring
         this._clearColoringState();
@@ -1249,59 +1288,239 @@ class GrafosView {
         partHTML += `</div>`;
         sections.push({ title: 'Particionamiento Cromático', html: partHTML });
 
-        // 6. Maximum Independent Sets
-        let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes (${result.maximumSets.length}):</strong><br>`;
-        if (result.maximumSets.length === 0) {
-            maxHTML += `<em>No se encontraron conjuntos.</em>`;
-        } else {
-            for (let i = 0; i < result.maximumSets.length; i++) {
-                maxHTML += `<div style="padding-left:10px;">S<sub>${i + 1}</sub>: {${result.maximumSets[i].join(', ')}}</div>`;
-            }
-        }
-        maxHTML += `</div>`;
-        sections.push({ title: 'Conjuntos Máximos Independientes', html: maxHTML });
+        // Removed independent sets and matchings HTML logic to _renderIndependentDescription
+        
+        this._renderDescription(sections);
+    }
 
-        // 7. Maximal Independent Sets
-        let maximalHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        maximalHTML += `<strong style="font-size:0.9rem;">Conjuntos Maximales Independientes (${result.maximalSets.length}):</strong><br>`;
-        if (result.maximalSets.length === 0) {
-            maximalHTML += `<em>No se encontraron conjuntos.</em>`;
-        } else {
-            for (let i = 0; i < result.maximalSets.length; i++) {
-                maximalHTML += `<div style="padding-left:10px;">S<sub>${i + 1}</sub>: {${result.maximalSets[i].join(', ')}}</div>`;
-            }
-        }
-        maximalHTML += `</div>`;
-        sections.push({ title: 'Conjuntos Maximales Independientes', html: maximalHTML });
+    _onExecuteIndependent() {
+        const src = this.el.opIndependentSource.value;
+        let graph;
+        let graphLabel;
+        if (src === 'g1') { graph = this.g1; graphLabel = 'Grafo 1 (G1)'; }
+        else if (src === 'g2') { graph = this.g2; graphLabel = 'Grafo 2 (G2)'; }
+        else { graph = this.gResult; graphLabel = 'Grafo 3 (Resultado)'; }
 
-        // 8. Maximum Edge Independent Sets (Matchings)
+        if (!graph || !graph.created || graph.vertices.length === 0) {
+            Validation.showError('El grafo seleccionado está vacío o no ha sido definido.');
+            return;
+        }
+
+        try {
+            const result = GraphColoringModel.computeAll(graph);
+            this._addUpdateLog(`✔ Conjuntos Independientes de ${graphLabel} calculados.`, 'success');
+
+            this._clearColoringState();
+
+            this._renderIndependentDescription(graph, graphLabel, result);
+        } catch (err) {
+            Validation.showError('Error al calcular conjuntos independientes: ' + err.message);
+            console.error(err);
+        }
+    }
+
+    _renderIndependentDescription(graph, graphLabel, result) {
+        const sections = [];
+
+        sections.push({
+            title: `Grafo Seleccionado — ${graphLabel}`,
+            items: [{ graph: graph, label: graphLabel.replace(/\s*\(.*\)/, ''), isTree: false }]
+        });
+
+        const limitSetsHTML = (sets, isEdge = false) => {
+            if (sets.length === 0) return `<em>No se encontraron conjuntos.</em>`;
+            let html = '';
+            const maxDisplay = 10;
+            const toShow = Math.min(sets.length, maxDisplay);
+            for (let i = 0; i < toShow; i++) {
+                if (isEdge) {
+                    const edgesStr = sets[i].map(e => `${e.from}–${e.to}`).join(', ');
+                    html += `<div style="padding-left:10px;">A<sub>${i + 1}</sub>: {${edgesStr}}</div>`;
+                } else {
+                    html += `<div style="padding-left:10px;">S<sub>${i + 1}</sub>: {${sets[i].join(', ')}}</div>`;
+                }
+            }
+            if (sets.length > maxDisplay) {
+                html += `<div style="padding-left:10px;font-weight:bold;line-height:0.8;margin:4px 0 2px 2px;">⋮</div>`;
+                html += `<div style="padding-left:10px;font-style:italic;color:#666;font-size:0.75rem;">(Mostrando ${maxDisplay} de ${sets.length})</div>`;
+            }
+            return html;
+        };
+
+        // 1. Maximum Edge Independent Sets (Matchings)
         let maxEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         maxEdgeHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes de Aristas (${result.maximumMatchings.length}):</strong><br>`;
-        if (result.maximumMatchings.length === 0) {
-            maxEdgeHTML += `<em>No se encontraron conjuntos.</em>`;
-        } else {
-            for (let i = 0; i < result.maximumMatchings.length; i++) {
-                const edgesStr = result.maximumMatchings[i].map(e => `${e.from}–${e.to}`).join(', ');
-                maxEdgeHTML += `<div style="padding-left:10px;">A<sub>${i + 1}</sub>: {${edgesStr}}</div>`;
-            }
-        }
+        maxEdgeHTML += limitSetsHTML(result.maximumMatchings, true);
         maxEdgeHTML += `</div>`;
         sections.push({ title: 'Conjuntos Máximos Independientes de Aristas', html: maxEdgeHTML });
 
-        // 9. Maximal Edge Independent Sets (Matchings)
+        // 2. Maximal Independent Sets (Vertices)
+        let maximalHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        maximalHTML += `<strong style="font-size:0.9rem;">Conjuntos Maximales Independientes de Vértices (${result.maximalSets.length}):</strong><br>`;
+        maximalHTML += limitSetsHTML(result.maximalSets, false);
+        maximalHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Maximales Independientes de Vértices', html: maximalHTML });
+
+        // 3. Maximal Edge Independent Sets (Matchings)
         let maximalEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         maximalEdgeHTML += `<strong style="font-size:0.9rem;">Conjuntos Maximales Independientes de Aristas (${result.maximalMatchings.length}):</strong><br>`;
-        if (result.maximalMatchings.length === 0) {
-            maximalEdgeHTML += `<em>No se encontraron conjuntos.</em>`;
-        } else {
-            for (let i = 0; i < result.maximalMatchings.length; i++) {
-                const edgesStr = result.maximalMatchings[i].map(e => `${e.from}–${e.to}`).join(', ');
-                maximalEdgeHTML += `<div style="padding-left:10px;">A<sub>${i + 1}</sub>: {${edgesStr}}</div>`;
-            }
-        }
+        maximalEdgeHTML += limitSetsHTML(result.maximalMatchings, true);
         maximalEdgeHTML += `</div>`;
         sections.push({ title: 'Conjuntos Maximales Independientes de Aristas', html: maximalEdgeHTML });
+
+        // 4. Maximum Independent Sets (Vertices) - added for completeness
+        let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes de Vértices (${result.maximumSets.length}):</strong><br>`;
+        maxHTML += limitSetsHTML(result.maximumSets, false);
+        maxHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Máximos Independientes de Vértices', html: maxHTML });
+
+        this._renderDescription(sections);
+    }
+
+    _onExecuteDominating() {
+        const src = this.el.opDominatingSource.value;
+        let graph;
+        let graphLabel;
+        if (src === 'g1') { graph = this.g1; graphLabel = 'Grafo 1 (G1)'; }
+        else if (src === 'g2') { graph = this.g2; graphLabel = 'Grafo 2 (G2)'; }
+        else { graph = this.gResult; graphLabel = 'Grafo 3 (Resultado)'; }
+
+        if (!graph || !graph.created || graph.vertices.length === 0) {
+            Validation.showError('El grafo seleccionado está vacío o no ha sido definido.');
+            return;
+        }
+
+        try {
+            const result = GraphColoringModel.computeDominatingSets(graph);
+            this._addUpdateLog(`✔ Conjuntos Dominantes de ${graphLabel} calculados.`, 'success');
+
+            this._clearColoringState();
+
+            this._renderDominatingDescription(graph, graphLabel, result);
+        } catch (err) {
+            Validation.showError('Error al calcular conjuntos dominantes: ' + err.message);
+            console.error(err);
+        }
+    }
+
+    _renderDominatingDescription(graph, graphLabel, result) {
+        const sections = [];
+
+        sections.push({
+            title: `Grafo Seleccionado — ${graphLabel}`,
+            items: [{ graph: graph, label: graphLabel.replace(/\s*\(.*\)/, ''), isTree: false }]
+        });
+
+        const limitSetsHTML = (sets) => {
+            if (sets.length === 0) return `<em>No se encontraron conjuntos.</em>`;
+            let html = '';
+            const maxDisplay = 10;
+            const toShow = Math.min(sets.length, maxDisplay);
+            for (let i = 0; i < toShow; i++) {
+                html += `<div style="padding-left:10px;">S'<sub>${i + 1}</sub>: {${sets[i].join(', ')}}</div>`;
+            }
+            if (sets.length > maxDisplay) {
+                html += `<div style="padding-left:10px;font-weight:bold;line-height:0.8;margin:4px 0 2px 2px;">⋮</div>`;
+                html += `<div style="padding-left:10px;font-style:italic;color:#666;font-size:0.75rem;">(Mostrando ${maxDisplay} de ${sets.length})</div>`;
+            }
+            return html;
+        };
+
+        // Number of domination
+        let numHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        numHTML += `<strong style="font-size:0.95rem;">Número de Dominación = <span style="font-size:1.1rem;">${result.dominationNumber}</span></strong>`;
+        numHTML += `</div>`;
+        sections.push({ title: 'Número de Dominación', html: numHTML });
+
+
+
+        // Minimum Dominating Sets
+        let minHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        minHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Mínimos (${result.minimumSets.length}):</strong><br>`;
+        minHTML += limitSetsHTML(result.minimumSets);
+        minHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Dominantes Mínimos', html: minHTML });
+
+        // Maximum Dominating Sets
+        let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Máximos (${result.maximumSets.length}):</strong><br>`;
+        maxHTML += limitSetsHTML(result.maximumSets);
+        maxHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Dominantes Máximos', html: maxHTML });
+
+        this._renderDescription(sections);
+    }
+
+    _onExecuteConnectedSubsets() {
+        const src = this.el.opConnectedSource.value;
+        let graph;
+        let graphLabel;
+        if (src === 'g1') { graph = this.g1; graphLabel = 'Grafo 1 (G1)'; }
+        else if (src === 'g2') { graph = this.g2; graphLabel = 'Grafo 2 (G2)'; }
+        else { graph = this.gResult; graphLabel = 'Grafo 3 (Resultado)'; }
+
+        if (!graph || !graph.created || graph.vertices.length === 0) {
+            Validation.showError('El grafo seleccionado está vacío o no ha sido definido.');
+            return;
+        }
+
+        try {
+            const result = GraphColoringModel.computeConnectedSubsets(graph);
+            this._addUpdateLog(`✔ Conjuntos Conexos de ${graphLabel} calculados.`, 'success');
+
+            this._clearColoringState();
+
+            this._renderConnectedSubsetsDescription(graph, graphLabel, result);
+        } catch (err) {
+            Validation.showError('Error al calcular conjuntos conexos: ' + err.message);
+            console.error(err);
+        }
+    }
+
+    _renderConnectedSubsetsDescription(graph, graphLabel, result) {
+        const sections = [];
+
+        sections.push({
+            title: `Grafo Seleccionado — ${graphLabel}`,
+            items: [{ graph: graph, label: graphLabel.replace(/\s*\(.*\)/, ''), isTree: false }]
+        });
+
+        const limitSetsHTML = (sets) => {
+            if (sets.length === 0) return `<em>No se encontraron conjuntos.</em>`;
+            let html = '';
+            const maxDisplay = 10;
+            const toShow = Math.min(sets.length, maxDisplay);
+            for (let i = 0; i < toShow; i++) {
+                html += `<div style="padding-left:10px;">C<sub>${i + 1}</sub>: {${sets[i].join(', ')}}</div>`;
+            }
+            if (sets.length > maxDisplay) {
+                html += `<div style="padding-left:10px;font-weight:bold;line-height:0.8;margin:4px 0 2px 2px;">⋮</div>`;
+                html += `<div style="padding-left:10px;font-style:italic;color:#666;font-size:0.75rem;">(Mostrando ${maxDisplay} de ${sets.length})</div>`;
+            }
+            return html;
+        };
+
+        // All Connected Sets
+        let allHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        allHTML += `<strong style="font-size:0.9rem;">Todos los Conjuntos Conexos (${result.allSets.length}):</strong><br>`;
+        allHTML += limitSetsHTML(result.allSets);
+        allHTML += `</div>`;
+        sections.push({ title: 'Todos los Conjuntos Conexos', html: allHTML });
+
+        // Minimum Connected Sets
+        let minHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        minHTML += `<strong style="font-size:0.9rem;">Conjuntos Conexos Mínimos (${result.minimumSets.length}):</strong><br>`;
+        minHTML += limitSetsHTML(result.minimumSets);
+        minHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Conexos Mínimos', html: minHTML });
+
+        // Maximum Connected Sets
+        let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Conexos Máximos (${result.maximumSets.length}):</strong><br>`;
+        maxHTML += limitSetsHTML(result.maximumSets);
+        maxHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Conexos Máximos', html: maxHTML });
 
         this._renderDescription(sections);
     }

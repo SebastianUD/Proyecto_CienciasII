@@ -547,4 +547,167 @@ class GraphColoringModel {
         const maxSize = Math.max(...maximalMatchings.map(m => m.length));
         return maximalMatchings.filter(m => m.length === maxSize);
     }
+
+    // ─── Dominating Sets ──────────────────────────────────────────────────
+
+    /**
+     * Compute all minimal dominating sets, minimum dominating sets, maximum dominating sets (among minimal ones),
+     * and the domination number.
+     */
+    static computeDominatingSets(graph) {
+        const vertices = graph.vertices;
+        const adj = this._buildAdj(graph);
+        const n = vertices.length;
+
+        if (n > 22) {
+            throw new Error("El grafo es demasiado grande para este cálculo (máximo 22 vértices).");
+        }
+
+        const minimalDominatingSets = [];
+
+        const isDominating = (subsetSet) => {
+            for (const v of vertices) {
+                if (subsetSet.has(v)) continue;
+                let dominated = false;
+                for (const nb of adj[v]) {
+                    if (subsetSet.has(nb)) { dominated = true; break; }
+                }
+                if (!dominated) return false;
+            }
+            return true;
+        };
+
+        const isMinimal = (subsetSet, subsetArray) => {
+            for (const v of subsetArray) {
+                subsetSet.delete(v);
+                let dominatesAll = true;
+                for (const u of vertices) {
+                    if (subsetSet.has(u)) continue;
+                    let dominated = false;
+                    for (const nb of adj[u]) {
+                        if (subsetSet.has(nb)) { dominated = true; break; }
+                    }
+                    if (!dominated) { dominatesAll = false; break; }
+                }
+                subsetSet.add(v);
+                if (dominatesAll) return false; // D \ {v} is dominating, so not minimal
+            }
+            return true;
+        };
+
+        function backtrack(idx, currentArray, currentSet) {
+            if (idx === n) {
+                if (isDominating(currentSet) && isMinimal(currentSet, currentArray)) {
+                    minimalDominatingSets.push([...currentArray]);
+                }
+                return;
+            }
+            // Exclude
+            backtrack(idx + 1, currentArray, currentSet);
+            // Include
+            const v = vertices[idx];
+            currentArray.push(v);
+            currentSet.add(v);
+            backtrack(idx + 1, currentArray, currentSet);
+            currentSet.delete(v);
+            currentArray.pop();
+        }
+
+        backtrack(0, [], new Set());
+
+        let minSize = Infinity;
+        let maxSize = 0;
+        for (const s of minimalDominatingSets) {
+            if (s.length < minSize) minSize = s.length;
+            if (s.length > maxSize) maxSize = s.length;
+        }
+
+        const minimumSets = minimalDominatingSets.filter(s => s.length === minSize);
+        const maximumSets = minimalDominatingSets.filter(s => s.length === maxSize);
+
+        return {
+            minimalSets: minimalDominatingSets,
+            minimumSets: minimumSets,
+            maximumSets: maximumSets,
+            dominationNumber: minSize === Infinity ? 0 : minSize
+        };
+    }
+
+    // ─── Connected Subsets ────────────────────────────────────────────────
+
+    /**
+     * Compute all connected subsets of vertices, as well as the minimum and maximum ones.
+     */
+    static computeConnectedSubsets(graph) {
+        const vertices = graph.vertices;
+        const adj = this._buildAdj(graph);
+        const n = vertices.length;
+
+        if (n > 18) {
+            throw new Error("El grafo es demasiado grande para este cálculo (máximo 18 vértices para evitar sobrecarga de memoria).");
+        }
+
+        const connectedSubsets = [];
+
+        const isConnected = (subsetArray) => {
+            if (subsetArray.length === 0) return false;
+            if (subsetArray.length === 1) return true;
+
+            const subsetSet = new Set(subsetArray);
+            const visited = new Set();
+            const q = [subsetArray[0]];
+            visited.add(subsetArray[0]);
+
+            let count = 0;
+            while (q.length > 0) {
+                const u = q.shift();
+                count++;
+                for (const v of adj[u]) {
+                    if (subsetSet.has(v) && !visited.has(v)) {
+                        visited.add(v);
+                        q.push(v);
+                    }
+                }
+            }
+            return count === subsetArray.length;
+        };
+
+        function backtrack(idx, currentArray) {
+            if (idx === n) {
+                if (currentArray.length > 0 && isConnected(currentArray)) {
+                    connectedSubsets.push([...currentArray]);
+                }
+                return;
+            }
+            // Exclude
+            backtrack(idx + 1, currentArray);
+            // Include
+            currentArray.push(vertices[idx]);
+            backtrack(idx + 1, currentArray);
+            currentArray.pop();
+        }
+
+        backtrack(0, []);
+
+        // Sort by size for better visualization
+        connectedSubsets.sort((a, b) => a.length - b.length);
+
+        let minSize = Infinity;
+        let maxSize = 0;
+        if (connectedSubsets.length > 0) {
+            minSize = connectedSubsets[0].length; // Already sorted
+            maxSize = connectedSubsets[connectedSubsets.length - 1].length;
+        } else {
+            minSize = 0;
+        }
+
+        const minimumSets = connectedSubsets.filter(s => s.length === minSize);
+        const maximumSets = connectedSubsets.filter(s => s.length === maxSize);
+
+        return {
+            allSets: connectedSubsets,
+            minimumSets: minimumSets,
+            maximumSets: maximumSets
+        };
+    }
 }
