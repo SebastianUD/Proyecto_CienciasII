@@ -1347,6 +1347,18 @@ class GrafosView {
             return html;
         };
 
+        // Total Vertex Independent Sets
+        let totalVertHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        totalVertHTML += `<strong style="font-size:0.95rem;">Número Total de Conjuntos Independientes de Vértices = <span style="font-size:1.1rem;">${result.totalIndependentSets}</span></strong>`;
+        totalVertHTML += `</div>`;
+        sections.push({ title: 'Total Conjuntos Independientes Vértices', html: totalVertHTML });
+
+        // Total Edge Independent Sets
+        let totalEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        totalEdgeHTML += `<strong style="font-size:0.95rem;">Número Total de Conjuntos Independientes de Aristas = <span style="font-size:1.1rem;">${result.totalMatchings}</span></strong>`;
+        totalEdgeHTML += `</div>`;
+        sections.push({ title: 'Total Conjuntos Independientes Aristas', html: totalEdgeHTML });
+
         // 1. Maximum Edge Independent Sets (Matchings)
         let maxEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         maxEdgeHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes de Aristas (${result.maximumMatchings.length}):</strong><br>`;
@@ -1427,11 +1439,24 @@ class GrafosView {
             return html;
         };
 
+        // Total dominating sets
+        let totalHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        totalHTML += `<strong style="font-size:0.95rem;">Número Total de Conjuntos Dominantes = <span style="font-size:1.1rem;">${result.totalDominatingSetsCount}</span></strong>`;
+        totalHTML += `</div>`;
+        sections.push({ title: 'Número Total de Conjuntos Dominantes', html: totalHTML });
+
         // Number of domination
         let numHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         numHTML += `<strong style="font-size:0.95rem;">Número de Dominación = <span style="font-size:1.1rem;">${result.dominationNumber}</span></strong>`;
         numHTML += `</div>`;
         sections.push({ title: 'Número de Dominación', html: numHTML });
+
+        // Independent Dominating Sets
+        let indepHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        indepHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Independientes (${result.independentDominatingSets.length}):</strong><br>`;
+        indepHTML += limitSetsHTML(result.independentDominatingSets);
+        indepHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Dominantes Independientes', html: indepHTML });
 
 
 

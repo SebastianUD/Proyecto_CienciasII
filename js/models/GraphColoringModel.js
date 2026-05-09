@@ -487,8 +487,76 @@ class GraphColoringModel {
             maximalSets: allMaximal,
             maximumSets: maximumSets,
             maximalMatchings: allMaximalMatchings,
-            maximumMatchings: maximumMatchings
+            maximumMatchings: maximumMatchings,
+            totalIndependentSets: this.countAllIndependentSets(graph),
+            totalMatchings: this.countAllMatchings(graph)
         };
+    }
+
+    /**
+     * Count all independent vertex sets (including empty set).
+     */
+    static countAllIndependentSets(graph) {
+        const vertices = graph.vertices;
+        const n = vertices.length;
+        if (n === 0) return 0;
+        const adj = this._buildAdj(graph);
+        
+        let count = 0;
+        function backtrack(idx, currentSet) {
+            if (idx === n) {
+                count++;
+                return;
+            }
+            // Exclude
+            backtrack(idx + 1, currentSet);
+            // Include (if valid)
+            const v = vertices[idx];
+            let valid = true;
+            for (const nb of adj[v]) {
+                if (currentSet.has(nb)) {
+                    valid = false; break;
+                }
+            }
+            if (valid) {
+                currentSet.add(v);
+                backtrack(idx + 1, currentSet);
+                currentSet.delete(v);
+            }
+        }
+        backtrack(0, new Set());
+        return count;
+    }
+
+    /**
+     * Count all independent edge sets / matchings (including empty set).
+     */
+    static countAllMatchings(graph) {
+        const edges = graph.edges;
+        const m = edges.length;
+        if (m === 0) return 1; // empty matching
+
+        let count = 0;
+        function backtrack(idx, coveredVertices) {
+            if (idx === m) {
+                count++;
+                return;
+            }
+            // Exclude edge
+            backtrack(idx + 1, coveredVertices);
+            
+            // Include edge if valid
+            const e = edges[idx];
+            if (!coveredVertices.has(e.from) && !coveredVertices.has(e.to)) {
+                coveredVertices.add(e.from);
+                coveredVertices.add(e.to);
+                backtrack(idx + 1, coveredVertices);
+                coveredVertices.delete(e.from);
+                coveredVertices.delete(e.to);
+            }
+        }
+        backtrack(0, new Set());
+        return count;
     }
 
     /**
@@ -595,10 +663,15 @@ class GraphColoringModel {
             return true;
         };
 
+        let totalDominatingSetsCount = 0;
+
         function backtrack(idx, currentArray, currentSet) {
             if (idx === n) {
-                if (isDominating(currentSet) && isMinimal(currentSet, currentArray)) {
-                    minimalDominatingSets.push([...currentArray]);
+                if (isDominating(currentSet)) {
+                    totalDominatingSetsCount++;
+                    if (isMinimal(currentSet, currentArray)) {
+                        minimalDominatingSets.push([...currentArray]);
+                    }
                 }
                 return;
             }
@@ -625,11 +698,15 @@ class GraphColoringModel {
         const minimumSets = minimalDominatingSets.filter(s => s.length === minSize);
         const maximumSets = minimalDominatingSets.filter(s => s.length === maxSize);
 
+        const independentDominatingSets = this.findAllMaximalIndependentSets(graph);
+
         return {
             minimalSets: minimalDominatingSets,
             minimumSets: minimumSets,
             maximumSets: maximumSets,
-            dominationNumber: minSize === Infinity ? 0 : minSize
+            dominationNumber: minSize === Infinity ? 0 : minSize,
+            totalDominatingSetsCount: totalDominatingSetsCount,
+            independentDominatingSets: independentDominatingSets
         };
     }
 
