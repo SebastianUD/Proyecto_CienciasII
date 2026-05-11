@@ -115,6 +115,7 @@ class GrafosView {
                                     <option value="independent">Conjuntos Independientes</option>
                                     <option value="dominating">Conjunto Dominante</option>
                                     <option value="connected_subsets">Conjuntos Conexos</option>
+                                    <option value="matching">Matching</option>
                                 </select>
                             </div>
                             <div class="grafos-field-col" id="grafos-op-binary-col">
@@ -197,6 +198,23 @@ class GrafosView {
                                     <option value="g2">Grafo 2 (G2)</option>
                                     <option value="g3">Grafo 3 (Resultado)</option>
                                 </select>
+                            </div>
+                            <div class="grafos-matrix-source-row hidden" id="grafos-op-matching-row">
+                                <div class="grafos-field-col">
+                                    <label for="grafos-op-matching-select">Operación</label>
+                                    <select id="grafos-op-matching-select">
+                                        <option value="maximal">Pareamiento Maximal</option>
+                                        <option value="maximum">Pareamiento Máximo</option>
+                                    </select>
+                                </div>
+                                <div class="grafos-field-col">
+                                    <label for="grafos-op-matching-source">Grafo</label>
+                                    <select id="grafos-op-matching-source">
+                                        <option value="g1">G1</option>
+                                        <option value="g2">G2</option>
+                                        <option value="g3">G3</option>
+                                    </select>
+                                </div>
                             </div>
                             <button class="btn btn-primary grafos-btn-full" id="grafos-btn-execute" style="margin-bottom:8px;">▶ CALCULAR</button>
                         </div>
@@ -367,11 +385,18 @@ class GrafosView {
             opDominatingCol: document.getElementById('grafos-op-dominating-col'),
             opDominatingSource: document.getElementById('grafos-op-dominating-source'),
             opConnectedCol: document.getElementById('grafos-op-connected-col'),
-            opConnectedSource: document.getElementById('grafos-op-connected-source')
+            opConnectedSource: document.getElementById('grafos-op-connected-source'),
+            opMatchingRow: document.getElementById('grafos-op-matching-row'),
+            opMatchingSelect: document.getElementById('grafos-op-matching-select'),
+            opMatchingSource: document.getElementById('grafos-op-matching-source')
         };
         this._coloringVertexColors = {};
         this._coloringEdgeColors = {};
         this._coloringSource = null;
+        // Matching cycle state (Pareamiento Maximal)
+        this._maximalMatchingCandidates = [];
+        this._maximalMatchingIdx = 0;
+        this._maximalMatchingKey = null;
     }
 
     _bindEvents() {
@@ -522,9 +547,10 @@ class GrafosView {
         if (this.el.opIndependentCol) this.el.opIndependentCol.classList.toggle('hidden', type !== 'independent');
         if (this.el.opDominatingCol) this.el.opDominatingCol.classList.toggle('hidden', type !== 'dominating');
         if (this.el.opConnectedCol) this.el.opConnectedCol.classList.toggle('hidden', type !== 'connected_subsets');
+        if (this.el.opMatchingRow) this.el.opMatchingRow.classList.toggle('hidden', type !== 'matching');
         if (type === 'unary') this._updateOpUnaryParamsUI();
         if (this.el.rightPanelTitle) {
-            if (type === 'tree' || type === 'coloring' || type === 'independent' || type === 'dominating' || type === 'connected_subsets') {
+            if (type === 'tree' || type === 'coloring' || type === 'independent' || type === 'dominating' || type === 'connected_subsets' || type === 'matching') {
                 this.el.rightPanelTitle.textContent = 'Descripción del Grafo';
             } else {
                 this.el.rightPanelTitle.textContent = 'Operaciones de la Estructura';
@@ -553,6 +579,8 @@ class GrafosView {
             }
         });
         if (directed && opTypeSelect.value !== 'coloring' && opTypeSelect.value !== 'independent' && opTypeSelect.value !== 'dominating' && opTypeSelect.value !== 'connected_subsets') opTypeSelect.value = 'matrix';
+        // Matching is only for undirected graphs
+        if (directed && opTypeSelect.value === 'matching') opTypeSelect.value = 'matrix';
         this._updateOpUI();
         this._drawAll();
     }
@@ -714,6 +742,7 @@ class GrafosView {
         if (type === 'independent') { if (!isAuto) this._onExecuteIndependent(); return; }
         if (type === 'dominating') { if (!isAuto) this._onExecuteDominating(); return; }
         if (type === 'connected_subsets') { if (!isAuto) this._onExecuteConnectedSubsets(); return; }
+        if (type === 'matching') { if (!isAuto) { this._clearColoringState(); this._onExecuteMatching(); } return; }
 
         // Non-coloring operation: clear any active coloring
         this._clearColoringState();
@@ -1546,6 +1575,136 @@ class GrafosView {
         maxHTML += limitSetsHTML(result.maximumSets);
         maxHTML += `</div>`;
         sections.push({ title: 'Conjuntos Conexos Máximos', html: maxHTML });
+
+        this._renderDescription(sections);
+    }
+
+    // ─── Matching (Pareamientos) ──────────────────────────────────────────────
+
+    _onExecuteMatching() {
+        const op = this.el.opMatchingSelect.value;
+        const src = this.el.opMatchingSource.value;
+        let graph;
+        let graphLabel;
+        if (src === 'g1') { graph = this.g1; graphLabel = 'Grafo 1 (G1)'; }
+        else if (src === 'g2') { graph = this.g2; graphLabel = 'Grafo 2 (G2)'; }
+        else { graph = this.gResult; graphLabel = 'Grafo 3 (Resultado)'; }
+
+        if (!graph || !graph.created || graph.vertices.length === 0) {
+            Validation.showError('El grafo seleccionado está vacío o no ha sido definido.');
+            return;
+        }
+
+        if (this._directed) {
+            Validation.showError('El pareamiento solo se aplica a grafos no dirigidos.');
+            return;
+        }
+
+        try {
+            let result;
+            let variantInfo = '';
+
+            if (op === 'maximal') {
+                // Generar clave del grafo para detectar cambios
+                const graphKey = src + '|' +
+                    graph.vertices.join(',') + '|' +
+                    graph.edges.map(e => e.from + ':' + e.to).join(',');
+
+                if (graphKey !== this._maximalMatchingKey) {
+                    // El grafo cambió → recomputar todos los candidatos
+                    this._maximalMatchingKey = graphKey;
+                    this._maximalMatchingCandidates = MatchingModel.findAllMaximalMatchings(graph);
+                    this._maximalMatchingIdx = 0;
+                } else {
+                    // Mismo grafo → avanzar al siguiente candidato
+                    this._maximalMatchingIdx =
+                        (this._maximalMatchingIdx + 1) % this._maximalMatchingCandidates.length;
+                }
+
+                result = this._maximalMatchingCandidates[this._maximalMatchingIdx];
+
+                if (this._maximalMatchingCandidates.length > 1) {
+                    variantInfo = ` (Variante ${this._maximalMatchingIdx + 1} de ${this._maximalMatchingCandidates.length})`;
+                }
+            } else {
+                result = MatchingModel.findMaximumMatching(graph);
+            }
+
+            const opLabel = op === 'maximal' ? 'Pareamiento Maximal' : 'Pareamiento Máximo';
+            this._addUpdateLog(`✔ ${opLabel}${variantInfo} de ${graphLabel} calculado. Cardinalidad: ${result.cardinality}`, 'success');
+
+            // Colorear aristas del matching en rojo en el canvas correspondiente
+            const hlEdges = {};
+            for (const e of result.matchingEdges) {
+                const key = [e.from, e.to].sort().join('-');
+                hlEdges[key] = '#E53935';
+            }
+
+            this._coloringVertexColors = {};
+            this._coloringEdgeColors = hlEdges;
+            this._coloringSource = src;
+
+            if (src === 'g1') {
+                this._drawGraph(this.el.canvasG1, this.g1, this._cam1, {}, hlEdges);
+            } else if (src === 'g2') {
+                this._drawGraph(this.el.canvasG2, this.g2, this._cam2, {}, hlEdges);
+            } else if (this.gResult) {
+                this._resultHighlightVertices = {};
+                this._resultHighlightEdges = hlEdges;
+                this._drawResultCanvas();
+            }
+
+            // Renderizar descripción en panel derecho
+            this._renderMatchingDescription(graph, graphLabel, result, variantInfo);
+        } catch (err) {
+            Validation.showError('Error al calcular pareamiento: ' + err.message);
+            console.error(err);
+        }
+    }
+
+    _renderMatchingDescription(graph, graphLabel, result, variantInfo = '') {
+        const sections = [];
+
+        // 1. Datos del Grafo
+        const vStr = graph.vertices.join(', ');
+        const formattedEdges = [];
+        const counts = {};
+        for (const e of graph.edges) {
+            const base = [e.from, e.to].sort().join('');
+            const c = counts[base] || 0;
+            counts[base] = c + 1;
+            formattedEdges.push(base + "'".repeat(c));
+        }
+        const aStr = formattedEdges.join(', ');
+        const mStr = MatchingModel.formatEdges(result.matchingEdges);
+
+        let graphHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        graphHTML += `<strong>Datos del Grafo:</strong><br>`;
+        graphHTML += `G = (S, A)<br>`;
+        graphHTML += `S = {${vStr || '∅'}}<br>`;
+        graphHTML += `A = {${aStr || '∅'}}<br>`;
+        graphHTML += `<span style="color:#E53935;font-weight:600;">M = {${mStr || '∅'}}</span>`;
+        graphHTML += `</div>`;
+        sections.push({ title: `Datos del Grafo — ${graphLabel}`, html: graphHTML });
+
+        // 2. Datos del Pareamiento
+        const saturatedStr = result.saturatedVertices.join(', ');
+        const freeStr = result.freeVertices.length > 0 ? result.freeVertices.join(', ') : '∅';
+        const sectionTitle = variantInfo
+            ? `Datos del Pareamiento <span style="font-style:italic;font-weight:normal;color:var(--accent-primary);">${variantInfo}</span>`
+            : 'Datos del Pareamiento';
+
+        let matchHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        matchHTML += `<strong>Datos del Pareamiento:</strong><br>`;
+        matchHTML += `<em>Cardinalidad:</em> <strong>${result.cardinality}</strong><br>`;
+        matchHTML += `<em>Pareamiento Máximo:</em> <strong>${result.isMaximum ? 'Sí' : 'No'}</strong><br>`;
+        matchHTML += `<em>Pareamiento Maximal:</em> <strong>${result.isMaximal ? 'Sí' : 'No'}</strong><br>`;
+        matchHTML += `<em>Vértices Saturados:</em> {${saturatedStr || '∅'}}<br>`;
+        matchHTML += `<em>Vértices Libres:</em> {${freeStr}}<br>`;
+        matchHTML += `<em>Pareamiento Perfecto:</em> <strong>${result.isPerfect ? 'Sí' : 'No'}</strong><br>`;
+        matchHTML += `<em>Pareamiento Óptimo:</em> <strong>${result.isOptimal ? 'Sí' : 'No'}</strong>`;
+        matchHTML += `</div>`;
+        sections.push({ title: sectionTitle, html: matchHTML });
 
         this._renderDescription(sections);
     }
