@@ -1382,18 +1382,12 @@ class GrafosView {
         totalVertHTML += `</div>`;
         sections.push({ title: 'Total Conjuntos Independientes Vértices', html: totalVertHTML });
 
-        // Total Edge Independent Sets
-        let totalEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        totalEdgeHTML += `<strong style="font-size:0.95rem;">Número Total de Conjuntos Independientes de Aristas = <span style="font-size:1.1rem;">${result.totalMatchings}</span></strong>`;
-        totalEdgeHTML += `</div>`;
-        sections.push({ title: 'Total Conjuntos Independientes Aristas', html: totalEdgeHTML });
-
-        // 1. Maximum Edge Independent Sets (Matchings)
-        let maxEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        maxEdgeHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes de Aristas (${result.maximumMatchings.length}):</strong><br>`;
-        maxEdgeHTML += limitSetsHTML(result.maximumMatchings, true);
-        maxEdgeHTML += `</div>`;
-        sections.push({ title: 'Conjuntos Máximos Independientes de Aristas', html: maxEdgeHTML });
+        // 1. Maximum Independent Sets (Vertices)
+        let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes de Vértices (${result.maximumSets.length}):</strong><br>`;
+        maxHTML += limitSetsHTML(result.maximumSets, false);
+        maxHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Máximos Independientes de Vértices', html: maxHTML });
 
         // 2. Maximal Independent Sets (Vertices)
         let maximalHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
@@ -1402,19 +1396,25 @@ class GrafosView {
         maximalHTML += `</div>`;
         sections.push({ title: 'Conjuntos Maximales Independientes de Vértices', html: maximalHTML });
 
-        // 3. Maximal Edge Independent Sets (Matchings)
+        // Total Edge Independent Sets
+        let totalEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        totalEdgeHTML += `<strong style="font-size:0.95rem;">Número Total de Conjuntos Independientes de Aristas = <span style="font-size:1.1rem;">${result.totalMatchings}</span></strong>`;
+        totalEdgeHTML += `</div>`;
+        sections.push({ title: 'Total Conjuntos Independientes Aristas', html: totalEdgeHTML });
+
+        // 3. Maximum Edge Independent Sets (Matchings)
+        let maxEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+        maxEdgeHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes de Aristas (${result.maximumMatchings.length}):</strong><br>`;
+        maxEdgeHTML += limitSetsHTML(result.maximumMatchings, true);
+        maxEdgeHTML += `</div>`;
+        sections.push({ title: 'Conjuntos Máximos Independientes de Aristas', html: maxEdgeHTML });
+
+        // 4. Maximal Edge Independent Sets (Matchings)
         let maximalEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         maximalEdgeHTML += `<strong style="font-size:0.9rem;">Conjuntos Maximales Independientes de Aristas (${result.maximalMatchings.length}):</strong><br>`;
         maximalEdgeHTML += limitSetsHTML(result.maximalMatchings, true);
         maximalEdgeHTML += `</div>`;
         sections.push({ title: 'Conjuntos Maximales Independientes de Aristas', html: maximalEdgeHTML });
-
-        // 4. Maximum Independent Sets (Vertices) - added for completeness
-        let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes de Vértices (${result.maximumSets.length}):</strong><br>`;
-        maxHTML += limitSetsHTML(result.maximumSets, false);
-        maxHTML += `</div>`;
-        sections.push({ title: 'Conjuntos Máximos Independientes de Vértices', html: maxHTML });
 
         this._renderDescription(sections);
     }
@@ -1491,14 +1491,16 @@ class GrafosView {
 
         // Minimum Dominating Sets
         let minHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        minHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Mínimos (${result.minimumSets.length}):</strong><br>`;
+        const γ = result.minimumSets.length > 0 ? result.minimumSets[0].length : 0;
+        minHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Mínimos (${result.minimumSets.length}) [Tamaño: ${γ}]:</strong><br>`;
         minHTML += limitSetsHTML(result.minimumSets);
         minHTML += `</div>`;
         sections.push({ title: 'Conjuntos Dominantes Mínimos', html: minHTML });
 
         // Maximum Dominating Sets
         let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Máximos (${result.maximumSets.length}):</strong><br>`;
+        const Γ = result.maximumSets.length > 0 ? result.maximumSets[0].length : 0;
+        maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Máximos (${result.maximumSets.length}) [Tamaño: ${Γ}]:</strong><br>`;
         maxHTML += limitSetsHTML(result.maximumSets);
         maxHTML += `</div>`;
         sections.push({ title: 'Conjuntos Dominantes Máximos', html: maxHTML });
