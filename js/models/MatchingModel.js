@@ -1,8 +1,8 @@
 /**
  * @class MatchingModel
  * @description Contiene la lógica matemática para Pareamientos (Matching) en grafos
- * no dirigidos. Implementa algoritmos para encontrar pareamientos maximales y máximos,
- * así como la clasificación completa del pareamiento.
+ * no dirigidos. Implementa algoritmos para enumerar todos los pareamientos posibles,
+ * clasificarlos y encontrar el pareamiento máximo.
  *
  * Definiciones:
  * - Pareamiento M: Conjunto de aristas independientes (sin vértices compartidos).
@@ -17,81 +17,104 @@
  */
 class MatchingModel {
 
-    // ─── Pareamiento Maximal — todos los candidatos ─────────────────────────────────
+    // ─── Enumerar TODOS los pareamientos posibles ─────────────────────────────
 
     /**
-     * Devuelve TODOS los pareamientos maximales no-máximos únicos del grafo
-     * encontrados explorando todas las rotaciones cíclicas de la lista de aristas.
-     * Si el grafo no admite ningún maximal no-máximo (todos los maximales son
-     * máximos), devuelve un array con el resultado del greedy estándar.
+     * Enumera todos los pareamientos posibles de un grafo (incluyendo los de
+     * cardinalidad 1) y los clasifica en tres categorías:
+     *   - comunes: ni maximales ni máximos
+     *   - maximales: maximales pero no máximos
+     *   - maximos: máximos (que siempre son maximales)
+     *
+     * Cada pareamiento se nombra como M₁, M₂, ... Mₙ con numeración continua.
+     *
      * @param {GraphModel} graph - Grafo no dirigido.
-     * @returns {Object[]} Array de resultados clasificados (al menos 1 elemento).
+     * @returns {{
+     *   comunes: Object[],
+     *   maximales: Object[],
+     *   maximos: Object[],
+     *   total: number
+     * }}
      */
-    static findAllMaximalMatchings(graph) {
-        // Cardinalidad del pareamiento máximo (se computa una sola vez)
+    static enumerateAllMatchings(graph) {
+        // Filtrar aristas válidas (sin lazos)
+        const validEdges = graph.edges.filter(e => e.from !== e.to);
+
+        // Generar todos los conjuntos independientes de aristas por backtracking
+        const allMatchingSets = [];
+        const seen = new Set();
+
+        this._enumerateMatchings(validEdges, 0, [], new Set(), allMatchingSets, seen);
+
+        // Calcular la cardinalidad máxima
         const maxCard = this._computeMaximumCardinality(graph);
 
-        const seen = new Set();   // claves canónicas para deduplicar
-        const results = [];
+        // Clasificar cada matching
+        const comunes = [];
+        const maximales = [];
+        const maximos = [];
 
-        for (let startIdx = 0; startIdx < graph.edges.length; startIdx++) {
-            // Rotación cíclica de la lista de aristas
-            const reordered = [
-                ...graph.edges.slice(startIdx),
-                ...graph.edges.slice(0, startIdx)
-            ];
+        let globalIdx = 1;
 
-            const matchingEdges = [];
-            const saturated = new Set();
+        for (const edgeSet of allMatchingSets) {
+            const classified = this._classifyMatching(graph, edgeSet, maxCard);
+            classified.label = `M<sub>${globalIdx}</sub>`;
+            classified.idx = globalIdx;
 
-            for (const e of reordered) {
-                if (!saturated.has(e.from) && !saturated.has(e.to) && e.from !== e.to) {
-                    matchingEdges.push(e);
-                    saturated.add(e.from);
-                    saturated.add(e.to);
-                }
+            if (classified.isMaximum) {
+                maximos.push(classified);
+            } else if (classified.isMaximal) {
+                maximales.push(classified);
+            } else {
+                comunes.push(classified);
             }
-
-            // Solo nos interesan matchings estrictamente menores que el máximo
-            if (matchingEdges.length < maxCard) {
-                // Verificar que sea realmente maximal
-                let isMaximal = true;
-                for (const e of graph.edges) {
-                    if (e.from === e.to) continue;
-                    if (!saturated.has(e.from) && !saturated.has(e.to)) {
-                        isMaximal = false;
-                        break;
-                    }
-                }
-                if (isMaximal) {
-                    // Clave canónica para detectar duplicados
-                    const key = matchingEdges
-                        .map(e => [e.from, e.to].sort().join('-'))
-                        .sort()
-                        .join('|');
-                    if (!seen.has(key)) {
-                        seen.add(key);
-                        results.push(this._classifyMatching(graph, matchingEdges, maxCard));
-                    }
-                }
-            }
+            globalIdx++;
         }
 
-        if (results.length > 0) return results;
-
-        // Fallback: el grafo no tiene maximales no-máximos → greedy estándar
-        const matchingEdges = [];
-        const saturated = new Set();
-        for (const e of graph.edges) {
-            if (!saturated.has(e.from) && !saturated.has(e.to) && e.from !== e.to) {
-                matchingEdges.push(e);
-                saturated.add(e.from);
-                saturated.add(e.to);
-            }
-        }
-        return [this._classifyMatching(graph, matchingEdges, maxCard)];
+        return {
+            comunes,
+            maximales,
+            maximos,
+            total: globalIdx - 1
+        };
     }
 
+    /**
+     * Backtracking recursivo para generar todos los matchings posibles.
+     * Cada matching es un subconjunto de aristas donde ningún par comparte vértice.
+     * Solo genera matchings de cardinalidad >= 1.
+     * @private
+     */
+    static _enumerateMatchings(edges, startIdx, current, usedVertices, results, seen) {
+        // Si ya tenemos al menos una arista, registrar este matching
+        if (current.length > 0) {
+            // Clave canónica para deduplicar (aristas multi-grafo)
+            const key = current
+                .map(e => [e.from, e.to].sort().join('-'))
+                .sort()
+                .join('|');
+            if (!seen.has(key)) {
+                seen.add(key);
+                results.push([...current]);
+            }
+        }
+
+        // Explorar extensiones
+        for (let i = startIdx; i < edges.length; i++) {
+            const e = edges[i];
+            if (!usedVertices.has(e.from) && !usedVertices.has(e.to)) {
+                current.push(e);
+                usedVertices.add(e.from);
+                usedVertices.add(e.to);
+
+                this._enumerateMatchings(edges, i + 1, current, usedVertices, results, seen);
+
+                current.pop();
+                usedVertices.delete(e.from);
+                usedVertices.delete(e.to);
+            }
+        }
+    }
 
     // ─── Pareamiento Máximo (Caminos Incrementados) ───────────────────────────
 
@@ -251,6 +274,7 @@ class MatchingModel {
      * Clasifica un pareamiento dado, calculando todas sus propiedades.
      * @param {GraphModel} graph - Grafo original.
      * @param {Array} matchingEdges - Aristas seleccionadas para el pareamiento.
+     * @param {number|null} knownMaxCard - Cardinalidad máxima ya conocida (opcional).
      * @returns {{
      *   matchingEdges: Array,
      *   cardinality: number,

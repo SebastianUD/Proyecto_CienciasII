@@ -352,12 +352,13 @@ class MatrixGraphModel {
         const directed = graph.directed;
         const matrix = V.map(v =>
             E.map(e => {
+                const w = (e.weight !== null && e.weight !== undefined) ? e.weight : 1;
                 if (directed) {
-                    if (e.from === v) return 1;
-                    if (e.to === v) return -1;
+                    if (e.from === v) return w;    // sale: +peso
+                    if (e.to === v) return -w;    // entra: -peso
                     return 0;
                 } else {
-                    return (e.from === v || e.to === v) ? 1 : 0;
+                    return (e.from === v || e.to === v) ? w : 0;
                 }
             })
         );
@@ -375,29 +376,33 @@ class MatrixGraphModel {
         const idx = {};
         V.forEach((v, i) => idx[v] = i);
 
-        // Adyacencia de Vértices (V x V)
+        // Adyacencia de Vértices (V x V) — celdas con el peso de la arista
         const vertexMatrix = Array.from({ length: n }, () => new Array(n).fill(0));
         for (const e of E) {
             const i = idx[e.from], j = idx[e.to];
+            const w = (e.weight !== null && e.weight !== undefined) ? e.weight : 1;
             if (i !== undefined && j !== undefined) {
                 if (directed) {
-                    vertexMatrix[i][j] = 1;   // arista sale de fila hacia columna
-                    // Si NO hay arista en sentido contrario, marcar -1 (indica que la conexión existe pero en dirección opuesta)
-                    if (vertexMatrix[j][i] === 0) vertexMatrix[j][i] = -1;
+                    vertexMatrix[i][j] = w;   // arista i→j con peso w
+                    // Si NO hay arista en sentido contrario, marcar -w
+                    if (vertexMatrix[j][i] === 0) vertexMatrix[j][i] = -w;
                 } else {
-                    vertexMatrix[i][j] = 1;
-                    vertexMatrix[j][i] = 1;
+                    vertexMatrix[i][j] = w;
+                    vertexMatrix[j][i] = w;
                 }
             }
         }
-        // Corregir: si hay arista en ambas direcciones (i->j y j->i), la diagonal cruzada debe ser 1 no -1
+        // Corregir: si hay arista en ambas direcciones (i→j y j→i), no poner negativo
         if (directed) {
             for (const e of E) {
                 const i = idx[e.from], j = idx[e.to];
-                if (i !== undefined && j !== undefined && vertexMatrix[i][j] === 1 && vertexMatrix[j][i] === -1) {
-                    // si también existe arista j->i, quitar el -1 y poner 1
+                const w = (e.weight !== null && e.weight !== undefined) ? e.weight : 1;
+                if (i !== undefined && j !== undefined && vertexMatrix[j][i] === -w) {
                     const hasReverse = E.some(e2 => e2.from === e.to && e2.to === e.from);
-                    if (!hasReverse) { /* keep -1 */ } else { vertexMatrix[j][i] = 1; }
+                    if (hasReverse) {
+                        const wR = (E.find(e2 => e2.from === e.to && e2.to === e.from)?.weight ?? 1);
+                        vertexMatrix[j][i] = wR;
+                    }
                 }
             }
         }
@@ -617,7 +622,7 @@ class MatrixGraphModel {
         V.forEach((v, i) => {
             html += `<tr><td class="matrix-row-header">${v}</td>`;
             matrix[i].forEach(val => {
-                const color = val === 1 ? '' : val === -1 ? 'color:#E53935;' : 'color:#999;';
+                const color = val > 0 ? '' : val < 0 ? 'color:#E53935;' : 'color:#999;';
                 html += `<td class="matrix-cell" style="${color}">${val}</td>`;
             });
             html += `</tr>`;
@@ -632,8 +637,8 @@ class MatrixGraphModel {
         const fmt = v => v;
 
         const cellStyle = val => {
-            if (val === 1) return '';
-            if (val === -1) return 'color:#E53935;';
+            if (typeof val === 'number' && val > 0) return '';
+            if (typeof val === 'number' && val < 0) return 'color:#E53935;';
             if (val === '±1') return 'color:#9C27B0;font-weight:bold;';
             return 'color:#bbb;';
         };
