@@ -37,6 +37,7 @@ class GrafosView {
         this._distStepIdxG1 = 0;
         this._distStepsG2 = [];
         this._distStepIdxG2 = 0;
+        this._currentSetsData = {};
     }
 
     _newCam() {
@@ -1331,14 +1332,14 @@ class GrafosView {
 
             this._clearColoringState();
 
-            this._renderIndependentDescription(graph, graphLabel, result);
+            this._renderIndependentDescription(graph, graphLabel, result, src);
         } catch (err) {
             Validation.showError('Error al calcular conjuntos independientes: ' + err.message);
             console.error(err);
         }
     }
 
-    _renderIndependentDescription(graph, graphLabel, result) {
+    _renderIndependentDescription(graph, graphLabel, result, src) {
         const sections = [];
 
         sections.push({
@@ -1346,67 +1347,58 @@ class GrafosView {
             items: [{ graph: graph, label: graphLabel.replace(/\s*\(.*\)/, ''), isTree: false }]
         });
 
-        const limitSetsHTML = (sets, isEdge = false) => {
-            if (sets.length === 0) return `<em>No se encontraron conjuntos.</em>`;
-            let html = '';
-            const maxDisplay = 10;
-            const toShow = Math.min(sets.length, maxDisplay);
-            for (let i = 0; i < toShow; i++) {
-                if (isEdge) {
-                    const edgesStr = sets[i].map(e => `${e.from}–${e.to}`).join(', ');
-                    html += `<div style="padding-left:10px;">A<sub>${i + 1}</sub>: {${edgesStr}}</div>`;
-                } else {
-                    html += `<div style="padding-left:10px;">S<sub>${i + 1}</sub>: {${sets[i].join(', ')}}</div>`;
-                }
-            }
-            if (sets.length > maxDisplay) {
-                html += `<div style="padding-left:10px;font-weight:bold;line-height:0.8;margin:4px 0 2px 2px;">⋮</div>`;
-                html += `<div style="padding-left:10px;font-style:italic;color:#666;font-size:0.75rem;">(Mostrando ${maxDisplay} de ${sets.length})</div>`;
-            }
-            return html;
-        };
-
         // Total Vertex Independent Sets
+        this._currentSetsData['all_vert_indep'] = result.allIndependentSets;
         let totalVertHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        totalVertHTML += `<strong style="font-size:0.95rem;">Número Total de Conjuntos Independientes de Vértices = <span style="font-size:1.1rem;">${result.totalIndependentSets}</span></strong>`;
+        totalVertHTML += `<strong style="font-size:0.95rem;">Número Total de Conjuntos Independientes de Vértices = <span style="font-size:1.1rem;">${result.totalIndependentSets}</span></strong><br>`;
+        totalVertHTML += `<div style="margin-top:6px;font-weight:600;font-size:0.82rem;color:var(--text-primary);">Todos los conjuntos (${result.allIndependentSets.length}):</div>`;
+        totalVertHTML += this._buildInteractiveSetsHTML(result.allIndependentSets, false, 'independent', 'indep-set-item', 'all_vert_indep');
         totalVertHTML += `</div>`;
         sections.push({ title: 'Total Conjuntos Independientes Vértices', html: totalVertHTML });
 
         // 1. Maximum Independent Sets (Vertices)
+        this._currentSetsData['max_vert_indep'] = result.maximumSets;
         let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes de Vértices (${result.maximumSets.length}):</strong><br>`;
-        maxHTML += limitSetsHTML(result.maximumSets, false);
+        maxHTML += this._buildInteractiveSetsHTML(result.maximumSets, false, 'independent', 'indep-set-item', 'max_vert_indep');
         maxHTML += `</div>`;
         sections.push({ title: 'Conjuntos Máximos Independientes de Vértices', html: maxHTML });
 
         // 2. Maximal Independent Sets (Vertices)
+        this._currentSetsData['maximal_vert_indep'] = result.maximalSets;
         let maximalHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         maximalHTML += `<strong style="font-size:0.9rem;">Conjuntos Maximales Independientes de Vértices (${result.maximalSets.length}):</strong><br>`;
-        maximalHTML += limitSetsHTML(result.maximalSets, false);
+        maximalHTML += this._buildInteractiveSetsHTML(result.maximalSets, false, 'independent', 'indep-set-item', 'maximal_vert_indep');
         maximalHTML += `</div>`;
         sections.push({ title: 'Conjuntos Maximales Independientes de Vértices', html: maximalHTML });
 
         // Total Edge Independent Sets
+        this._currentSetsData['all_edge_indep'] = result.allMatchings;
         let totalEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        totalEdgeHTML += `<strong style="font-size:0.95rem;">Número Total de Conjuntos Independientes de Aristas = <span style="font-size:1.1rem;">${result.totalMatchings}</span></strong>`;
+        totalEdgeHTML += `<strong style="font-size:0.95rem;">Número Total de Conjuntos Independientes de Aristas = <span style="font-size:1.1rem;">${result.totalMatchings}</span></strong><br>`;
+        totalEdgeHTML += `<div style="margin-top:6px;font-weight:600;font-size:0.82rem;color:var(--text-primary);">Todos los conjuntos (${result.allMatchings.length}):</div>`;
+        totalEdgeHTML += this._buildInteractiveSetsHTML(result.allMatchings, true, 'matching', 'indep-set-item', 'all_edge_indep');
         totalEdgeHTML += `</div>`;
         sections.push({ title: 'Total Conjuntos Independientes Aristas', html: totalEdgeHTML });
 
         // 3. Maximum Edge Independent Sets (Matchings)
+        this._currentSetsData['max_edge_indep'] = result.maximumMatchings;
         let maxEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         maxEdgeHTML += `<strong style="font-size:0.9rem;">Conjuntos Máximos Independientes de Aristas (${result.maximumMatchings.length}):</strong><br>`;
-        maxEdgeHTML += limitSetsHTML(result.maximumMatchings, true);
+        maxEdgeHTML += this._buildInteractiveSetsHTML(result.maximumMatchings, true, 'matching', 'indep-set-item', 'max_edge_indep');
         maxEdgeHTML += `</div>`;
         sections.push({ title: 'Conjuntos Máximos Independientes de Aristas', html: maxEdgeHTML });
 
         // 4. Maximal Edge Independent Sets (Matchings)
+        this._currentSetsData['maximal_edge_indep'] = result.maximalMatchings;
         let maximalEdgeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         maximalEdgeHTML += `<strong style="font-size:0.9rem;">Conjuntos Maximales Independientes de Aristas (${result.maximalMatchings.length}):</strong><br>`;
-        maximalEdgeHTML += limitSetsHTML(result.maximalMatchings, true);
+        maximalEdgeHTML += this._buildInteractiveSetsHTML(result.maximalMatchings, true, 'matching', 'indep-set-item', 'maximal_edge_indep');
         maximalEdgeHTML += `</div>`;
         sections.push({ title: 'Conjuntos Maximales Independientes de Aristas', html: maximalEdgeHTML });
 
         this._renderDescription(sections);
+        this._bindInteractiveSetClicks('indep-set-item', false, 'independent', src, graph);
     }
 
     _onExecuteDominating() {
@@ -1428,14 +1420,14 @@ class GrafosView {
 
             this._clearColoringState();
 
-            this._renderDominatingDescription(graph, graphLabel, result);
+            this._renderDominatingDescription(graph, graphLabel, result, src);
         } catch (err) {
             Validation.showError('Error al calcular conjuntos dominantes: ' + err.message);
             console.error(err);
         }
     }
 
-    _renderDominatingDescription(graph, graphLabel, result) {
+    _renderDominatingDescription(graph, graphLabel, result, src) {
         const sections = [];
 
         sections.push({
@@ -1443,24 +1435,12 @@ class GrafosView {
             items: [{ graph: graph, label: graphLabel.replace(/\s*\(.*\)/, ''), isTree: false }]
         });
 
-        const limitSetsHTML = (sets) => {
-            if (sets.length === 0) return `<em>No se encontraron conjuntos.</em>`;
-            let html = '';
-            const maxDisplay = 10;
-            const toShow = Math.min(sets.length, maxDisplay);
-            for (let i = 0; i < toShow; i++) {
-                html += `<div style="padding-left:10px;">S'<sub>${i + 1}</sub>: {${sets[i].join(', ')}}</div>`;
-            }
-            if (sets.length > maxDisplay) {
-                html += `<div style="padding-left:10px;font-weight:bold;line-height:0.8;margin:4px 0 2px 2px;">⋮</div>`;
-                html += `<div style="padding-left:10px;font-style:italic;color:#666;font-size:0.75rem;">(Mostrando ${maxDisplay} de ${sets.length})</div>`;
-            }
-            return html;
-        };
-
         // Total dominating sets
+        this._currentSetsData['all_dominating'] = result.allSets;
         let totalHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        totalHTML += `<strong style="font-size:0.95rem;">Número Total de Conjuntos Dominantes = <span style="font-size:1.1rem;">${result.totalDominatingSetsCount}</span></strong>`;
+        totalHTML += `<strong style="font-size:0.95rem;">Número Total de Conjuntos Dominantes = <span style="font-size:1.1rem;">${result.totalDominatingSetsCount}</span></strong><br>`;
+        totalHTML += `<div style="margin-top:6px;font-weight:600;font-size:0.82rem;color:var(--text-primary);">Todos los conjuntos (${result.allSets.length}):</div>`;
+        totalHTML += this._buildInteractiveSetsHTML(result.allSets, false, 'dominating', 'dom-set-item', 'all_dominating');
         totalHTML += `</div>`;
         sections.push({ title: 'Número Total de Conjuntos Dominantes', html: totalHTML });
 
@@ -1471,31 +1451,33 @@ class GrafosView {
         sections.push({ title: 'Número de Dominación', html: numHTML });
 
         // Independent Dominating Sets
+        this._currentSetsData['indep_dominating'] = result.independentDominatingSets;
         let indepHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         indepHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Independientes (${result.independentDominatingSets.length}):</strong><br>`;
-        indepHTML += limitSetsHTML(result.independentDominatingSets);
+        indepHTML += this._buildInteractiveSetsHTML(result.independentDominatingSets, false, 'dominating', 'dom-set-item', 'indep_dominating');
         indepHTML += `</div>`;
         sections.push({ title: 'Conjuntos Dominantes Independientes', html: indepHTML });
 
-
-
         // Minimum Dominating Sets
+        this._currentSetsData['min_dominating'] = result.minimumSets;
         let minHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         const γ = result.minimumSets.length > 0 ? result.minimumSets[0].length : 0;
         minHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Mínimos (${result.minimumSets.length}) [Tamaño: ${γ}]:</strong><br>`;
-        minHTML += limitSetsHTML(result.minimumSets);
+        minHTML += this._buildInteractiveSetsHTML(result.minimumSets, false, 'dominating', 'dom-set-item', 'min_dominating');
         minHTML += `</div>`;
         sections.push({ title: 'Conjuntos Dominantes Mínimos', html: minHTML });
 
         // Maximum Dominating Sets
+        this._currentSetsData['max_dominating'] = result.maximumSets;
         let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         const Γ = result.maximumSets.length > 0 ? result.maximumSets[0].length : 0;
         maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Máximos (${result.maximumSets.length}) [Tamaño: ${Γ}]:</strong><br>`;
-        maxHTML += limitSetsHTML(result.maximumSets);
+        maxHTML += this._buildInteractiveSetsHTML(result.maximumSets, false, 'dominating', 'dom-set-item', 'max_dominating');
         maxHTML += `</div>`;
         sections.push({ title: 'Conjuntos Dominantes Máximos', html: maxHTML });
 
         this._renderDescription(sections);
+        this._bindInteractiveSetClicks('dom-set-item', false, 'dominating', src, graph);
     }
 
     _onExecuteConnectedSubsets() {
@@ -1517,14 +1499,14 @@ class GrafosView {
 
             this._clearColoringState();
 
-            this._renderConnectedSubsetsDescription(graph, graphLabel, result);
+            this._renderConnectedSubsetsDescription(graph, graphLabel, result, src);
         } catch (err) {
             Validation.showError('Error al calcular conjuntos conexos: ' + err.message);
             console.error(err);
         }
     }
 
-    _renderConnectedSubsetsDescription(graph, graphLabel, result) {
+    _renderConnectedSubsetsDescription(graph, graphLabel, result, src) {
         const sections = [];
 
         sections.push({
@@ -1532,43 +1514,63 @@ class GrafosView {
             items: [{ graph: graph, label: graphLabel.replace(/\s*\(.*\)/, ''), isTree: false }]
         });
 
-        const limitSetsHTML = (sets) => {
-            if (sets.length === 0) return `<em>No se encontraron conjuntos.</em>`;
-            let html = '';
-            const maxDisplay = 10;
-            const toShow = Math.min(sets.length, maxDisplay);
-            for (let i = 0; i < toShow; i++) {
-                html += `<div style="padding-left:10px;">C<sub>${i + 1}</sub>: {${sets[i].join(', ')}}</div>`;
-            }
-            if (sets.length > maxDisplay) {
-                html += `<div style="padding-left:10px;font-weight:bold;line-height:0.8;margin:4px 0 2px 2px;">⋮</div>`;
-                html += `<div style="padding-left:10px;font-style:italic;color:#666;font-size:0.75rem;">(Mostrando ${maxDisplay} de ${sets.length})</div>`;
-            }
-            return html;
-        };
-
         // All Connected Sets
+        this._currentSetsData['all_connected'] = result.allSets;
         let allHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         allHTML += `<strong style="font-size:0.9rem;">Todos los Conjuntos Conexos (${result.allSets.length}):</strong><br>`;
-        allHTML += limitSetsHTML(result.allSets);
+        allHTML += this._buildInteractiveSetsHTML(result.allSets, false, 'connected', 'conn-set-item', 'all_connected');
         allHTML += `</div>`;
         sections.push({ title: 'Todos los Conjuntos Conexos', html: allHTML });
 
         // Minimum Connected Sets
+        this._currentSetsData['min_connected'] = result.minimumSets;
         let minHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         minHTML += `<strong style="font-size:0.9rem;">Conjuntos Conexos Mínimos (${result.minimumSets.length}):</strong><br>`;
-        minHTML += limitSetsHTML(result.minimumSets);
+        minHTML += this._buildInteractiveSetsHTML(result.minimumSets, false, 'connected', 'conn-set-item', 'min_connected');
         minHTML += `</div>`;
         sections.push({ title: 'Conjuntos Conexos Mínimos', html: minHTML });
 
         // Maximum Connected Sets
+        this._currentSetsData['max_connected'] = result.maximumSets;
         let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
         maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Conexos Máximos (${result.maximumSets.length}):</strong><br>`;
-        maxHTML += limitSetsHTML(result.maximumSets);
+        maxHTML += this._buildInteractiveSetsHTML(result.maximumSets, false, 'connected', 'conn-set-item', 'max_connected');
         maxHTML += `</div>`;
         sections.push({ title: 'Conjuntos Conexos Máximos', html: maxHTML });
 
+        const hasDomSets = result.connectedDominatingSets && result.connectedDominatingSets.length > 0;
+
+        if (hasDomSets) {
+            // All Connected Dominating Sets
+            this._currentSetsData['all_conn_dominating'] = result.connectedDominatingSets;
+            let allDomHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+            allDomHTML += `<strong style="font-size:0.9rem;">Todos los Conjuntos Dominantes Conexos (${result.connectedDominatingSets.length}):</strong><br>`;
+            allDomHTML += this._buildInteractiveSetsHTML(result.connectedDominatingSets, false, 'connected_dominating', 'conn-dom-item', 'all_conn_dominating');
+            allDomHTML += `</div>`;
+            sections.push({ title: 'Todos los Conjuntos Dominantes Conexos', html: allDomHTML });
+
+            // Minimum Connected Dominating Sets
+            this._currentSetsData['min_conn_dominating'] = result.minimumConnectedDominatingSets;
+            let minDomHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+            minDomHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Conexos Mínimos (${result.minimumConnectedDominatingSets.length}):</strong><br>`;
+            minDomHTML += this._buildInteractiveSetsHTML(result.minimumConnectedDominatingSets, false, 'connected_dominating', 'conn-dom-item', 'min_conn_dominating');
+            minDomHTML += `</div>`;
+            sections.push({ title: 'Conjuntos Dominantes Conexos Mínimos', html: minDomHTML });
+
+            // Maximum Connected Dominating Sets
+            this._currentSetsData['max_conn_dominating'] = result.maximumConnectedDominatingSets;
+            let maxDomHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+            maxDomHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Conexos Máximos (${result.maximumConnectedDominatingSets.length}):</strong><br>`;
+            maxDomHTML += this._buildInteractiveSetsHTML(result.maximumConnectedDominatingSets, false, 'connected_dominating', 'conn-dom-item', 'max_conn_dominating');
+            maxDomHTML += `</div>`;
+            sections.push({ title: 'Conjuntos Dominantes Conexos Máximos', html: maxDomHTML });
+        }
+
         this._renderDescription(sections);
+        this._bindInteractiveSetClicks('conn-set-item', false, 'connected', src, graph);
+        if (hasDomSets) {
+            this._bindInteractiveSetClicks('conn-dom-item', false, 'connected_dominating', src, graph);
+        }
     }
 
     // ─── Matching (Pareamientos) ──────────────────────────────────────────────
@@ -1655,7 +1657,7 @@ class GrafosView {
                     html += `style="padding:4px 10px;cursor:pointer;border-radius:3px;transition:background 0.15s;" `;
                     html += `onmouseover="this.style.background='rgba(43,87,154,0.10)'" `;
                     html += `onmouseout="if(!this.classList.contains('matching-selected'))this.style.background='transparent'">`;
-                    html += `${m.label} = {${edgeStr || '∅'}} <span style="color:#888;font-size:0.75rem;">(card. ${m.cardinality})</span>`;
+                    html += `${m.label} = {${edgeStr || '∅'}}`;
                     html += `</div>`;
                 }
                 html += `</div>`;
@@ -1759,6 +1761,136 @@ class GrafosView {
         }
     }
 
+    _buildInteractiveSetsHTML(sets, isEdge, type, itemClass, listId) {
+        if (!sets || sets.length === 0) return `<div style="padding:6px 10px;font-style:italic;color:#999;font-size:0.8rem;">No se encontraron conjuntos.</div>`;
+        
+        let html = `<div style="font-family:Consolas,monospace;font-size:0.82rem;line-height:1.7;max-height:260px;overflow-y:auto;padding:4px 0;">`;
+        for (let i = 0; i < sets.length; i++) {
+            const set = sets[i];
+            let setStr = '';
+            let cardinality = 0;
+            if (isEdge) {
+                setStr = set.map(e => `${e.from}–${e.to}`).join(', ');
+                cardinality = set.length;
+            } else {
+                setStr = set.join(', ');
+                cardinality = set.length;
+            }
+
+            const label = isEdge ? `A<sub>${i + 1}</sub>` : (type === 'dominating' ? `S'<sub>${i + 1}</sub>` : (type === 'connected_dominating' ? `S'<sub>c,${i + 1}</sub>` : (type === 'connected' ? `C<sub>${i + 1}</sub>` : `S<sub>${i + 1}</sub>`)));
+            
+            html += `<div class="${itemClass}" data-idx="${i}" data-list-id="${listId}" `;
+            html += `style="padding:4px 10px;cursor:pointer;border-radius:3px;transition:background 0.15s;" `;
+            html += `onmouseover="this.style.background='rgba(43,87,154,0.10)'" `;
+            html += `onmouseout="if(!this.classList.contains('set-selected'))this.style.background='transparent'">`;
+            html += `${label} = {${setStr || '∅'}}`;
+            html += `</div>`;
+        }
+        html += `</div>`;
+        return html;
+    }
+
+    _bindInteractiveSetClicks(itemClass, isEdge, type, graphSource, graph) {
+        const self = this;
+        document.querySelectorAll('.' + itemClass).forEach(el => {
+            el.addEventListener('click', function () {
+                const idx = parseInt(this.dataset.idx);
+                const listId = this.dataset.listId;
+                const sets = self._currentSetsData[listId];
+                if (!sets || !sets[idx]) return;
+
+                const selectedSet = sets[idx];
+
+                // Visual selection state
+                document.querySelectorAll('.' + itemClass).forEach(item => {
+                    item.classList.remove('set-selected');
+                    item.style.background = 'transparent';
+                });
+                this.classList.add('set-selected');
+                this.style.background = 'rgba(229,57,53,0.12)';
+
+                // Highlight on graph
+                const isEdgeList = (listId === 'all_edge_indep' || listId === 'max_edge_indep' || listId === 'maximal_edge_indep');
+                if (isEdgeList) {
+                    self._onSelectSet(graphSource, graph, null, selectedSet, type);
+                } else {
+                    self._onSelectSet(graphSource, graph, selectedSet, null, type);
+                }
+            });
+        });
+    }
+
+    _onSelectSet(src, graph, vertexSet, edgeSet, type) {
+        // Clear all previous highlight states
+        this._coloringVertexColors = {};
+        this._coloringEdgeColors = {};
+        this._resultHighlightVertices = {};
+        this._resultHighlightEdges = {};
+        this._coloringSource = src;
+
+        const hlV = {};
+        const hlE = {};
+
+        // Highlight color
+        const color = '#E53935'; // Red
+
+        if (vertexSet) {
+            for (const v of vertexSet) {
+                hlV[v] = color;
+            }
+        }
+
+        if (edgeSet) {
+            for (const e of edgeSet) {
+                const key = [e.from, e.to].sort().join('-');
+                hlE[key] = color;
+                hlE[`eid:${e.id}`] = color;
+            }
+        }
+
+        // Special handling based on type
+        if (type === 'dominating' && vertexSet) {
+            // Color edges incident to dominating vertices
+            for (const e of graph.edges) {
+                if (vertexSet.includes(e.from) || vertexSet.includes(e.to)) {
+                    const key = [e.from, e.to].sort().join('-');
+                    hlE[key] = '#43A047';
+                    hlE[`eid:${e.id}`] = '#43A047';
+                }
+            }
+        } else if (type === 'connected' && vertexSet) {
+            // Color edges that connect vertices within the subset
+            const vSet = new Set(vertexSet);
+            for (const e of graph.edges) {
+                if (vSet.has(e.from) && vSet.has(e.to)) {
+                    const key = [e.from, e.to].sort().join('-');
+                    hlE[key] = '#43A047';
+                    hlE[`eid:${e.id}`] = '#43A047';
+                }
+            }
+        } else if (type === 'connected_dominating' && vertexSet) {
+            // Color edges incident to dominating vertices (dominance)
+            for (const e of graph.edges) {
+                if (vertexSet.includes(e.from) || vertexSet.includes(e.to)) {
+                    const key = [e.from, e.to].sort().join('-');
+                    hlE[key] = '#43A047';
+                    hlE[`eid:${e.id}`] = '#43A047';
+                }
+            }
+        }
+
+        // Set highlights in state
+        if (src === 'g1' || src === 'g2') {
+            this._coloringVertexColors = hlV;
+            this._coloringEdgeColors = hlE;
+        } else {
+            this._resultHighlightVertices = hlV;
+            this._resultHighlightEdges = hlE;
+        }
+
+        this._drawAll();
+    }
+
     _renderDescription(sections) {
         this.el.opContent.innerHTML = '';
         for (const section of sections) {
@@ -1793,10 +1925,7 @@ class GrafosView {
 
     _inheritPositions(sourceGraph, targetGraph) {
         if (!sourceGraph || !targetGraph) return;
-        const canvas = this.el.canvasG1;
-        const cx = canvas ? canvas.width / 2 : 300;
-        const cy = canvas ? canvas.height / 2 : 200;
-        const srcPositions = sourceGraph.getVertexPositions(cx, cy);
+        const srcPositions = sourceGraph.getVertexPositions(300, 200);
         for (const v of targetGraph.vertices) {
             if (srcPositions[v]) targetGraph.manualPositions[v] = { x: srcPositions[v].x, y: srcPositions[v].y };
         }
@@ -1908,8 +2037,7 @@ class GrafosView {
             const graph = getGraph();
             if (isDragActive() && graph && graph.vertices.length > 0) {
                 const worldX = (mouseX - cam.offsetX) / cam.scale, worldY = (mouseY - cam.offsetY) / cam.scale;
-                const cx = canvas.width / 2, cy = canvas.height / 2;
-                const positions = graph.getVertexPositions(cx, cy);
+                const positions = graph.getVertexPositions(300, 200);
                 const r = this._nodeRadiusFor(graph);
                 for (const v of graph.vertices) {
                     const pos = positions[v];
@@ -1949,8 +2077,7 @@ class GrafosView {
 
     _fitGraph(canvas, graph, cam) {
         if (!graph || graph.vertices.length === 0) { cam.offsetX = 0; cam.offsetY = 0; cam.scale = 1; return; }
-        const cx = canvas.width / 2, cy = canvas.height / 2;
-        const positions = graph.getVertexPositions(cx, cy);
+        const positions = graph.getVertexPositions(300, 200);
         const posArr = Object.values(positions);
         const r = this._nodeRadiusFor(graph);
         let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
@@ -2004,8 +2131,7 @@ class GrafosView {
             return;
         }
         const r = this._nodeRadiusFor(graph);
-        const cx = canvas.width / 2, cy = canvas.height / 2;
-        const positions = graph.getVertexPositions(cx, cy);
+        const positions = graph.getVertexPositions(300, 200);
         ctx.save(); ctx.translate(cam.offsetX, cam.offsetY); ctx.scale(cam.scale, cam.scale);
         const edgeCounts = {}, edgeDrawn = {};
         for (const e of graph.edges) { const key = [e.from, e.to].sort().join('-'); edgeCounts[key] = (edgeCounts[key] || 0) + 1; }

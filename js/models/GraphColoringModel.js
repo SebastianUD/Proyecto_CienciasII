@@ -489,12 +489,14 @@ class GraphColoringModel {
             maximalMatchings: allMaximalMatchings,
             maximumMatchings: maximumMatchings,
             totalIndependentSets: this.countAllIndependentSets(graph),
-            totalMatchings: this.countAllMatchings(graph)
+            totalMatchings: this.countAllMatchings(graph),
+            allIndependentSets: this.findAllIndependentSets(graph),
+            allMatchings: this.findAllMatchings(graph)
         };
     }
 
     /**
-     * Count all independent vertex sets (including empty set).
+     * Count all independent vertex sets (excluding empty set).
      */
     static countAllIndependentSets(graph) {
         const vertices = graph.vertices;
@@ -525,16 +527,16 @@ class GraphColoringModel {
             }
         }
         backtrack(0, new Set());
-        return count;
+        return Math.max(0, count - 1);
     }
 
     /**
-     * Count all independent edge sets / matchings (including empty set).
+     * Count all independent edge sets / matchings (excluding empty set).
      */
     static countAllMatchings(graph) {
         const edges = graph.edges;
         const m = edges.length;
-        if (m === 0) return 1; // empty matching
+        if (m === 0) return 0;
 
         let count = 0;
         function backtrack(idx, coveredVertices) {
@@ -556,7 +558,79 @@ class GraphColoringModel {
             }
         }
         backtrack(0, new Set());
-        return count;
+        return Math.max(0, count - 1);
+    }
+
+    /**
+     * Find all independent vertex sets (excluding empty set).
+     */
+    static findAllIndependentSets(graph) {
+        const vertices = graph.vertices;
+        const n = vertices.length;
+        if (n === 0) return [];
+        const adj = this._buildAdj(graph);
+        const result = [];
+        
+        function backtrack(idx, currentSet) {
+            if (idx === n) {
+                if (currentSet.size > 0) {
+                    result.push([...currentSet]);
+                }
+                return;
+            }
+            // Exclude
+            backtrack(idx + 1, currentSet);
+            // Include (if valid)
+            const v = vertices[idx];
+            let valid = true;
+            for (const nb of adj[v]) {
+                if (currentSet.has(nb)) {
+                    valid = false; break;
+                }
+            }
+            if (valid) {
+                currentSet.add(v);
+                backtrack(idx + 1, currentSet);
+                currentSet.delete(v);
+            }
+        }
+        backtrack(0, new Set());
+        return result;
+    }
+
+    /**
+     * Find all independent edge sets / matchings (excluding empty set).
+     */
+    static findAllMatchings(graph) {
+        const edges = graph.edges;
+        const m = edges.length;
+        if (m === 0) return [];
+        const result = [];
+
+        function backtrack(idx, currentMatching, coveredVertices) {
+            if (idx === m) {
+                if (currentMatching.length > 0) {
+                    result.push([...currentMatching]);
+                }
+                return;
+            }
+            // Exclude edge
+            backtrack(idx + 1, currentMatching, coveredVertices);
+            
+            // Include edge if valid
+            const e = edges[idx];
+            if (!coveredVertices.has(e.from) && !coveredVertices.has(e.to)) {
+                coveredVertices.add(e.from);
+                coveredVertices.add(e.to);
+                currentMatching.push(e);
+                backtrack(idx + 1, currentMatching, coveredVertices);
+                currentMatching.pop();
+                coveredVertices.delete(e.from);
+                coveredVertices.delete(e.to);
+            }
+        }
+        backtrack(0, [], new Set());
+        return result;
     }
 
     /**
@@ -632,6 +706,7 @@ class GraphColoringModel {
         }
 
         const minimalDominatingSets = [];
+        const allDominatingSets = [];
 
         const isDominating = (subsetSet) => {
             for (const v of vertices) {
@@ -669,6 +744,7 @@ class GraphColoringModel {
             if (idx === n) {
                 if (isDominating(currentSet)) {
                     totalDominatingSetsCount++;
+                    allDominatingSets.push([...currentArray]);
                     if (isMinimal(currentSet, currentArray)) {
                         minimalDominatingSets.push([...currentArray]);
                     }
@@ -706,14 +782,16 @@ class GraphColoringModel {
             maximumSets: maximumSets,
             dominationNumber: minSize === Infinity ? 0 : minSize,
             totalDominatingSetsCount: totalDominatingSetsCount,
-            independentDominatingSets: independentDominatingSets
+            independentDominatingSets: independentDominatingSets,
+            allSets: allDominatingSets
         };
     }
 
     // ─── Connected Subsets ────────────────────────────────────────────────
 
     /**
-     * Compute all connected subsets of vertices, as well as the minimum and maximum ones.
+     * Compute all connected subsets of vertices, as well as the minimum and maximum ones,
+     * and also connected dominating sets.
      */
     static computeConnectedSubsets(graph) {
         const vertices = graph.vertices;
@@ -781,10 +859,44 @@ class GraphColoringModel {
         const minimumSets = connectedSubsets.filter(s => s.length === minSize);
         const maximumSets = connectedSubsets.filter(s => s.length === maxSize);
 
+        // Filter connected dominating sets
+        const connectedDominatingSets = [];
+        const isDominating = (subsetSet) => {
+            for (const v of vertices) {
+                if (subsetSet.has(v)) continue;
+                let dominated = false;
+                for (const nb of adj[v]) {
+                    if (subsetSet.has(nb)) { dominated = true; break; }
+                }
+                if (!dominated) return false;
+            }
+            return true;
+        };
+
+        for (const s of connectedSubsets) {
+            if (isDominating(new Set(s))) {
+                connectedDominatingSets.push(s);
+            }
+        }
+
+        let minDomSize = Infinity;
+        let maxDomSize = 0;
+        if (connectedDominatingSets.length > 0) {
+            minDomSize = connectedDominatingSets[0].length;
+            maxDomSize = connectedDominatingSets[connectedDominatingSets.length - 1].length;
+        }
+
+        const minimumDomSets = connectedDominatingSets.filter(s => s.length === minDomSize);
+        const maximumDomSets = connectedDominatingSets.filter(s => s.length === maxDomSize);
+
         return {
             allSets: connectedSubsets,
             minimumSets: minimumSets,
-            maximumSets: maximumSets
+            maximumSets: maximumSets,
+            connectedDominatingSets: connectedDominatingSets,
+            minimumConnectedDominatingSets: minimumDomSets,
+            maximumConnectedDominatingSets: maximumDomSets,
+            connectedDominationNumber: minDomSize === Infinity ? 0 : minDomSize
         };
     }
 }
