@@ -376,6 +376,46 @@ class AlgorithmGraphView {
         const n      = this.nodeCount;
         const pos    = {};
 
+        let w = canvas.width || 600;
+        let h = canvas.height || 400;
+
+        if (this.el.algoSelect && this.el.algoSelect.value === 'floyd') {
+            const cols = Math.ceil(Math.sqrt(n));
+            const rows = Math.ceil(n / cols);
+            const spacing = 130;
+            const cx = w / 2;
+            const cy = h / 2;
+            
+            const startX = cx - ((cols - 1) * spacing) / 2;
+            const startY = cy - ((rows - 1) * spacing) / 2;
+
+            const sortedVertices = this.vertices ? [...this.vertices].sort() : [];
+            let idx = 0;
+            for (let v of sortedVertices) {
+                let nodeId = this.vertexIds[v];
+                if (this._manualPos[nodeId]) {
+                    pos[nodeId] = this._manualPos[nodeId];
+                } else {
+                    const row = Math.floor(idx / cols);
+                    const col = idx % cols;
+                    pos[nodeId] = {
+                        x: startX + col * spacing,
+                        y: startY + row * spacing
+                    };
+                }
+                idx++;
+            }
+            
+            for (let k = 1; k <= n; k++) {
+                if (!pos[k]) {
+                    if (this._manualPos[k]) pos[k] = this._manualPos[k];
+                    else pos[k] = { x: cx, y: cy };
+                }
+            }
+
+            return pos;
+        }
+
         let levels = {};
         for(let i=1; i<=n; i++) levels[i] = 0;
 
@@ -401,8 +441,6 @@ class AlgorithmGraphView {
         for(let i=0; i<=maxLevel; i++) levelGroups.push([]);
         for(let i=1; i<=n; i++) levelGroups[levels[i]].push(i);
 
-        let w = canvas.width || 600;
-        let h = canvas.height || 400;
         const padX = w / (maxLevel + 1);
 
         for (let lvl = 0; lvl <= maxLevel; lvl++) {
@@ -983,8 +1021,8 @@ class AlgorithmGraphView {
             }
         }
 
-        if (hasCycle) {
-            Validation.showError('El grafo contiene ciclos. No se puede aplicar la Función Ordinal.');
+        if (hasCycle && this.el.algoSelect.value !== 'floyd') {
+            Validation.showError('El grafo contiene ciclos. No se puede aplicar la Función Ordinal para este algoritmo.');
             return;
         }
         
@@ -995,6 +1033,13 @@ class AlgorithmGraphView {
         nodes.sort((aLabel, bLabel) => {
             let a = this.vertexIds[aLabel];
             let b = this.vertexIds[bLabel];
+            
+            if (hasCycle && this.el.algoSelect.value === 'floyd') {
+                if (Math.abs(pos[a].y - pos[b].y) > 1) {
+                    return pos[a].y - pos[b].y;
+                }
+                return pos[a].x - pos[b].x;
+            }
             
             if (levels[a] !== levels[b]) {
                 return levels[a] - levels[b];
