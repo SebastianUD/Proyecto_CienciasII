@@ -201,6 +201,51 @@ class GraphAlgorithmsModel {
             <div style="font-weight:bold; margin-bottom:8px; border-bottom:1px solid #ccc; padding-bottom:4px;">Operaciones de Dijkstra</div>
             <p style="margin-bottom:6px; font-style:italic;">Formato de etiqueta: [distancia, predecesor]</p>`;
 
+        let steps = [];
+
+        const cloneLabels = (lbls) => {
+            return lbls.map(arr => arr.map(l => ({ ...l })));
+        };
+
+        const getLabelsAtState = (stateLabels, stateDist, statePred, statePermanent) => {
+            let nodeExtraLabel = {};
+            for (let i = 1; i <= n; i++) {
+                if (stateLabels[i].length > 0) {
+                    let lblArr = [];
+                    for (let j = 0; j < stateLabels[i].length; j++) {
+                        let l = stateLabels[i][j];
+                        let isPerm = statePermanent[i];
+                        
+                        let str = `[${l.d}, ${l.p}]`;
+                        let color = '#2B579A'; 
+                        
+                        let isCurrentBest = !l.isDiscarded && (l.d === stateDist[i] && (l.p === statePred[i] || (l.p === '-' && statePred[i] === -1)));
+                        
+                        if (isCurrentBest) {
+                            str += isPerm ? '*' : '';
+                            color = isPerm ? '#388E3C' : '#E53935'; 
+                        } else {
+                            str += 'X';
+                            color = '#BDBDBD';
+                        }
+                        lblArr.push({ text: str, color: color });
+                    }
+                    nodeExtraLabel[i] = lblArr;
+                }
+            }
+            return nodeExtraLabel;
+        };
+
+        // Paso 0: Estado Inicial
+        steps.push({
+            title: "Estado Inicial",
+            description: `<div style="color:var(--text-main); font-weight:bold; margin-bottom:4px;">Estado Inicial</div>
+                <p>Se inicia en el Nodo <b>${src}</b> con distancia 0 y predecesor -.</p>`,
+            nodeExtraLabel: getLabelsAtState(cloneLabels(labels), [...dist], [...pred], [...permanent]),
+            nodeHL: { [src]: '#FFD54F' },
+            edgeHL: {}
+        });
+
         let iter = 1;
         while (true) {
             let u = -1;
@@ -217,17 +262,54 @@ class GraphAlgorithmsModel {
             permanent[u] = true;
             let curLabelStr = `[${dist[u]}, ${pred[u] === -1 ? '-' : pred[u]}]`;
 
-            html += `<div style="margin-bottom:8px;">
-                <div style="color:#2B579A; font-weight:bold; margin-bottom:4px;">Paso ${iter}: Seleccionado Nodo ${u} -> Permanente ${curLabelStr}*</div>
-                <ul style="padding-left:18px; margin-top:0;">`;
+            // Subpaso A: Selección de Nodo Permanente
+            let selectNodeHL = {};
+            for (let i = 1; i <= n; i++) {
+                if (permanent[i]) {
+                    selectNodeHL[i] = (i === u) ? '#388E3C' : '#C8E6C9';
+                }
+            }
+            if (u === src) selectNodeHL[src] = '#4CAF50';
+            if (u === tgt) selectNodeHL[tgt] = '#F44336';
+
+            let selectEdgeHL = {};
+            if (pred[u] !== -1) {
+                selectEdgeHL[`${pred[u]}-${u}`] = '#E53935';
+            }
+
+            let selectDesc = `<div style="color:#2B579A; font-weight:bold; margin-bottom:4px;">Paso ${iter}: Seleccionado Nodo ${u}</div>
+                <p>El nodo ${u} es hecho permanente con la etiqueta <b>${curLabelStr}*</b>.</p>`;
+            if (u === tgt) {
+                selectDesc += `<p style="color:#388E3C; font-weight:bold; margin-top:4px;">¡El nodo final ${tgt} es permanente! Finalizando algoritmo.</p>`;
+            }
+
+            steps.push({
+                title: `Paso ${iter}: Selección Nodo ${u}`,
+                description: selectDesc,
+                nodeExtraLabel: getLabelsAtState(cloneLabels(labels), [...dist], [...pred], [...permanent]),
+                nodeHL: { ...selectNodeHL },
+                edgeHL: { ...selectEdgeHL }
+            });
 
             if (u === tgt) {
-                html += `<li style="color:#388E3C; font-weight:bold;">¡El nodo final ${tgt} es permanente! Finalizando algoritmo.</li>`;
-                html += `</ul></div>`;
+                html += `<div style="margin-bottom:8px;">
+                    <div style="color:#2B579A; font-weight:bold; margin-bottom:4px;">Paso ${iter}: Seleccionado Nodo ${u} -> Permanente ${curLabelStr}*</div>
+                    <ul style="padding-left:18px; margin-top:0;">
+                        <li style="color:#388E3C; font-weight:bold;">¡El nodo final ${tgt} es permanente! Finalizando algoritmo.</li>
+                    </ul></div>`;
                 break;
             }
 
+            // Subpaso B: Relajación de Vecinos
+            let stepHtml = `<div style="margin-bottom:8px;">
+                <div style="color:#2B579A; font-weight:bold; margin-bottom:4px;">Paso ${iter}: Seleccionado Nodo ${u} -> Permanente ${curLabelStr}*</div>
+                <ul style="padding-left:18px; margin-top:0;">`;
+
             let relaxed = false;
+            let relaxationLines = [];
+            let activeEdges = {};
+            let activeNodes = {};
+
             for (let e of edges) {
                 if (e.from === u) {
                     let v = e.to;
@@ -235,26 +317,62 @@ class GraphAlgorithmsModel {
                         let newDist = dist[u] + e.weight;
                         let oldLabels = labels[v].map(l => `[${l.d}, ${l.p}]X`).join(', ');
                         
+                        activeEdges[`${u}-${v}`] = '#FF9800'; 
+                        activeNodes[v] = '#FFE082'; 
+
                         if (newDist < dist[v]) {
                             dist[v] = newDist;
                             pred[v] = u;
                             labels[v].push({ d: newDist, p: u });
                             
                             let lblStr = `[${newDist}, ${u}]`;
-                            html += `<li>Arista ${u}→${v} (peso ${e.weight}): Genera etiqueta <span style="color:#E53935; font-weight:bold;">${lblStr}</span> en Nodo ${v}. ${(oldLabels ? 'Anula etiquetas anteriores: ' + oldLabels : '')}</li>`;
+                            let line = `Arista ${u}→${v} (peso ${e.weight}): Genera etiqueta <span style="color:#E53935; font-weight:bold;">${lblStr}</span> en Nodo ${v}. ${(oldLabels ? 'Anula etiquetas anteriores: ' + oldLabels : '')}`;
+                            stepHtml += `<li>${line}</li>`;
+                            relaxationLines.push(line);
                             relaxed = true;
                         } else {
                             labels[v].push({ d: newDist, p: u, isDiscarded: true });
-                            html += `<li style="color:#777;">Arista ${u}→${v} (peso ${e.weight}): Etiqueta [${newDist}, ${u}] en Nodo ${v} descartada (X) por ser mayor o igual a [${dist[v]}, ${pred[v]}].</li>`;
+                            let line = `Arista ${u}→${v} (peso ${e.weight}): Etiqueta [${newDist}, ${u}] en Nodo ${v} descartada (X) por ser mayor o igual a [${dist[v]}, ${pred[v]}].`;
+                            stepHtml += `<li style="color:#777;">${line}</li>`;
+                            relaxationLines.push(`<span style="color:#777;">${line}</span>`);
                             relaxed = true;
                         }
                     }
                 }
             }
+
             if(!relaxed) {
-                html += `<li style="color:#777;">No hay ramificaciones viables no permanentes.</li>`;
+                let line = `No hay ramificaciones viables no permanentes.`;
+                stepHtml += `<li style="color:#777;">${line}</li>`;
+                relaxationLines.push(`<span style="color:#777;">${line}</span>`);
             }
-            html += `</ul></div>`;
+            stepHtml += `</ul></div>`;
+            html += stepHtml;
+
+            let relaxNodeHL = {};
+            for (let i = 1; i <= n; i++) {
+                if (permanent[i]) {
+                    relaxNodeHL[i] = '#C8E6C9';
+                }
+            }
+            relaxNodeHL[u] = '#388E3C';
+            for (let vId in activeNodes) {
+                relaxNodeHL[vId] = activeNodes[vId];
+            }
+
+            let relaxDesc = `<div style="color:#2B579A; font-weight:bold; margin-bottom:4px;">Paso ${iter} (Relajación): Ramificaciones desde Nodo ${u}</div>
+                <ul style="padding-left:18px; margin-top:0; font-size:0.82rem;">
+                    ${relaxationLines.map(line => `<li>${line}</li>`).join('')}
+                </ul>`;
+
+            steps.push({
+                title: `Paso ${iter}: Relajación desde ${u}`,
+                description: relaxDesc,
+                nodeExtraLabel: getLabelsAtState(cloneLabels(labels), [...dist], [...pred], [...permanent]),
+                nodeHL: { ...relaxNodeHL },
+                edgeHL: { ...activeEdges }
+            });
+
             iter++;
         }
         html += `</div>`;
@@ -307,6 +425,25 @@ class GraphAlgorithmsModel {
             }
             nodeHL[src] = '#4CAF50';
             nodeHL[tgt] = '#F44336';
+
+            steps.push({
+                title: "Camino Encontrado",
+                description: `<div style="color:#388E3C; font-weight:bold; margin-bottom:4px;">Camino Más Corto Encontrado</div>
+                    <p>El costo total de la ruta desde el nodo <b>${src}</b> al nodo <b>${tgt}</b> es <b>${dist[tgt]}</b>.</p>
+                    <p style="margin-top:6px;"><b>Ruta:</b> ${[...pathNodes].reverse().join(' → ')}</p>`,
+                nodeExtraLabel: getLabelsAtState(cloneLabels(labels), [...dist], [...pred], [...permanent]),
+                nodeHL: { ...nodeHL },
+                edgeHL: { ...edgeHL }
+            });
+        } else {
+            steps.push({
+                title: "Fin del Algoritmo",
+                description: `<div style="color:#E53935; font-weight:bold; margin-bottom:4px;">Sin Camino Viable</div>
+                    <p>El nodo destino <b>${tgt}</b> no es alcanzable desde el nodo origen <b>${src}</b>.</p>`,
+                nodeExtraLabel: getLabelsAtState(cloneLabels(labels), [...dist], [...pred], [...permanent]),
+                nodeHL: { [src]: '#4CAF50', [tgt]: '#F44336' },
+                edgeHL: {}
+            });
         }
 
         return {
@@ -315,7 +452,8 @@ class GraphAlgorithmsModel {
             edgeHL,
             nodeHL,
             isPathFound,
-            finalDist: dist[tgt]
+            finalDist: dist[tgt],
+            steps
         };
     }
 

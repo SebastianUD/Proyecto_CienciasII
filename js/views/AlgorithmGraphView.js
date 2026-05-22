@@ -165,6 +165,12 @@ class AlgorithmGraphView {
                         <canvas id="ag-canvas"></canvas>
                         <button class="tree-fit-btn drag-toggle-btn" id="ag-drag-btn" title="Mover nodos" style="right:54px;">✥</button>
                         <button class="tree-fit-btn" id="ag-fit-btn" title="Ajustar vista">⊞</button>
+                        <!-- Navegador de pasos Dijkstra -->
+                        <div id="ag-step-nav" class="tag-step-nav hidden">
+                            <button id="ag-step-prev" class="tag-step-btn">◀</button>
+                            <span id="ag-step-label">Paso 1 de 1</span>
+                            <button id="ag-step-next" class="tag-step-btn">▶</button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -222,7 +228,11 @@ class AlgorithmGraphView {
             srcNode:        document.getElementById('ag-source'),
             tgtNode:        document.getElementById('ag-target'),
             extraInputs:    document.getElementById('ag-extra-inputs'),
-            canvasLabel:    this.container.querySelector('.grafos-canvas-label')
+            canvasLabel:    this.container.querySelector('.grafos-canvas-label'),
+            stepNav:        document.getElementById('ag-step-nav'),
+            stepPrev:       document.getElementById('ag-step-prev'),
+            stepNext:       document.getElementById('ag-step-next'),
+            stepLabel:      document.getElementById('ag-step-label')
         };
     }
 
@@ -266,6 +276,11 @@ class AlgorithmGraphView {
 
         el.algoSelect.addEventListener('change', () => this._onAlgoChange());
         el.srcNode.addEventListener('change', () => this._drawGraph());
+
+        // Navegación paso a paso Dijkstra
+        el.stepPrev.addEventListener('click', () => this._navigateStep(-1));
+        el.stepNext.addEventListener('click', () => this._navigateStep(+1));
+
         this._bindCanvas();
 
         // Redimensionar canvas cuando cambie el tamaño del contenedor
@@ -763,6 +778,9 @@ class AlgorithmGraphView {
             this._nodeHL = {};
             this._edgeHL = {};
             this._nodeExtraLabel = {};
+            this._dijkstraSteps = null;
+            this._dijkstraStepIdx = 0;
+            if (this.el.stepNav) this.el.stepNav.classList.add('hidden');
             this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
             
             if (this.nodeCount === added && added > 0) {
@@ -808,6 +826,9 @@ class AlgorithmGraphView {
         this._nodeHL = {};
         this._edgeHL = {};
         this._nodeExtraLabel = {};
+        this._dijkstraSteps = null;
+        this._dijkstraStepIdx = 0;
+        if (this.el.stepNav) this.el.stepNav.classList.add('hidden');
         this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
         
         this._syncUI();
@@ -826,6 +847,9 @@ class AlgorithmGraphView {
         this._nodeHL = {};
         this._edgeHL = {};
         this._nodeExtraLabel = {};
+        this._dijkstraSteps = null;
+        this._dijkstraStepIdx = 0;
+        if (this.el.stepNav) this.el.stepNav.classList.add('hidden');
         this._drawGraph();
     }
 
@@ -924,6 +948,9 @@ class AlgorithmGraphView {
         this._nodeHL = {};
         this._edgeHL = {};
         this._nodeExtraLabel = {};
+        this._dijkstraSteps = null;
+        this._dijkstraStepIdx = 0;
+        if (this.el.stepNav) this.el.stepNav.classList.add('hidden');
         this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
         
         this.el.edgeWeight.value = '';
@@ -955,6 +982,9 @@ class AlgorithmGraphView {
                 this._nodeHL = {};
                 this._edgeHL = {};
                 this._nodeExtraLabel = {};
+                this._dijkstraSteps = null;
+                this._dijkstraStepIdx = 0;
+                if (this.el.stepNav) this.el.stepNav.classList.add('hidden');
                 this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Grafo modificado (arista eliminada). Ejecute el algoritmo nuevamente.</div>';
                 this._syncUI();
                 this._drawGraph();
@@ -980,6 +1010,9 @@ class AlgorithmGraphView {
         this._nodeHL    = {};
         this._edgeHL    = {};
         this._nodeExtraLabel = {};
+        this._dijkstraSteps = null;
+        this._dijkstraStepIdx = 0;
+        if (this.el.stepNav) this.el.stepNav.classList.add('hidden');
 
         if (this.el.inputVertex) this.el.inputVertex.value = '';
         this.el.edgeList.innerHTML           = '';
@@ -1160,6 +1193,9 @@ class AlgorithmGraphView {
         this._nodeHL = {};
         this._edgeHL = {};
         this._nodeExtraLabel = {};
+        this._dijkstraSteps = null;
+        this._dijkstraStepIdx = 0;
+        if (this.el.stepNav) this.el.stepNav.classList.add('hidden');
 
         this._syncUI();
         this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
@@ -1228,23 +1264,41 @@ class AlgorithmGraphView {
             return;
         }
 
-        this._nodeExtraLabel = result.nodeExtraLabel;
-        this._edgeHL = result.edgeHL;
-        this._nodeHL = result.nodeHL;
+        this._isExecuted = true;
 
-        if (algo !== 'floyd' || (src && tgt)) {
-            if (result.isPathFound) {
-                this._addLog(`Camino más corto encontrado con costo: ${result.finalDist}`, 'success');
-            } else {
-                this._addLog(`El nodo final no es alcanzable desde el inicial.`, 'warning');
+        if (algo === 'dijkstra' && result.steps && result.steps.length > 0) {
+            // ── Modo paso a paso para Dijkstra ──────────────────────────────
+            this._dijkstraSteps = result.steps;
+            this._dijkstraStepIdx = 0;
+            this._showStep(0);
+
+            // Mostrar el navegador de pasos
+            if (this.el.stepNav) this.el.stepNav.classList.remove('hidden');
+
+            this._addLog(`Dijkstra listo: ${result.steps.length} pasos. Use ◀ ▶ para navegar.`, 'success');
+        } else {
+            // ── Modo resultado final (Bellman / Floyd) ──────────────────────
+            this._dijkstraSteps = null;
+            this._dijkstraStepIdx = 0;
+            if (this.el.stepNav) this.el.stepNav.classList.add('hidden');
+
+            this._nodeExtraLabel = result.nodeExtraLabel;
+            this._edgeHL = result.edgeHL;
+            this._nodeHL = result.nodeHL;
+
+            if (algo !== 'floyd' || (src && tgt)) {
+                if (result.isPathFound) {
+                    this._addLog(`Camino más corto encontrado con costo: ${result.finalDist}`, 'success');
+                } else {
+                    this._addLog(`El nodo final no es alcanzable desde el inicial.`, 'warning');
+                }
+            } else if (algo === 'floyd') {
+                this._addLog(`Algoritmo ejecutado. ${result.totalChanges} actualizaciones realizadas.`, 'success');
             }
-        } else if (algo === 'floyd') {
-            this._addLog(`Algoritmo ejecutado. ${result.totalChanges} actualizaciones realizadas.`, 'success');
+
+            this._setOps(result.html);
         }
 
-        this._isExecuted = true;
-        this._setOps(result.html);
-        
         let algoName = 'Algoritmo';
         if (algo === 'bellman') algoName = 'Bellman';
         if (algo === 'dijkstra') algoName = 'Dijkstra';
@@ -1257,6 +1311,57 @@ class AlgorithmGraphView {
         if (typeof MathJax !== 'undefined' && MathJax.typesetPromise) {
             MathJax.typesetPromise([this.el.opContent]);
         }
+    }
+
+    /**
+     * Navega entre pasos del stepper de Dijkstra.
+     * @private
+     * @param {number} dir - Dirección: -1 (anterior) o +1 (siguiente).
+     */
+    _navigateStep(dir) {
+        if (!this._dijkstraSteps || this._dijkstraSteps.length === 0) return;
+        const next = this._dijkstraStepIdx + dir;
+        if (next < 0 || next >= this._dijkstraSteps.length) return;
+        this._dijkstraStepIdx = next;
+        this._showStep(next);
+    }
+
+    /**
+     * Muestra el paso idx del stepper de Dijkstra:
+     * actualiza etiquetas, highlights de nodos/aristas y el panel de operaciones.
+     * @private
+     * @param {number} idx - Índice del paso a mostrar.
+     */
+    _showStep(idx) {
+        const steps = this._dijkstraSteps;
+        if (!steps || idx < 0 || idx >= steps.length) return;
+
+        const step = steps[idx];
+        const total = steps.length;
+
+        // Actualizar canvas: nodos y aristas
+        this._nodeExtraLabel = step.nodeExtraLabel || {};
+        this._nodeHL         = step.nodeHL         || {};
+        this._edgeHL         = step.edgeHL         || {};
+        this._drawGraph();
+
+        // Actualizar el indicador del stepper
+        if (this.el.stepLabel) {
+            this.el.stepLabel.textContent = `${step.title || ('Paso ' + (idx + 1))} (${idx + 1}/${total})`;
+        }
+        if (this.el.stepPrev) this.el.stepPrev.disabled = (idx === 0);
+        if (this.el.stepNext) this.el.stepNext.disabled = (idx === total - 1);
+
+        // Actualizar el panel de operaciones con la descripción acumulada hasta este paso
+        let accHtml = `<div style="padding:10px; font-size:0.85rem; color:var(--text-main);">
+            <div style="font-weight:bold; margin-bottom:8px; border-bottom:1px solid #ccc; padding-bottom:4px;">Dijkstra — paso a paso</div>`;
+        for (let i = 0; i <= idx; i++) {
+            accHtml += `<div style="margin-bottom:8px; padding:6px 8px; border-left:3px solid ${
+                i === idx ? '#2B579A' : '#E0E4EA'
+            }; background:${ i === idx ? '#F0F4FA' : 'transparent' };">${steps[i].description}</div>`;
+        }
+        accHtml += '</div>';
+        this._setOps(accHtml);
     }
 
     // ─── Utilidad: Matriz de Adyacencia ──────────────────────────────────────
