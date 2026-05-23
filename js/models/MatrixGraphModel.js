@@ -164,7 +164,89 @@ class MatrixGraphModel {
         });
 
         // Todos los circuitos = combinaciones XOR de fundamentales
-        const allCircuits = MatrixGraphModel._generateAllFromFundamental(fundamentalCircuits, E, directed);
+        const allCircuitsRaw = MatrixGraphModel._generateAllFromFundamental(fundamentalCircuits, E, directed);
+        
+        // Filtrar uniones disjuntas de ciclos: un circuito simple debe tener grado 2 en todos sus vértices
+        const allCircuits = allCircuitsRaw.filter(circ => {
+            if (circ.isFundamental) return true;
+            
+            // Construir grafo inducido por el conjunto de aristas del circuito
+            const degree = {};
+            V.forEach(v => degree[v] = 0);
+            
+            const addEdge = (k) => {
+                const [f, t] = k.split('-');
+                degree[f]++;
+                degree[t]++;
+            };
+            
+            if (directed) {
+                for (const [k, v] of circ.edgeMap) {
+                    if (v !== 0) addEdge(k);
+                }
+            } else {
+                for (const k of circ.edgeSet) {
+                    // circ.edgeSet contiene ambas direcciones, contamos solo una
+                    if (k.localeCompare(k.split('-').reverse().join('-')) < 0) {
+                        addEdge(k);
+                    }
+                }
+            }
+            
+            let isSimple = true;
+            let startNode = null;
+            for (const v of V) {
+                if (degree[v] !== 0 && degree[v] !== 2) {
+                    isSimple = false;
+                    break;
+                }
+                if (degree[v] === 2) startNode = v;
+            }
+            
+            if (!isSimple) return false;
+            
+            // Adicionalmente, comprobar que sea CONEXO (no dos ciclos totalmente separados)
+            if (startNode === null) return false; // vacío
+            
+            const adj = {};
+            V.forEach(v => adj[v] = []);
+            if (directed) {
+                for (const [k, v] of circ.edgeMap) {
+                    if (v !== 0) {
+                        const [f, t] = k.split('-');
+                        adj[f].push(t);
+                        adj[t].push(f);
+                    }
+                }
+            } else {
+                 for (const k of circ.edgeSet) {
+                    if (k.localeCompare(k.split('-').reverse().join('-')) < 0) {
+                        const [f, t] = k.split('-');
+                        adj[f].push(t);
+                        adj[t].push(f);
+                    }
+                 }
+            }
+            
+            let visitedCount = 0;
+            const queue = [startNode];
+            const visited = new Set([startNode]);
+            while (queue.length > 0) {
+                const u = queue.shift();
+                visitedCount++;
+                for (const nb of adj[u]) {
+                    if (!visited.has(nb)) {
+                        visited.add(nb);
+                        queue.push(nb);
+                    }
+                }
+            }
+            
+            // Contar cuántos vértices tienen grado > 0
+            const totalNodesInCirc = V.filter(v => degree[v] > 0).length;
+            
+            return visitedCount === totalNodesInCirc;
+        });
 
         // Conjuntos de corte fundamentales (sin cambios - no tienen orientación signed)
         const fundamentalCuts = branches.map(branch => {
@@ -539,8 +621,14 @@ class MatrixGraphModel {
                     <tbody>`;
             allCircuits.forEach((circ, i) => {
                 const fi = circFundIdx[i];
-                const rowStyle = fi !== null ? ' style="background:#FFFDE7;"' : '';
-                html += `<tr${rowStyle}><td class="matrix-row-header"${fi !== null ? ' style="background:#FFF9C4;"' : ''}>C<sub>${i + 1}</sub></td>`;
+                // Build edge key list for this circuit
+                const circEdgeKeys = E
+                    .filter(e => { const k1=`${e.from}-${e.to}`,k2=`${e.to}-${e.from}`; return circ.edgeSet ? (circ.edgeSet.has(k1)||circ.edgeSet.has(k2)) : (circ.edgeMap&&(circ.edgeMap.has(k1)||circ.edgeMap.has(k2))); })
+                    .map(e => `${e.from}-${e.to}`).join(',');
+                const baseBg = fi !== null ? 'background:#FFFDE7;' : '';
+                const baseBgVal = fi !== null ? '#FFFDE7' : '';
+                html += `<tr class="matrix-row-clickable" data-matrix-type="circuit" data-key="${circEdgeKeys}" data-base-bg="${baseBgVal}" title="Clic para resaltar aristas del circuito C${i+1}" style="cursor:pointer;transition:background 0.15s;${baseBg}" onmouseover="if(!this.classList.contains('matrix-row-active'))this.style.background='rgba(43,87,154,0.12)'" onmouseout="if(!this.classList.contains('matrix-row-active'))this.style.background='${baseBgVal}'">`;
+                html += `<td class="matrix-row-header"${fi !== null ? ' style="background:#FFF9C4;"' : ''}>C<sub>${i + 1}</sub></td>`;
                 E.forEach(e => {
                     const k1 = `${e.from}-${e.to}`, k2 = `${e.to}-${e.from}`;
                     let val = 0;
@@ -582,8 +670,12 @@ class MatrixGraphModel {
                     <tbody>`;
             allCuts.forEach((cut, i) => {
                 const fi = cutFundIdx[i];
-                const rowStyle = fi !== null ? ' style="background:#FFFDE7;"' : '';
-                html += `<tr${rowStyle}><td class="matrix-row-header"${fi !== null ? ' style="background:#FFF9C4;"' : ''}>CC<sub>${i + 1}</sub></td>`;
+                const cutEdgeKeys = E
+                    .filter(e => { const k1=`${e.from}-${e.to}`,k2=`${e.to}-${e.from}`; return cut.edgeSet.has(k1)||cut.edgeSet.has(k2); })
+                    .map(e => `${e.from}-${e.to}`).join(',');
+                const baseBg2 = fi !== null ? '#FFFDE7' : '';
+                html += `<tr class="matrix-row-clickable" data-matrix-type="cut" data-key="${cutEdgeKeys}" data-base-bg="${baseBg2}" title="Clic para resaltar aristas del conjunto de corte CC${i+1}" style="cursor:pointer;transition:background 0.15s;${fi !== null ? 'background:#FFFDE7;' : ''}" onmouseover="if(!this.classList.contains('matrix-row-active'))this.style.background='rgba(43,87,154,0.12)'" onmouseout="if(!this.classList.contains('matrix-row-active'))this.style.background='${baseBg2}'">`;
+                html += `<td class="matrix-row-header"${fi !== null ? ' style="background:#FFF9C4;"' : ''}>CC<sub>${i + 1}</sub></td>`;
                 E.forEach(e => {
                     const k1 = `${e.from}-${e.to}`, k2 = `${e.to}-${e.from}`;
                     const has = cut.edgeSet.has(k1) || cut.edgeSet.has(k2);
@@ -620,7 +712,10 @@ class MatrixGraphModel {
                 <thead><tr><th></th>${E.map(e => `<th>${edgeLabel(e)}</th>`).join('')}</tr></thead>
                 <tbody>`;
         V.forEach((v, i) => {
-            html += `<tr><td class="matrix-row-header">${v}</td>`;
+            // Collect edge indices (by from-to key) where this vertex is incident
+            const incidentEdgeKeys = E.filter(e => e.from === v || e.to === v).map(e => `${e.from}-${e.to}`).join(',');
+            html += `<tr class="matrix-row-clickable" data-matrix-type="incidence" data-key="${v}" data-edge-keys="${incidentEdgeKeys}" title="Clic para resaltar vértice ${v} y sus aristas" style="cursor:pointer;transition:background 0.15s;" onmouseover="if(!this.classList.contains('matrix-row-active'))this.style.background='rgba(43,87,154,0.12)'" onmouseout="if(!this.classList.contains('matrix-row-active'))this.style.background=''">`;
+            html += `<td class="matrix-row-header">${v}</td>`;
             matrix[i].forEach(val => {
                 const color = val > 0 ? '' : val < 0 ? 'color:#E53935;' : 'color:#999;';
                 html += `<td class="matrix-cell" style="${color}">${val}</td>`;
@@ -650,7 +745,10 @@ class MatrixGraphModel {
                 <thead><tr><th></th>${V.map(v => `<th>${v}</th>`).join('')}</tr></thead>
                 <tbody>`;
         V.forEach((v, i) => {
-            html += `<tr><td class="matrix-row-header">${v}</td>`;
+            // Adjacent vertices (non-zero cells)
+            const adjVertexKeys = V.filter((u, j) => j !== i && vertexMatrix[i][j] !== 0).join(',');
+            html += `<tr class="matrix-row-clickable" data-matrix-type="adjacency-vertex" data-key="${v}" data-adj-keys="${adjVertexKeys}" title="Clic para resaltar vértice ${v} y sus adyacentes" style="cursor:pointer;transition:background 0.15s;" onmouseover="if(!this.classList.contains('matrix-row-active'))this.style.background='rgba(43,87,154,0.12)'" onmouseout="if(!this.classList.contains('matrix-row-active'))this.style.background=''">`;
+            html += `<td class="matrix-row-header">${v}</td>`;
             vertexMatrix[i].forEach((val, j) => {
                 html += `<td class="matrix-cell" style="${cellStyle(val)}">${val}</td>`;
             });
@@ -666,7 +764,13 @@ class MatrixGraphModel {
                     <thead><tr><th></th>${E.map(e => `<th>${edgeLabel(e)}</th>`).join('')}</tr></thead>
                     <tbody>`;
             E.forEach((e, i) => {
-                html += `<tr><td class="matrix-row-header">${edgeLabel(e)}</td>`;
+                const edgeKey = `${e.from}-${e.to}`;
+                // Edges incident to this edge: share at least one endpoint (but are not this edge itself)
+                const incidentKeys = E
+                    .filter((other, j) => j !== i && (other.from === e.from || other.to === e.from || other.from === e.to || other.to === e.to))
+                    .map(other => `${other.from}-${other.to}`).join(',');
+                html += `<tr class="matrix-row-clickable" data-matrix-type="adjacency-edge" data-key="${edgeKey}" data-incident-keys="${incidentKeys}" title="Clic para resaltar arista ${edgeLabel(e)}" style="cursor:pointer;transition:background 0.15s;" onmouseover="if(!this.classList.contains('matrix-row-active'))this.style.background='rgba(43,87,154,0.12)'" onmouseout="if(!this.classList.contains('matrix-row-active'))this.style.background=''">`;
+                html += `<td class="matrix-row-header">${edgeLabel(e)}</td>`;
                 edgeMatrix[i].forEach(val => {
                     html += `<td class="matrix-cell" style="${cellStyle(val)}">${val}</td>`;
                 });

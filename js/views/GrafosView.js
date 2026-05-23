@@ -388,6 +388,9 @@ class GrafosView {
         this._matchingAllResults = null;
         this._matchingGraph = null;
         this._matchingGraphSource = null;
+        // Matrix highlight state
+        this._matrixGraph = null;
+        this._matrixSrc = null;
     }
 
     _bindEvents() {
@@ -837,6 +840,18 @@ class GrafosView {
         // Propagate directed flag
         graph.directed = this._directed;
 
+        // Store for highlight callbacks
+        this._matrixGraph = graph;
+        this._matrixSrc = src;
+
+        // Clear any previous coloring highlight
+        this._coloringVertexColors = {};
+        this._coloringEdgeColors = {};
+        this._coloringSource = null;
+        this._resultHighlightVertices = {};
+        this._resultHighlightEdges = {};
+        this._drawAll();
+
         try {
             let html = '';
             if (op === 'distanceMatrix') {
@@ -859,10 +874,196 @@ class GrafosView {
             }
             this.el.opContent.innerHTML = html || '<div class="huffman-empty-msg">Sin resultados.</div>';
             this.el.opContent.scrollTop = 0;
+            // Bind interactive row clicks for matrix highlighting
+            this._bindMatrixRowClicks();
         } catch (err) {
             Validation.showError('Error al calcular matrices: ' + err.message);
             console.error(err);
         }
+    }
+
+    /**
+     * Binds click events to all .matrix-row-clickable elements inside opContent.
+     * A click highlights the corresponding vertex/edges on the graph canvas.
+     */
+    _bindMatrixRowClicks() {
+        const self = this;
+        this.el.opContent.querySelectorAll('.matrix-row-clickable').forEach(row => {
+            row.addEventListener('click', function () {
+                const isActive = this.classList.contains('matrix-row-active');
+                // Deselect all rows
+                self.el.opContent.querySelectorAll('.matrix-row-clickable').forEach(r => {
+                    r.classList.remove('matrix-row-active');
+                    // Restore original background using data-base-bg (set by the HTML renderer)
+                    r.style.background = r.dataset.baseBg || '';
+                });
+
+                if (isActive) {
+                    // Clicking same row deselects → clear highlights
+                    self._clearMatrixHighlight();
+                    return;
+                }
+
+                // Mark this row active
+                this.classList.add('matrix-row-active');
+                this.style.background = 'rgba(255,160,0,0.22)';
+                self._onMatrixRowClick(this);
+            });
+        });
+    }
+
+    /** Clears all matrix-related highlights from the graph canvas */
+    _clearMatrixHighlight() {
+        this._coloringVertexColors = {};
+        this._coloringEdgeColors = {};
+        this._coloringSource = null;
+        this._resultHighlightVertices = {};
+        this._resultHighlightEdges = {};
+        this._drawAll();
+    }
+
+    /**
+     * Handles a click on a matrix table row.
+     * Highlights the corresponding vertices / edges on the graph canvas.
+     * @param {HTMLElement} row  - The clicked <tr> element with data-matrix-type and data-key.
+     */
+    _onMatrixRowClick(row) {
+        const type = row.dataset.matrixType;
+        const key  = row.dataset.key || '';
+        const graph = this._matrixGraph;
+        const src   = this._matrixSrc;
+        if (!graph || !src) return;
+
+        const hlV = {};
+        const hlE = {};
+        const VERTEX_COLOR   = '#FF9800';   // naranja  – vértice seleccionado
+        const EDGE_COLOR     = '#E53935';   // rojo     – arista principal
+        const ADJ_COLOR      = '#43A047';   // verde    – vértices adyacentes
+        const INCIDENT_COLOR = '#F9A825';   // amarillo – aristas incidentes sobre la arista seleccionada
+        const SURVIVOR_COLOR = '#43A047';   // verde    – aristas que sobreviven al corte
+        const CUT_COLOR      = 'rgba(180,180,180,0.22)'; // gris fantasma – aristas del conjunto de corte
+
+        if (type === 'incidence') {
+            // Highlight the vertex + its incident edges
+            const v = key;
+            hlV[v] = VERTEX_COLOR;
+            const edgeKeys = (row.dataset.edgeKeys || '').split(',').filter(Boolean);
+            for (const ek of edgeKeys) {
+                const [f, t] = ek.split('-');
+                const e = graph.edges.find(e => e.from === f && e.to === t);
+                if (e) {
+                    hlE[[e.from, e.to].sort().join('-')] = EDGE_COLOR;
+                    hlE[`eid:${e.id}`] = EDGE_COLOR;
+                }
+            }
+
+        } else if (type === 'adjacency-vertex') {
+            // Highlight the vertex + adjacent vertices + connecting edges
+            const v = key;
+            hlV[v] = VERTEX_COLOR;
+            const adjKeys = (row.dataset.adjKeys || '').split(',').filter(Boolean);
+            for (const u of adjKeys) { hlV[u] = ADJ_COLOR; }
+            for (const e of graph.edges) {
+                const involves = (e.from === v || e.to === v);
+                if (involves) {
+                    hlE[[e.from, e.to].sort().join('-')] = EDGE_COLOR;
+                    hlE[`eid:${e.id}`] = EDGE_COLOR;
+                }
+            }
+
+        } else if (type === 'circuit') {
+            // Circuito: colorear aristas del circuito + vértices endpoint
+            const edgeKeys = key.split(',').filter(Boolean);
+            const cutSet = new Set(edgeKeys);
+            for (const ek of edgeKeys) {
+                const [f, t] = ek.split('-');
+                const e = graph.edges.find(e =>
+                    (e.from === f && e.to === t) || (e.from === t && e.to === f)
+                );
+                if (e) {
+                    hlE[[e.from, e.to].sort().join('-')] = EDGE_COLOR;
+                    hlE[`eid:${e.id}`] = EDGE_COLOR;
+                    hlV[e.from] = hlV[e.from] || ADJ_COLOR;
+                    hlV[e.to]   = hlV[e.to]   || ADJ_COLOR;
+                }
+            }
+
+        } else if (type === 'cut') {
+            // Conjunto de corte: aristas cortadas → casi invisibles; aristas supervivientes → verde
+            const edgeKeys = key.split(',').filter(Boolean);
+            const cutKeySet = new Set();
+            for (const ek of edgeKeys) {
+                const [f, t] = ek.split('-');
+                const e = graph.edges.find(e =>
+                    (e.from === f && e.to === t) || (e.from === t && e.to === f)
+                );
+                if (e) {
+                    const sortedKey = [e.from, e.to].sort().join('-');
+                    cutKeySet.add(sortedKey);
+                    cutKeySet.add(`eid:${e.id}`);
+                }
+            }
+            // Pintar todas las aristas: transparente si está en el corte, verde si sobrevive
+            for (const e of graph.edges) {
+                const sortedKey = [e.from, e.to].sort().join('-');
+                if (cutKeySet.has(sortedKey) || cutKeySet.has(`eid:${e.id}`)) {
+                    hlE[sortedKey] = CUT_COLOR;
+                    hlE[`eid:${e.id}`] = CUT_COLOR;
+                } else {
+                    hlE[sortedKey] = SURVIVOR_COLOR;
+                    hlE[`eid:${e.id}`] = SURVIVOR_COLOR;
+                }
+            }
+
+        } else if (type === 'adjacency-edge') {
+            // Highlight the selected edge (red) + its vertices (orange)
+            const [f, t] = key.split('-');
+            const e = graph.edges.find(e =>
+                (e.from === f && e.to === t) || (e.from === t && e.to === f)
+            );
+            if (e) {
+                hlE[[e.from, e.to].sort().join('-')] = EDGE_COLOR;
+                hlE[`eid:${e.id}`] = EDGE_COLOR;
+                hlV[e.from] = VERTEX_COLOR;
+                hlV[e.to]   = VERTEX_COLOR;
+            }
+            // Aristas incidentes en amarillo
+            const incidentKeys = (row.dataset.incidentKeys || '').split(',').filter(Boolean);
+            for (const ik of incidentKeys) {
+                const [if_, it] = ik.split('-');
+                const inc = graph.edges.find(e =>
+                    (e.from === if_ && e.to === it) || (e.from === it && e.to === if_)
+                );
+                if (inc) {
+                    hlE[[inc.from, inc.to].sort().join('-')] = INCIDENT_COLOR;
+                    hlE[`eid:${inc.id}`] = INCIDENT_COLOR;
+                }
+            }
+        }
+
+        // Apply highlights to the correct canvas
+        if (src === 'g1') {
+            this._coloringSource = 'g1';
+            this._coloringVertexColors = hlV;
+            this._coloringEdgeColors = hlE;
+            this._resultHighlightVertices = {};
+            this._resultHighlightEdges = {};
+        } else if (src === 'g2') {
+            this._coloringSource = 'g2';
+            this._coloringVertexColors = hlV;
+            this._coloringEdgeColors = hlE;
+            this._resultHighlightVertices = {};
+            this._resultHighlightEdges = {};
+        } else {
+            // g3 / result graph
+            this._coloringSource = null;
+            this._coloringVertexColors = {};
+            this._coloringEdgeColors = {};
+            this._resultHighlightVertices = hlV;
+            this._resultHighlightEdges = hlE;
+        }
+
+        this._drawAll();
     }
 
     _clearColoringState() {
@@ -2159,7 +2360,11 @@ class GrafosView {
 
     _drawEdge(ctx, edge, p1, p2, directed, r, isSelf, curvature, hlColor) {
         const color = hlColor || '#8494AB';
-        ctx.strokeStyle = color; ctx.lineWidth = hlColor ? 2.5 : 1.5; ctx.setLineDash([]);
+        // Detect ghost color (rgba with very low alpha) for cut-set edges
+        const isGhost = hlColor && hlColor.startsWith('rgba') && parseFloat(hlColor.split(',')[3]) < 0.4;
+        ctx.strokeStyle = color;
+        ctx.lineWidth = isGhost ? 1 : (hlColor ? 2.5 : 1.5);
+        if (isGhost) ctx.setLineDash([5, 5]); else ctx.setLineDash([]);
         let sx, sy, ex, ey, midX, midY, ux = 0, uy = 0;
         let arrowUx = 0, arrowUy = 0;
         if (isSelf) {
@@ -2212,6 +2417,8 @@ class GrafosView {
             ctx.fillStyle = hlColor || '#1B3A6B'; ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
             ctx.fillText(wStr, labelX, labelY);
         }
+        // Always restore line dash so subsequent edges are not affected
+        ctx.setLineDash([]);
     }
 
     _drawVertex(ctx, label, x, y, r, hlColor) {
