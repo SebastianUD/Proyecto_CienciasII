@@ -18,9 +18,11 @@
 class AlgorithmGraphView {
     /**
      * @param {HTMLElement} containerEl - Contenedor principal de la vista.
+     * @param {string} algoType - Algoritmo fijo: 'bellman', 'dijkstra' o 'floyd'.
      */
-    constructor(containerEl) {
+    constructor(containerEl, algoType) {
         this.container = containerEl;
+        this._algoType = algoType || 'bellman';
 
         /** @type {number} Número de nodos en el grafo */
         this.nodeCount = 0;
@@ -79,8 +81,13 @@ class AlgorithmGraphView {
      * @returns {string}
      */
     _buildHTML() {
+        const algoNames = { bellman: 'Bellman', dijkstra: 'Dijkstra', floyd: 'Floyd' };
+        const algoName = algoNames[this._algoType] || 'Algoritmo';
+        const showExtraInputs = this._algoType !== 'floyd';
+        const showEnumBtn = this._algoType === 'bellman';
+
         return `
-        <div class="algo-title">Algoritmos de Grafos</div>
+        <div class="algo-title">Algoritmos de Grafos — ${algoName}</div>
         <div class="grafos-layout">
 
             <!-- ── Panel Izquierdo ── -->
@@ -89,16 +96,6 @@ class AlgorithmGraphView {
                 <div class="section-block">
                     <div class="section-title">Definición del Grafo</div>
                     <div class="grafos-input-panel">
-
-                        <!-- Selección de Algoritmo -->
-                        <div class="grafos-field-col" style="margin-bottom:8px;">
-                            <label for="ag-algo-select">Algoritmo</label>
-                            <select id="ag-algo-select" style="width:100%; font-weight:bold; color:var(--text-main);">
-                                <option value="bellman">Bellman</option>
-                                <option value="dijkstra">Dijkstra</option>
-                                <option value="floyd">Floyd</option>
-                            </select>
-                        </div>
 
                         <!-- Vértices -->
                         <div class="grafos-field-col">
@@ -123,8 +120,8 @@ class AlgorithmGraphView {
                             <div class="grafos-edge-list" id="ag-edge-list" style="max-height:140px; overflow-y:auto;"></div>
                         </div>
 
-                        <!-- Inputs adicionales -->
-                        <div class="grafos-field-col" id="ag-extra-inputs" style="margin-top:10px;">
+                        <!-- Nodo Inicial / Final (solo Bellman y Dijkstra) -->
+                        <div class="grafos-field-col" id="ag-extra-inputs" style="margin-top:10px;${showExtraInputs ? '' : 'display:none;'}">
                             <label for="ag-source">Nodo Inicial</label>
                             <select id="ag-source" style="width:100%; margin-bottom:6px;">
                                 <option value="">-- Seleccione inicial --</option>
@@ -141,7 +138,7 @@ class AlgorithmGraphView {
                         </div>
 
                         <div class="grafos-btn-row" style="margin-top:10px;">
-                            <button class="btn" id="ag-enumerate-btn" style="background-color: #F57C00; color: white;">FUNCIÓN ORDINAL</button>
+                            ${showEnumBtn ? '<button class="btn" id="ag-enumerate-btn" style="background-color: #F57C00; color: white;">FUNCIÓN ORDINAL</button>' : ''}
                             <button class="btn btn-secondary" id="ag-clear-btn">LIMPIAR</button>
                             <button class="btn btn-success" id="ag-btn-save">GUARDAR</button>
                         </div>
@@ -161,15 +158,15 @@ class AlgorithmGraphView {
             <div class="grafos-canvas-area">
                 <div class="grafos-result-row" style="flex:1;">
                     <div class="grafos-canvas-wrapper grafos-result-canvas" id="ag-canvas-wrap">
-                        <div class="grafos-canvas-label">Algoritmo</div>
+                        <div class="grafos-canvas-label">${algoName}</div>
                         <canvas id="ag-canvas"></canvas>
-                        <button class="tree-fit-btn drag-toggle-btn" id="ag-drag-btn" title="Mover nodos" style="right:54px;">✥</button>
+                        <button class="tree-fit-btn drag-toggle-btn" id="ag-drag-btn" title="Mover nodos" style="right:54px;">✕</button>
                         <button class="tree-fit-btn" id="ag-fit-btn" title="Ajustar vista">⊞</button>
                         <!-- Navegador de pasos Dijkstra -->
                         <div id="ag-step-nav" class="tag-step-nav hidden">
-                            <button id="ag-step-prev" class="tag-step-btn">◀</button>
+                            <button id="ag-step-prev" class="tag-step-btn">◄</button>
                             <span id="ag-step-label">Paso 1 de 1</span>
-                            <button id="ag-step-next" class="tag-step-btn">▶</button>
+                            <button id="ag-step-next" class="tag-step-btn">►</button>
                         </div>
                     </div>
                 </div>
@@ -224,7 +221,6 @@ class AlgorithmGraphView {
             canvas:         document.getElementById('ag-canvas'),
             fitBtn:         document.getElementById('ag-fit-btn'),
             dragBtn:        document.getElementById('ag-drag-btn'),
-            algoSelect:     document.getElementById('ag-algo-select'),
             srcNode:        document.getElementById('ag-source'),
             tgtNode:        document.getElementById('ag-target'),
             extraInputs:    document.getElementById('ag-extra-inputs'),
@@ -251,9 +247,13 @@ class AlgorithmGraphView {
         });
         el.addEdgeBtn.addEventListener('click',  () => this._onAddEdge());
         el.clearBtn.addEventListener('click',    () => this._onClear());
-        el.enumerateBtn.addEventListener('click',() => this._onEnumerate());
+        // FUNCIÓN ORDINAL solo existe en Bellman
+        if (el.enumerateBtn) {
+            el.enumerateBtn.addEventListener('click', () => this._onEnumerate());
+        }
         el.executeBtn.addEventListener('click',  () => {
-            if (!this._isEnumerated) {
+            // Para Dijkstra y Floyd no se requiere FUNCIÓN ORDINAL
+            if (this._algoType === 'bellman' && !this._isEnumerated) {
                 if (typeof Validation !== 'undefined') {
                     Validation.showError('Debe calcular antes la FUNCIÓN ORDINAL.');
                 } else {
@@ -274,8 +274,7 @@ class AlgorithmGraphView {
             el.dragBtn.classList.toggle('active', this._dragMode);
         });
 
-        el.algoSelect.addEventListener('change', () => this._onAlgoChange());
-        el.srcNode.addEventListener('change', () => this._drawGraph());
+        if (el.srcNode) el.srcNode.addEventListener('change', () => this._drawGraph());
 
         // Navegación paso a paso Dijkstra
         el.stepPrev.addEventListener('click', () => this._navigateStep(-1));
@@ -394,7 +393,7 @@ class AlgorithmGraphView {
         let w = canvas.width || 600;
         let h = canvas.height || 400;
 
-        if (this.el.algoSelect && this.el.algoSelect.value === 'floyd') {
+        if (this._algoType === 'floyd') {
             const cols = Math.ceil(Math.sqrt(n));
             const rows = Math.ceil(n / cols);
             const spacing = 130;
@@ -836,22 +835,10 @@ class AlgorithmGraphView {
     }
     
     _onAlgoChange() {
-        const algo = this.el.algoSelect.value;
-        if (algo === 'floyd') {
-            this.el.extraInputs.style.display = 'none';
-        } else {
-            this.el.extraInputs.style.display = '';
-        }
-        this._isExecuted = false;
-        this.el.opContent.innerHTML = '<div class="huffman-empty-msg">Ejecute el algoritmo para ver el desarrollo paso a paso.</div>';
-        this._nodeHL = {};
-        this._edgeHL = {};
-        this._nodeExtraLabel = {};
-        this._dijkstraSteps = null;
-        this._dijkstraStepIdx = 0;
-        if (this.el.stepNav) this.el.stepNav.classList.add('hidden');
-        this._drawGraph();
+        // No-op: el algoritmo es fijo en esta vista, no cambia.
+        // Se mantiene para compatibilidad interna.
     }
+
 
     _syncExtraUI() {
         if (!this.el.srcNode || !this.el.tgtNode) return;
@@ -1054,7 +1041,7 @@ class AlgorithmGraphView {
             }
         }
 
-        if (hasCycle && this.el.algoSelect.value !== 'floyd') {
+        if (hasCycle && this._algoType !== 'floyd') {
             Validation.showError('El grafo contiene ciclos. No se puede aplicar la Función Ordinal para este algoritmo.');
             return;
         }
@@ -1067,7 +1054,7 @@ class AlgorithmGraphView {
             let a = this.vertexIds[aLabel];
             let b = this.vertexIds[bLabel];
             
-            if (hasCycle && this.el.algoSelect.value === 'floyd') {
+            if (hasCycle && this._algoType === 'floyd') {
                 if (Math.abs(pos[a].y - pos[b].y) > 1) {
                     return pos[a].y - pos[b].y;
                 }
@@ -1123,7 +1110,7 @@ class AlgorithmGraphView {
             return;
         }
 
-        let type = this.el.algoSelect.value;
+        let type = this._algoType;
 
         const data = {
             algorithm: type,
@@ -1234,7 +1221,7 @@ class AlgorithmGraphView {
 
     _onExecute() {
         const n = this.nodeCount;
-        const algo = this.el.algoSelect.value;
+        const algo = this._algoType;
         const src = parseInt(this.el.srcNode ? this.el.srcNode.value : 0);
         const tgt = parseInt(this.el.tgtNode ? this.el.tgtNode.value : 0);
 

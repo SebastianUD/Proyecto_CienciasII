@@ -29,29 +29,49 @@
      * Asocia cada identificador de acción con su clase constructora.
      * @type {Object<string, Function>}
      */
-    const views = {
-        'busqueda-secuencial': BusquedaSecuencialView,
-        'busqueda-binaria': BusquedaBinariaView,
-        'hash-mod': BusquedaHashModView,
-        'hash-cuadrado': BusquedaHashCuadradoView,
-        'hash-truncamiento': BusquedaHashTruncamientoView,
-        'hash-plegamiento': BusquedaHashPlegamientoView,
-        'arboles-digitales': ArbolesDigitalesView,
-        'arboles-residuos': ArbolesResiduosView,
-        'arboles-residuos-multiples': ArbolesResiduosMultiplesView,
-        'arboles-huffman': HuffmanView,
-        'ext-secuencial-bloques': BusquedaSecuencialBloquesView,
-        'ext-binaria-bloques': BusquedaBinariaBloquesView,
-        'ext-hash-mod': ExtHashModView,
-        'ext-hash-cuadrado': ExtHashCuadradoView,
-        'ext-hash-truncamiento': ExtHashTruncamientoView,
-        'ext-hash-plegamiento': ExtHashPlegamientoView,
-        'ext-conversion-base': ExtHashConversionBaseView,
-        'ext-dinamica-totales': ExtDinamicaTotalesView,
-        'ext-dinamica-parciales': ExtDinamicaParcialesView,
-        'ext-indices': IndicesView,
-        'grafos-operaciones': GrafosView,
-        'algoritmos':          AlgorithmGraphView
+    /**
+     * Mapa de factories de vistas disponibles.
+     * Cada factory recibe el contenedor y retorna una instancia de vista configurada.
+     * @type {Object<string, Function>}
+     */
+    const viewFactories = {
+        // ── Búsquedas Internas ────────────────────────────────────────────────
+        'busqueda-secuencial':       (el) => new BusquedaSecuencialView(el),
+        'busqueda-binaria':          (el) => new BusquedaBinariaView(el),
+        'hash-mod':                  (el) => new BusquedaHashModView(el),
+        'hash-cuadrado':             (el) => new BusquedaHashCuadradoView(el),
+        'hash-truncamiento':         (el) => new BusquedaHashTruncamientoView(el),
+        'hash-plegamiento':          (el) => new BusquedaHashPlegamientoView(el),
+        'arboles-digitales':         (el) => new ArbolesDigitalesView(el),
+        'arboles-residuos':          (el) => new ArbolesResiduosView(el),
+        'arboles-residuos-multiples':(el) => new ArbolesResiduosMultiplesView(el),
+        'arboles-huffman':           (el) => new HuffmanView(el),
+        // ── Búsquedas Externas ────────────────────────────────────────────────
+        'ext-secuencial-bloques':    (el) => new BusquedaSecuencialBloquesView(el),
+        'ext-binaria-bloques':       (el) => new BusquedaBinariaBloquesView(el),
+        'ext-hash-mod':              (el) => new ExtHashModView(el),
+        'ext-hash-cuadrado':         (el) => new ExtHashCuadradoView(el),
+        'ext-hash-truncamiento':     (el) => new ExtHashTruncamientoView(el),
+        'ext-hash-plegamiento':      (el) => new ExtHashPlegamientoView(el),
+        'ext-conversion-base':       (el) => new ExtHashConversionBaseView(el),
+        'ext-dinamica-totales':      (el) => new ExtDinamicaTotalesView(el),
+        'ext-dinamica-parciales':    (el) => new ExtDinamicaParcialesView(el),
+        // ── Índices (4 variantes) ─────────────────────────────────────────────
+        'idx-primario':              (el) => new IndicesView(el, 'primario'),
+        'idx-multinivel-primario':   (el) => new IndicesView(el, 'multinivel-primario'),
+        'idx-secundario':            (el) => new IndicesView(el, 'secundario'),
+        'idx-multinivel-secundario': (el) => new IndicesView(el, 'multinivel-secundario'),
+        // ── Grafos (6 modos) ─────────────────────────────────────────────────
+        'grafos-operaciones':        (el) => new GrafosView(el, 'operaciones'),
+        'arboles-grafos':            (el) => new GrafosView(el, 'arboles'),
+        'calculo-matrices':          (el) => new GrafosView(el, 'matrices'),
+        'coloreado-grafos':          (el) => new GrafosView(el, 'coloreado'),
+        'conjuntos-dom-indep':       (el) => new GrafosView(el, 'conjuntos'),
+        'matching-grafos':           (el) => new GrafosView(el, 'matching'),
+        // ── Algoritmos de Grafos (3 variantes) ───────────────────────────────
+        'algo-bellman':              (el) => new AlgorithmGraphView(el, 'bellman'),
+        'algo-dijkstra':             (el) => new AlgorithmGraphView(el, 'dijkstra'),
+        'algo-floyd':                (el) => new AlgorithmGraphView(el, 'floyd')
     };
 
     /**
@@ -60,14 +80,14 @@
      * @param {string} actionId - Identificador de la acción del menú.
      */
     function navigateTo(actionId) {
-        const ViewClass = views[actionId];
+        const factory = viewFactories[actionId];
 
-        if (!ViewClass) {
+        if (!factory) {
             Validation.showInfo('Este algoritmo aún no ha sido implementado.');
             return;
         }
 
-        currentView = new ViewClass(algorithmViewEl);
+        currentView = factory(algorithmViewEl);
         currentView.show();
     }
 

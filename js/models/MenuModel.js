@@ -74,7 +74,28 @@ const MenuModel = {
                                     { id: 'ext-dinamica-parciales', label: 'Parciales', action: 'ext-dinamica-parciales', enabled: true }
                                 ]
                             },
-                            { id: 'ext-indices', label: 'Índices', action: 'ext-indices', enabled: true }
+                            {
+                                id: 'ext-indices',
+                                label: 'Índices',
+                                children: [
+                                    {
+                                        id: 'idx-primarios',
+                                        label: 'Primarios',
+                                        children: [
+                                            { id: 'idx-primario', label: 'Primario (No Denso)', action: 'idx-primario', enabled: true },
+                                            { id: 'idx-multinivel-primario', label: 'Multinivel Primario (No Denso)', action: 'idx-multinivel-primario', enabled: true }
+                                        ]
+                                    },
+                                    {
+                                        id: 'idx-secundarios',
+                                        label: 'Secundarios',
+                                        children: [
+                                            { id: 'idx-secundario', label: 'Secundario (Denso)', action: 'idx-secundario', enabled: true },
+                                            { id: 'idx-multinivel-secundario', label: 'Multinivel Secundario (Denso)', action: 'idx-multinivel-secundario', enabled: true }
+                                        ]
+                                    }
+                                ]
+                            }
                         ]
                     }
                 ]
@@ -84,11 +105,19 @@ const MenuModel = {
                 label: 'Grafos',
                 children: [
                     { id: 'grafos-operaciones', label: 'Operaciones entre Grafos', action: 'grafos-operaciones', enabled: true },
+                    { id: 'arboles-grafos', label: 'Árboles como Grafos', action: 'arboles-grafos', enabled: true },
+                    { id: 'calculo-matrices', label: 'Cálculo de Matrices', action: 'calculo-matrices', enabled: true },
+                    { id: 'coloreado-grafos', label: 'Coloreado de Grafos', action: 'coloreado-grafos', enabled: true },
+                    { id: 'conjuntos-dom-indep', label: 'Conjuntos Dominantes e Independientes', action: 'conjuntos-dom-indep', enabled: true },
+                    { id: 'matching-grafos', label: 'Matching', action: 'matching-grafos', enabled: true },
                     {
                         id: 'algoritmos',
                         label: 'Algoritmos',
-                        action: 'algoritmos',
-                        enabled: true
+                        children: [
+                            { id: 'algo-bellman', label: 'Bellman', action: 'algo-bellman', enabled: true },
+                            { id: 'algo-dijkstra', label: 'Dijkstra', action: 'algo-dijkstra', enabled: true },
+                            { id: 'algo-floyd', label: 'Floyd', action: 'algo-floyd', enabled: true }
+                        ]
                     }
                 ]
             }

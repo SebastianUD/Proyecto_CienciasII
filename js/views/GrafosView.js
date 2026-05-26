@@ -1,6 +1,12 @@
 class GrafosView {
-    constructor(containerEl) {
+    /**
+     * @param {HTMLElement} containerEl - Contenedor principal.
+     * @param {string} [mode='operaciones'] - Modo: 'operaciones', 'arboles', 'matrices',
+     *                                         'coloreado', 'conjuntos', 'matching'.
+     */
+    constructor(containerEl, mode) {
         this.container = containerEl;
+        this._mode = mode || 'operaciones';
         this.g1 = new GraphModel();
         this.g2 = new GraphModel();
         this.gResult = null;
@@ -51,8 +57,30 @@ class GrafosView {
         if (welcome) welcome.classList.add('hidden');
         this._inputGraphsCollapsed = false;
 
+        // Map modes to display titles
+        const titles = {
+            'operaciones': 'Grafos — Operaciones entre Grafos',
+            'arboles': 'Grafos — Árboles como Grafos',
+            'matrices': 'Grafos — Cálculo de Matrices',
+            'coloreado': 'Grafos — Coloreado de Grafos',
+            'conjuntos': 'Grafos — Conjuntos Dominantes e Independientes',
+            'matching': 'Grafos — Matching'
+        };
+
+        // Map modes to which opTypeSelect value to auto-set
+        const modeToOpType = {
+            'operaciones': 'binary',
+            'arboles': 'tree',
+            'matrices': 'matrix',
+            'coloreado': 'coloring',
+            'conjuntos': 'independent',
+            'matching': 'matching'
+        };
+
+        const modeTitle = titles[this._mode] || 'Grafos';
+
         this.container.innerHTML = `
-            <div class="algo-title">Grafos — Operaciones entre Grafos</div>
+            <div class="algo-title">${modeTitle}</div>
             <div class="grafos-layout">
 
                 <!-- Panel Izquierdo -->
@@ -62,7 +90,8 @@ class GrafosView {
                     <div class="section-block">
                         <div class="section-title grafos-section-title-row">
                             <span>Definición de Grafos</span>
-                            <div class="grafos-directed-toggle">
+                            <!-- Toggle Dirigido: solo visible en modo 'matrices' -->
+                            <div class="grafos-directed-toggle" id="grafos-directed-toggle-wrap">
                                 <button class="grafos-directed-btn active" id="grafos-btn-undirected">No Dirigido</button>
                                 <button class="grafos-directed-btn" id="grafos-btn-directed">Dirigido</button>
                             </div>
@@ -105,7 +134,8 @@ class GrafosView {
                     <div class="section-block">
                         <div class="section-title">Operación</div>
                         <div class="grafos-op-panel">
-                            <div class="grafos-field-col">
+                            <!-- Selector de categoría: oculto (se controla por modo) -->
+                            <div class="grafos-field-col" id="grafos-op-type-row" style="display:none;">
                                 <label for="grafos-op-type">Categoría</label>
                                 <select id="grafos-op-type">
                                     <option value="binary">Operación entre grafos (G1 y G2)</option>
@@ -115,12 +145,12 @@ class GrafosView {
                                     <option value="coloring">Colorear Grafo</option>
                                     <option value="independent">Conjuntos Independientes</option>
                                     <option value="dominating">Conjunto Dominante</option>
-                                    <option value="connected_subsets">Conjuntos Conexos</option>
                                     <option value="matching">Matching</option>
                                 </select>
                             </div>
+                            <!-- Operaciones entre 2 grafos (binarias) -->
                             <div class="grafos-field-col" id="grafos-op-binary-col">
-                                <label for="grafos-op-select">Operación (G1 / G2)</label>
+                                <label for="grafos-op-select">Tipo de Operación</label>
                                 <select id="grafos-op-select">
                                     <option value="union">Unión (G1 ∪ G2)</option>
                                     <option value="intersection">Intersección (G1 ∩ G2)</option>
@@ -131,6 +161,7 @@ class GrafosView {
                                     <option value="tensorProduct">Producto Tensorial (G1 ⊗ G2)</option>
                                 </select>
                             </div>
+                            <!-- Operaciones sobre 1 grafo (unarias) -->
                             <div class="grafos-field-col hidden" id="grafos-op-unary-col">
                                 <label for="grafos-op-unary-select">Edición</label>
                                 <select id="grafos-op-unary-select">
@@ -140,6 +171,7 @@ class GrafosView {
                                 </select>
                                 <div id="grafos-op-unary-params" style="margin-top:8px;"></div>
                             </div>
+                            <!-- Árboles como grafos -->
                             <div class="grafos-field-col hidden" id="grafos-op-tree-col">
                                 <label for="grafos-op-tree-select">Operación</label>
                                 <select id="grafos-op-tree-select">
@@ -147,9 +179,9 @@ class GrafosView {
                                     <option value="mst">Árbol de Expansión Mínimo (MST)</option>
                                     <option value="maxst">Árbol de Expansión Máximo (MaxST)</option>
                                     <option value="distance">Distancia entre 2 Árboles de Expansión</option>
-                                    <option value="rank">Rango y Nulidad</option>
                                 </select>
                             </div>
+                            <!-- Cálculo de Matrices -->
                             <div class="grafos-matrix-source-row hidden" id="grafos-op-matrix-row">
                                 <div class="grafos-field-col">
                                     <label for="grafos-op-matrix-select">Operación</label>
@@ -168,44 +200,54 @@ class GrafosView {
                                     </select>
                                 </div>
                             </div>
+                            <!-- Coloreado de Grafos -->
                             <div class="grafos-field-col hidden" id="grafos-op-coloring-col">
-                                <label for="grafos-op-coloring-source">Grafo a colorear</label>
-                                <select id="grafos-op-coloring-source">
-                                    <option value="g1">Grafo 1 (G1)</option>
-                                    <option value="g2">Grafo 2 (G2)</option>
-                                    <option value="g3">Grafo 3 (Resultado)</option>
-                                </select>
+                                <div style="display:flex; gap:6px;">
+                                    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                                        <label for="grafos-op-coloring-type">Tipo de Coloreado</label>
+                                        <select id="grafos-op-coloring-type">
+                                            <option value="total">Coloreado Total</option>
+                                            <option value="vertices">Coloreado de Vértices</option>
+                                            <option value="aristas">Coloreado de Aristas</option>
+                                        </select>
+                                    </div>
+                                    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                                        <label for="grafos-op-coloring-source">Grafo</label>
+                                        <select id="grafos-op-coloring-source">
+                                            <option value="g1">G1</option>
+                                            <option value="g2">G2</option>
+                                            <option value="g3">G3 (Resultado)</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="grafos-field-col hidden" id="grafos-op-independent-col">
-                                <label for="grafos-op-independent-source">Grafo a analizar</label>
-                                <select id="grafos-op-independent-source">
-                                    <option value="g1">Grafo 1 (G1)</option>
-                                    <option value="g2">Grafo 2 (G2)</option>
-                                    <option value="g3">Grafo 3 (Resultado)</option>
-                                </select>
+                            <!-- Conjuntos Dominantes e Independientes -->
+                            <div class="grafos-field-col hidden" id="grafos-op-conjuntos-col">
+                                <div style="display:flex; gap:6px;">
+                                    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                                        <label for="grafos-op-conjuntos-select">Operación</label>
+                                        <select id="grafos-op-conjuntos-select">
+                                            <option value="independent">Conjuntos Independientes</option>
+                                            <option value="dominating">Conjuntos Dominantes</option>
+                                        </select>
+                                    </div>
+                                    <div style="flex:1; display:flex; flex-direction:column; gap:4px;">
+                                        <label for="grafos-op-conjuntos-source">Grafo</label>
+                                        <select id="grafos-op-conjuntos-source">
+                                            <option value="g1">G1</option>
+                                            <option value="g2">G2</option>
+                                            <option value="g3">G3 (Resultado)</option>
+                                        </select>
+                                    </div>
+                                </div>
                             </div>
-                            <div class="grafos-field-col hidden" id="grafos-op-dominating-col">
-                                <label for="grafos-op-dominating-source">Grafo a analizar</label>
-                                <select id="grafos-op-dominating-source">
-                                    <option value="g1">Grafo 1 (G1)</option>
-                                    <option value="g2">Grafo 2 (G2)</option>
-                                    <option value="g3">Grafo 3 (Resultado)</option>
-                                </select>
-                            </div>
-                            <div class="grafos-field-col hidden" id="grafos-op-connected-col">
-                                <label for="grafos-op-connected-source">Grafo a analizar</label>
-                                <select id="grafos-op-connected-source">
-                                    <option value="g1">Grafo 1 (G1)</option>
-                                    <option value="g2">Grafo 2 (G2)</option>
-                                    <option value="g3">Grafo 3 (Resultado)</option>
-                                </select>
-                            </div>
+                            <!-- Matching -->
                             <div class="grafos-field-col hidden" id="grafos-op-matching-col">
                                 <label for="grafos-op-matching-source">Grafo a analizar</label>
                                 <select id="grafos-op-matching-source">
-                                    <option value="g1">Grafo 1 (G1)</option>
-                                    <option value="g2">Grafo 2 (G2)</option>
-                                    <option value="g3">Grafo 3 (Resultado)</option>
+                                    <option value="g1">G1</option>
+                                    <option value="g2">G2</option>
+                                    <option value="g3">G3 (Resultado)</option>
                                 </select>
                             </div>
                             <button class="btn btn-primary grafos-btn-full" id="grafos-btn-execute" style="margin-bottom:8px;">▶ CALCULAR</button>
@@ -295,6 +337,53 @@ class GrafosView {
         this._drawAll();
         this.g1.create([], []);
         this.g2.create([], []);
+
+        // ── Post-render: configure UI based on mode ──────────────────────────
+        // Auto-set the operation type (the select is hidden, but we still need its value)
+        const modeToOpType2 = {
+            'operaciones': 'binary',
+            'arboles': 'tree',
+            'matrices': 'matrix',
+            'coloreado': 'coloring',
+            'conjuntos': 'independent',
+            'matching': 'matching'
+        };
+        if (this.el.opTypeSelect) {
+            this.el.opTypeSelect.value = modeToOpType2[this._mode] || 'binary';
+            
+            // Adjust options for 'operaciones' mode
+            const opTypeRow = document.getElementById('grafos-op-type-row');
+            if (opTypeRow) {
+                if (this._mode === 'operaciones') {
+                    opTypeRow.style.display = '';
+                    const optBinary = this.el.opTypeSelect.querySelector('option[value="binary"]');
+                    const optUnary = this.el.opTypeSelect.querySelector('option[value="unary"]');
+                    if (optBinary) optBinary.textContent = 'Operaciones entre 2 grafos';
+                    if (optUnary) optUnary.textContent = 'Operaciones con 1 grafo';
+                    this.el.opTypeSelect.querySelectorAll('option').forEach(opt => {
+                        if (opt.value !== 'binary' && opt.value !== 'unary') {
+                            opt.hidden = true;
+                        } else {
+                            opt.hidden = false;
+                        }
+                    });
+                } else {
+                    opTypeRow.style.display = 'none';
+                }
+            }
+
+            this._updateOpUI();
+        }
+
+        // Show/hide directed toggle based on mode
+        const directedWrap = document.getElementById('grafos-directed-toggle-wrap');
+        if (directedWrap) {
+            directedWrap.style.display = this._mode === 'matrices' ? '' : 'none';
+        }
+
+        // For 'conjuntos': show the 'independent' subtype initially as default
+        // (user can switch by changing opTypeSelect to 'dominating' if exposed—but since it's hidden,
+        //  we expose a special in-mode selector). Handled in _onExecute.
     }
 
     _cacheElements() {
@@ -371,13 +460,11 @@ class GrafosView {
             opMatrixSelect: document.getElementById('grafos-op-matrix-select'),
             opMatrixSource: document.getElementById('grafos-op-matrix-source'),
             opColoringCol: document.getElementById('grafos-op-coloring-col'),
+            opColoringType: document.getElementById('grafos-op-coloring-type'),
             opColoringSource: document.getElementById('grafos-op-coloring-source'),
-            opIndependentCol: document.getElementById('grafos-op-independent-col'),
-            opIndependentSource: document.getElementById('grafos-op-independent-source'),
-            opDominatingCol: document.getElementById('grafos-op-dominating-col'),
-            opDominatingSource: document.getElementById('grafos-op-dominating-source'),
-            opConnectedCol: document.getElementById('grafos-op-connected-col'),
-            opConnectedSource: document.getElementById('grafos-op-connected-source'),
+            opConjuntosCol: document.getElementById('grafos-op-conjuntos-col'),
+            opConjuntosSelect: document.getElementById('grafos-op-conjuntos-select'),
+            opConjuntosSource: document.getElementById('grafos-op-conjuntos-source'),
             opMatchingCol: document.getElementById('grafos-op-matching-col'),
             opMatchingSource: document.getElementById('grafos-op-matching-source')
         };
@@ -407,8 +494,13 @@ class GrafosView {
         el.btnExecute.addEventListener('click', () => this._onExecute());
         el.btnSave.addEventListener('click', () => this._onSave());
         el.btnPrint.addEventListener('click', () => window.print());
+        // opTypeSelect is hidden; only listen if it exists and user can access it
         el.opTypeSelect.addEventListener('change', () => this._updateOpUI());
         el.opUnarySelect.addEventListener('change', () => this._updateOpUnaryParamsUI());
+        if (el.opColoringType) el.opColoringType.addEventListener('change', () => {
+            this._clearColoringState();
+            this._drawGraph(el.canvasResult, this.gResult, this._camR);
+        });
         el.btnDirected.addEventListener('click', () => this._setDirected(true));
         el.btnUndirected.addEventListener('click', () => this._setDirected(false));
 
@@ -533,18 +625,17 @@ class GrafosView {
 
     _updateOpUI() {
         const type = this.el.opTypeSelect.value;
+        const isConjuntos = this._mode === 'conjuntos';
         this.el.opBinaryCol.classList.toggle('hidden', type !== 'binary');
         this.el.opUnaryCol.classList.toggle('hidden', type !== 'unary');
         this.el.opTreeCol.classList.toggle('hidden', type !== 'tree');
         this.el.opMatrixRow.classList.toggle('hidden', type !== 'matrix');
         this.el.opColoringCol.classList.toggle('hidden', type !== 'coloring');
-        if (this.el.opIndependentCol) this.el.opIndependentCol.classList.toggle('hidden', type !== 'independent');
-        if (this.el.opDominatingCol) this.el.opDominatingCol.classList.toggle('hidden', type !== 'dominating');
-        if (this.el.opConnectedCol) this.el.opConnectedCol.classList.toggle('hidden', type !== 'connected_subsets');
+        if (this.el.opConjuntosCol) this.el.opConjuntosCol.classList.toggle('hidden', !isConjuntos);
         if (this.el.opMatchingCol) this.el.opMatchingCol.classList.toggle('hidden', type !== 'matching');
         if (type === 'unary') this._updateOpUnaryParamsUI();
         if (this.el.rightPanelTitle) {
-            if (type === 'tree' || type === 'coloring' || type === 'independent' || type === 'dominating' || type === 'connected_subsets' || type === 'matching') {
+            if (isConjuntos || type === 'tree' || type === 'coloring' || type === 'matching') {
                 this.el.rightPanelTitle.textContent = 'Descripción del Grafo';
             } else {
                 this.el.rightPanelTitle.textContent = 'Operaciones de la Estructura';
@@ -702,9 +793,12 @@ class GrafosView {
         });
 
         if (!data) return;
-        const validAlgos = ['grafos-operaciones', 'arboles-grafos'];
+        const validAlgos = [
+            'grafos-operaciones', 'arboles-grafos', 'calculo-matrices',
+            'coloreado-grafos', 'conjuntos-dom-indep', 'matching-grafos'
+        ];
         if (!validAlgos.includes(data.algorithm)) {
-            Validation.showError('El archivo no corresponde a Operaciones entre Grafos o Árboles como Grafos.');
+            Validation.showError('El archivo no corresponde a un módulo de Grafos válido.');
             return;
         }
 
@@ -729,17 +823,23 @@ class GrafosView {
     }
 
     _onExecute(isAuto = false) {
-        const type = this.el.opTypeSelect.value;
-        if (type === 'tree') { if (!isAuto) { this._clearColoringState(); this._onExecuteTree(); } return; }
-        if (type === 'matrix') { if (!isAuto) { this._clearColoringState(); this._onExecuteMatrix(); } return; }
-        if (type === 'coloring') { if (!isAuto) this._onExecuteColoring(); return; }
-        if (type === 'independent') { if (!isAuto) this._onExecuteIndependent(); return; }
-        if (type === 'dominating') { if (!isAuto) this._onExecuteDominating(); return; }
-        if (type === 'connected_subsets') { if (!isAuto) this._onExecuteConnectedSubsets(); return; }
-        if (type === 'matching') { if (!isAuto) { this._clearColoringState(); this._onExecuteMatching(); } return; }
+        // Route directly by mode for non-auto calls
+        const mode = this._mode;
+        if (mode === 'arboles') { if (!isAuto) { this._clearColoringState(); this._onExecuteTree(); } return; }
+        if (mode === 'matrices') { if (!isAuto) { this._clearColoringState(); this._onExecuteMatrix(); } return; }
+        if (mode === 'coloreado') { if (!isAuto) this._onExecuteColoring(); return; }
+        if (mode === 'conjuntos') {
+            if (!isAuto) {
+                const subType = this.el.opConjuntosSelect.value;
+                if (subType === 'dominating') this._onExecuteDominating();
+                else this._onExecuteIndependent();
+            }
+            return;
+        }
+        if (mode === 'matching') { if (!isAuto) { this._clearColoringState(); this._onExecuteMatching(); } return; }
 
-        // Non-coloring operation: clear any active coloring
-        this._clearColoringState();
+        // mode === 'operaciones' — uses opTypeSelect for binary/unary
+        const type = this.el.opTypeSelect.value;
         if (type === 'binary') {
             if (!this.g1.created || this.g1.vertices.length === 0) { if (!isAuto) Validation.showError('G1 no está definido o está vacío.'); return; }
             if (!this.g2.created || this.g2.vertices.length === 0) { if (!isAuto) Validation.showError('G2 no está definido o está vacío.'); return; }
@@ -817,7 +917,6 @@ class GrafosView {
             else if (func === 'mst') this._executeMST(false);
             else if (func === 'maxst') this._executeMST(true);
             else if (func === 'distance') this._executeDistance();
-            else if (func === 'rank') this._executeRankNullity();
         } catch (err) {
             Validation.showError('Error al calcular: ' + err.message);
             console.error(err);
@@ -844,12 +943,17 @@ class GrafosView {
         this._matrixGraph = graph;
         this._matrixSrc = src;
 
-        // Clear any previous coloring highlight
+        // Clear any previous coloring highlight and double-result layout
         this._coloringVertexColors = {};
         this._coloringEdgeColors = {};
         this._coloringSource = null;
         this._resultHighlightVertices = {};
         this._resultHighlightEdges = {};
+        this._result2HighlightVertices = {};
+        this._result2HighlightEdges = {};
+        this.gResult = null;
+        this.gResult2 = null;
+        if (this.el.wrapResult2) this.el.wrapResult2.style.display = 'none';
         this._drawAll();
 
         try {
@@ -865,6 +969,36 @@ class GrafosView {
                 const res = MatrixGraphModel.computeCircuitCutMatrix(graph);
                 html = MatrixGraphModel.renderCircuitCutHTML(res);
                 this._addUpdateLog(`✔ Matriz de Circuitos (${res.nC} fundamentales) y Conjuntos de Corte calculados.`, 'success');
+
+                // Perform Rank & Nullity operations and show 2 result graphs
+                const rnResult = TreeGraphModel.rankAndNullity(graph);
+                this._inheritPositions(graph, rnResult.mstGraph);
+                this._inheritPositions(graph, rnResult.complementGraph);
+                
+                this.gResult = rnResult.mstGraph;
+                this.el.resultLabel.textContent = 'T — Árbol de Expansión (Ramas)';
+                this._resultHighlightVertices = {};
+                this._resultHighlightEdges = {};
+                rnResult.mstEdges.forEach(e => {
+                    this._resultHighlightEdges[[e.from, e.to].sort().join('-')] = '#26A65B';
+                });
+
+                this.gResult2 = rnResult.complementGraph;
+                this.el.result2Label.textContent = "T' — Complemento (Cuerdas)";
+                this._result2HighlightVertices = {};
+                this._result2HighlightEdges = {};
+                rnResult.complementEdges.forEach(e => {
+                    this._result2HighlightEdges[[e.from, e.to].sort().join('-')] = '#E53935';
+                });
+
+                this.el.wrapResult2.style.display = 'flex';
+                this._resizeAllCanvas();
+                this._fitGraph(this.el.canvasResult, this.gResult, this._camR);
+                this._fitGraph(this.el.canvasResult2, this.gResult2, this._camR2);
+                this._drawResultCanvas();
+                this._drawGraph(this.el.canvasResult2, this.gResult2, this._camR2, this._result2HighlightVertices, this._result2HighlightEdges);
+                
+                this._addUpdateLog(`✔ Rango = ${rnResult.rank} | Nulidad = ${rnResult.nullity}`, 'success');
             } else if (op === 'incidenceAdjacencyMatrix') {
                 const resInc = MatrixGraphModel.computeIncidenceMatrix(graph);
                 const resAdj = MatrixGraphModel.computeAdjacencyMatrix(graph);
@@ -929,19 +1063,19 @@ class GrafosView {
      */
     _onMatrixRowClick(row) {
         const type = row.dataset.matrixType;
-        const key  = row.dataset.key || '';
+        const key = row.dataset.key || '';
         const graph = this._matrixGraph;
-        const src   = this._matrixSrc;
+        const src = this._matrixSrc;
         if (!graph || !src) return;
 
         const hlV = {};
         const hlE = {};
-        const VERTEX_COLOR   = '#FF9800';   // naranja  – vértice seleccionado
-        const EDGE_COLOR     = '#E53935';   // rojo     – arista principal
-        const ADJ_COLOR      = '#43A047';   // verde    – vértices adyacentes
+        const VERTEX_COLOR = '#FF9800';   // naranja  – vértice seleccionado
+        const EDGE_COLOR = '#E53935';   // rojo     – arista principal
+        const ADJ_COLOR = '#43A047';   // verde    – vértices adyacentes
         const INCIDENT_COLOR = '#F9A825';   // amarillo – aristas incidentes sobre la arista seleccionada
         const SURVIVOR_COLOR = '#43A047';   // verde    – aristas que sobreviven al corte
-        const CUT_COLOR      = 'rgba(180,180,180,0.22)'; // gris fantasma – aristas del conjunto de corte
+        const CUT_COLOR = 'rgba(180,180,180,0.22)'; // gris fantasma – aristas del conjunto de corte
 
         if (type === 'incidence') {
             // Highlight the vertex + its incident edges
@@ -984,7 +1118,7 @@ class GrafosView {
                     hlE[[e.from, e.to].sort().join('-')] = EDGE_COLOR;
                     hlE[`eid:${e.id}`] = EDGE_COLOR;
                     hlV[e.from] = hlV[e.from] || ADJ_COLOR;
-                    hlV[e.to]   = hlV[e.to]   || ADJ_COLOR;
+                    hlV[e.to] = hlV[e.to] || ADJ_COLOR;
                 }
             }
 
@@ -1025,7 +1159,7 @@ class GrafosView {
                 hlE[[e.from, e.to].sort().join('-')] = EDGE_COLOR;
                 hlE[`eid:${e.id}`] = EDGE_COLOR;
                 hlV[e.from] = VERTEX_COLOR;
-                hlV[e.to]   = VERTEX_COLOR;
+                hlV[e.to] = VERTEX_COLOR;
             }
             // Aristas incidentes en amarillo
             const incidentKeys = (row.dataset.incidentKeys || '').split(',').filter(Boolean);
@@ -1106,7 +1240,7 @@ class GrafosView {
     }
 
     _autoUpdateResult() {
-        if (this._lastBinaryOp && this.g1.created && this.g2.created && this.el.opTypeSelect.value === 'binary') {
+        if (this._mode === 'operaciones' && this._lastBinaryOp && this.g1.created && this.g2.created && this.el.opTypeSelect.value === 'binary') {
             this.el.opSelect.value = this._lastBinaryOp;
             this._onExecute(true);
         } else { this._invalidateResult(); }
@@ -1379,6 +1513,7 @@ class GrafosView {
 
     _onExecuteColoring() {
         const src = this.el.opColoringSource.value;
+        const type = this.el.opColoringType ? this.el.opColoringType.value : 'total';
         let graph;
         let graphLabel;
         if (src === 'g1') { graph = this.g1; graphLabel = 'Grafo 1 (G1)'; }
@@ -1392,20 +1527,27 @@ class GrafosView {
 
         try {
             const result = GraphColoringModel.computeAll(graph);
-            this._addUpdateLog(`✔ Coloreado de ${graphLabel} calculado. χ(G)=${result.chi}, χ'(G)=${result.chiPrime}`, 'success');
+            let msg = `✔ Coloreado de ${graphLabel} calculado.`;
+            if (type === 'total' || type === 'vertices') msg += ` χ(G)=${result.chi}`;
+            if (type === 'total' || type === 'aristas') msg += ` χ'(G)=${result.chiPrime}`;
+            this._addUpdateLog(msg, 'success');
 
             // Build vertex highlight colors for canvas
             const hlVertices = {};
-            for (const [v, cIdx] of Object.entries(result.coloring)) {
-                hlVertices[v] = GraphColoringModel.getColor(cIdx);
+            if (type === 'total' || type === 'vertices') {
+                for (const [v, cIdx] of Object.entries(result.coloring)) {
+                    hlVertices[v] = GraphColoringModel.getColor(cIdx);
+                }
             }
 
             // Build edge highlight colors for canvas (use edge ID key for parallel edges)
             const hlEdges = {};
-            for (const e of graph.edges) {
-                const cIdx = result.edgeColoring[e.id];
-                if (cIdx !== undefined) {
-                    hlEdges[`eid:${e.id}`] = GraphColoringModel.getColor(cIdx);
+            if (type === 'total' || type === 'aristas') {
+                for (const e of graph.edges) {
+                    const cIdx = result.edgeColoring[e.id];
+                    if (cIdx !== undefined) {
+                        hlEdges[`eid:${e.id}`] = GraphColoringModel.getColor(cIdx);
+                    }
                 }
             }
 
@@ -1424,14 +1566,14 @@ class GrafosView {
             }
 
             // Render description
-            this._renderColoringDescription(graph, graphLabel, result);
+            this._renderColoringDescription(graph, graphLabel, result, type);
         } catch (err) {
             Validation.showError('Error al calcular coloreado: ' + err.message);
             console.error(err);
         }
     }
 
-    _renderColoringDescription(graph, graphLabel, result) {
+    _renderColoringDescription(graph, graphLabel, result, type) {
         const sections = [];
 
         // 1. Graph info
@@ -1441,73 +1583,79 @@ class GrafosView {
         });
 
         // 2. Chromatic Number
-        let chiHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        chiHTML += `<strong style="font-size:0.95rem;">Número Cromático χ(G) = <span style="font-size:1.1rem;">${result.chi}</span></strong><br><br>`;
-        chiHTML += `<strong>Asignación de colores a vértices:</strong><br>`;
-        for (const [v, cIdx] of Object.entries(result.coloring)) {
-            const color = GraphColoringModel.getColor(cIdx);
-            const name = GraphColoringModel.getColorName(cIdx);
-            chiHTML += `<div style="display:flex;align-items:center;gap:6px;margin:3px 0;">`;
-            chiHTML += `<span style="width:12px;height:12px;border-radius:50%;background:${color};display:inline-block;border:1px solid rgba(0,0,0,0.2);"></span>`;
-            chiHTML += `${v} → ${name}`;
+        if (type === 'total' || type === 'vertices') {
+            let chiHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+            chiHTML += `<strong style="font-size:0.95rem;">Número Cromático χ(G) = <span style="font-size:1.1rem;">${result.chi}</span></strong><br><br>`;
+            chiHTML += `<strong>Asignación de colores a vértices:</strong><br>`;
+            for (const [v, cIdx] of Object.entries(result.coloring)) {
+                const color = GraphColoringModel.getColor(cIdx);
+                const name = GraphColoringModel.getColorName(cIdx);
+                chiHTML += `<div style="display:flex;align-items:center;gap:6px;margin:3px 0;">`;
+                chiHTML += `<span style="width:12px;height:12px;border-radius:50%;background:${color};display:inline-block;border:1px solid rgba(0,0,0,0.2);"></span>`;
+                chiHTML += `${v} → ${name}`;
+                chiHTML += `</div>`;
+            }
             chiHTML += `</div>`;
+            sections.push({ title: 'Número Cromático χ(G)', html: chiHTML });
         }
-        chiHTML += `</div>`;
-        sections.push({ title: 'Número Cromático χ(G)', html: chiHTML });
 
         // 3. Chromatic Index
-        let chiPrimeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        chiPrimeHTML += `<strong style="font-size:0.95rem;">Índice Cromático χ'(G) = <span style="font-size:1.1rem;">${result.chiPrime}</span></strong><br><br>`;
-        if (graph.edges.length > 0) {
-            chiPrimeHTML += `<strong>Asignación de colores a aristas:</strong><br>`;
-            for (const e of graph.edges) {
-                const cIdx = result.edgeColoring[e.id];
-                if (cIdx !== undefined) {
-                    const color = GraphColoringModel.getColor(cIdx);
-                    const name = GraphColoringModel.getColorName(cIdx);
-                    chiPrimeHTML += `<div style="display:flex;align-items:center;gap:6px;margin:3px 0;">`;
-                    chiPrimeHTML += `<span style="width:12px;height:12px;border-radius:50%;background:${color};display:inline-block;border:1px solid rgba(0,0,0,0.2);"></span>`;
-                    chiPrimeHTML += `${e.from}–${e.to} → ${name}`;
-                    chiPrimeHTML += `</div>`;
+        if (type === 'total' || type === 'aristas') {
+            let chiPrimeHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+            chiPrimeHTML += `<strong style="font-size:0.95rem;">Índice Cromático χ'(G) = <span style="font-size:1.1rem;">${result.chiPrime}</span></strong><br><br>`;
+            if (graph.edges.length > 0) {
+                chiPrimeHTML += `<strong>Asignación de colores a aristas:</strong><br>`;
+                for (const e of graph.edges) {
+                    const cIdx = result.edgeColoring[e.id];
+                    if (cIdx !== undefined) {
+                        const color = GraphColoringModel.getColor(cIdx);
+                        const name = GraphColoringModel.getColorName(cIdx);
+                        chiPrimeHTML += `<div style="display:flex;align-items:center;gap:6px;margin:3px 0;">`;
+                        chiPrimeHTML += `<span style="width:12px;height:12px;border-radius:50%;background:${color};display:inline-block;border:1px solid rgba(0,0,0,0.2);"></span>`;
+                        chiPrimeHTML += `${e.from}–${e.to} → ${name}`;
+                        chiPrimeHTML += `</div>`;
+                    }
                 }
             }
+            chiPrimeHTML += `</div>`;
+            sections.push({ title: "Índice Cromático χ'(G)", html: chiPrimeHTML });
         }
-        chiPrimeHTML += `</div>`;
-        sections.push({ title: "Índice Cromático χ'(G)", html: chiPrimeHTML });
 
         // 4. Chromatic Polynomial
-        const poly = result.polynomial;
-        const graphTypeName = GraphColoringModel.getGraphTypeName(poly.type);
-        let polyHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        polyHTML += `<div style="font-size:0.85rem;margin-bottom:4px;color:var(--text-secondary);">Tipo: <strong>${graphTypeName}</strong></div>`;
-        polyHTML += `<div>λ = χ(G) = ${result.chi}</div>`;
-        polyHTML += `<div style="margin-bottom:6px;">n = ${poly.n}</div>`;
-        polyHTML += `<div style="font-size:0.9rem;margin:4px 0;">${poly.formula}</div>`;
-        polyHTML += `<div style="font-size:0.95rem;margin-top:8px;"><strong>${poly.evaluated}</strong></div>`;
-        polyHTML += `</div>`;
-        sections.push({ title: 'POLINOMIO CROMÁTICO', html: polyHTML });
+        if (type === 'total' || type === 'vertices') {
+            const poly = result.polynomial;
+            const graphTypeName = GraphColoringModel.getGraphTypeName(poly.type);
+            let polyHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+            polyHTML += `<div style="font-size:0.85rem;margin-bottom:4px;color:var(--text-secondary);">Tipo: <strong>${graphTypeName}</strong></div>`;
+            polyHTML += `<div>λ = χ(G) = ${result.chi}</div>`;
+            polyHTML += `<div style="margin-bottom:6px;">n = ${poly.n}</div>`;
+            polyHTML += `<div style="font-size:0.9rem;margin:4px 0;">${poly.formula}</div>`;
+            polyHTML += `<div style="font-size:0.95rem;margin-top:8px;"><strong>${poly.evaluated}</strong></div>`;
+            polyHTML += `</div>`;
+            sections.push({ title: 'POLINOMIO CROMÁTICO', html: polyHTML });
 
-        // 5. Chromatic Partitioning (Now containing Chromatic Class and Independent Sets)
-        let partHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+            // 5. Chromatic Partitioning (Now containing Chromatic Class and Independent Sets)
+            let partHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
 
-        // Chromatic Class (using chi instead of chiPrime/delta)
-        partHTML += `<strong style="font-size:0.9rem;">Clase Cromática:</strong> χ(G) = ${result.chi}<br><br>`;
+            // Chromatic Class (using chi instead of chiPrime/delta)
+            partHTML += `<strong style="font-size:0.9rem;">Clase Cromática:</strong> χ(G) = ${result.chi}<br><br>`;
 
-        // Fundamental Independent Sets
-        partHTML += `<strong style="font-size:0.9rem;">Conjuntos Independientes Fundamentales:</strong><br>`;
-        if (result.independentSets.length === 0) {
-            partHTML += `<em>No se encontraron conjuntos independientes.</em>`;
-        } else {
-            for (let i = 0; i < result.independentSets.length; i++) {
-                const s = result.independentSets[i];
-                partHTML += `<div style="margin:4px 0;display:flex;align-items:center;gap:6px;">`;
-                partHTML += `<span style="width:14px;height:14px;border-radius:3px;background:${s.color};display:inline-block;border:1px solid rgba(0,0,0,0.15);"></span>`;
-                partHTML += `Cind<sub>${i + 1}</sub>(${s.colorName}): {${s.vertices.join(', ')}}`;
-                partHTML += `</div>`;
+            // Fundamental Independent Sets
+            partHTML += `<strong style="font-size:0.9rem;">Conjuntos Independientes Fundamentales:</strong><br>`;
+            if (result.independentSets.length === 0) {
+                partHTML += `<em>No se encontraron conjuntos independientes.</em>`;
+            } else {
+                for (let i = 0; i < result.independentSets.length; i++) {
+                    const s = result.independentSets[i];
+                    partHTML += `<div style="margin:4px 0;display:flex;align-items:center;gap:6px;">`;
+                    partHTML += `<span style="width:14px;height:14px;border-radius:3px;background:${s.color};display:inline-block;border:1px solid rgba(0,0,0,0.15);"></span>`;
+                    partHTML += `Cind<sub>${i + 1}</sub>(${s.colorName}): {${s.vertices.join(', ')}}`;
+                    partHTML += `</div>`;
+                }
             }
+            partHTML += `</div>`;
+            sections.push({ title: 'Particionamiento Cromático', html: partHTML });
         }
-        partHTML += `</div>`;
-        sections.push({ title: 'Particionamiento Cromático', html: partHTML });
 
         // Removed independent sets and matchings HTML logic to _renderIndependentDescription
 
@@ -1515,7 +1663,7 @@ class GrafosView {
     }
 
     _onExecuteIndependent() {
-        const src = this.el.opIndependentSource.value;
+        const src = this.el.opConjuntosSource.value;
         let graph;
         let graphLabel;
         if (src === 'g1') { graph = this.g1; graphLabel = 'Grafo 1 (G1)'; }
@@ -1603,7 +1751,7 @@ class GrafosView {
     }
 
     _onExecuteDominating() {
-        const src = this.el.opDominatingSource.value;
+        const src = this.el.opConjuntosSource.value;
         let graph;
         let graphLabel;
         if (src === 'g1') { graph = this.g1; graphLabel = 'Grafo 1 (G1)'; }
@@ -1617,18 +1765,27 @@ class GrafosView {
 
         try {
             const result = GraphColoringModel.computeDominatingSets(graph);
+            
+            // Also compute connected dominating sets
+            let connResult = null;
+            try {
+                connResult = GraphColoringModel.computeConnectedSubsets(graph);
+            } catch (connErr) {
+                console.warn('No se pudieron calcular los conjuntos dominantes conexos:', connErr);
+            }
+
             this._addUpdateLog(`✔ Conjuntos Dominantes de ${graphLabel} calculados.`, 'success');
 
             this._clearColoringState();
 
-            this._renderDominatingDescription(graph, graphLabel, result, src);
+            this._renderDominatingDescription(graph, graphLabel, result, connResult, src);
         } catch (err) {
             Validation.showError('Error al calcular conjuntos dominantes: ' + err.message);
             console.error(err);
         }
     }
 
-    _renderDominatingDescription(graph, graphLabel, result, src) {
+    _renderDominatingDescription(graph, graphLabel, result, connResult, src) {
         const sections = [];
 
         sections.push({
@@ -1677,101 +1834,41 @@ class GrafosView {
         maxHTML += `</div>`;
         sections.push({ title: 'Conjuntos Dominantes Máximos', html: maxHTML });
 
-        this._renderDescription(sections);
-        this._bindInteractiveSetClicks('dom-set-item', false, 'dominating', src, graph);
-    }
+        // ─── Connected Dominating Sets Integration ───
+        if (connResult && connResult.connectedDominatingSets && connResult.connectedDominatingSets.length > 0) {
+            // Connected Domination Number
+            let connNumHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+            connNumHTML += `<strong style="font-size:0.95rem;">Número de Dominación Conexa = <span style="font-size:1.1rem;">${connResult.connectedDominationNumber}</span></strong>`;
+            connNumHTML += `</div>`;
+            sections.push({ title: 'Número de Dominación Conexa', html: connNumHTML });
 
-    _onExecuteConnectedSubsets() {
-        const src = this.el.opConnectedSource.value;
-        let graph;
-        let graphLabel;
-        if (src === 'g1') { graph = this.g1; graphLabel = 'Grafo 1 (G1)'; }
-        else if (src === 'g2') { graph = this.g2; graphLabel = 'Grafo 2 (G2)'; }
-        else { graph = this.gResult; graphLabel = 'Grafo 3 (Resultado)'; }
-
-        if (!graph || !graph.created || graph.vertices.length === 0) {
-            Validation.showError('El grafo seleccionado está vacío o no ha sido definido.');
-            return;
-        }
-
-        try {
-            const result = GraphColoringModel.computeConnectedSubsets(graph);
-            this._addUpdateLog(`✔ Conjuntos Conexos de ${graphLabel} calculados.`, 'success');
-
-            this._clearColoringState();
-
-            this._renderConnectedSubsetsDescription(graph, graphLabel, result, src);
-        } catch (err) {
-            Validation.showError('Error al calcular conjuntos conexos: ' + err.message);
-            console.error(err);
-        }
-    }
-
-    _renderConnectedSubsetsDescription(graph, graphLabel, result, src) {
-        const sections = [];
-
-        sections.push({
-            title: `Grafo Seleccionado — ${graphLabel}`,
-            items: [{ graph: graph, label: graphLabel.replace(/\s*\(.*\)/, ''), isTree: false }]
-        });
-
-        // All Connected Sets
-        this._currentSetsData['all_connected'] = result.allSets;
-        let allHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        allHTML += `<strong style="font-size:0.9rem;">Todos los Conjuntos Conexos (${result.allSets.length}):</strong><br>`;
-        allHTML += this._buildInteractiveSetsHTML(result.allSets, false, 'connected', 'conn-set-item', 'all_connected');
-        allHTML += `</div>`;
-        sections.push({ title: 'Todos los Conjuntos Conexos', html: allHTML });
-
-        // Minimum Connected Sets
-        this._currentSetsData['min_connected'] = result.minimumSets;
-        let minHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        minHTML += `<strong style="font-size:0.9rem;">Conjuntos Conexos Mínimos (${result.minimumSets.length}):</strong><br>`;
-        minHTML += this._buildInteractiveSetsHTML(result.minimumSets, false, 'connected', 'conn-set-item', 'min_connected');
-        minHTML += `</div>`;
-        sections.push({ title: 'Conjuntos Conexos Mínimos', html: minHTML });
-
-        // Maximum Connected Sets
-        this._currentSetsData['max_connected'] = result.maximumSets;
-        let maxHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-        maxHTML += `<strong style="font-size:0.9rem;">Conjuntos Conexos Máximos (${result.maximumSets.length}):</strong><br>`;
-        maxHTML += this._buildInteractiveSetsHTML(result.maximumSets, false, 'connected', 'conn-set-item', 'max_connected');
-        maxHTML += `</div>`;
-        sections.push({ title: 'Conjuntos Conexos Máximos', html: maxHTML });
-
-        const hasDomSets = result.connectedDominatingSets && result.connectedDominatingSets.length > 0;
-
-        if (hasDomSets) {
             // All Connected Dominating Sets
-            this._currentSetsData['all_conn_dominating'] = result.connectedDominatingSets;
-            let allDomHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-            allDomHTML += `<strong style="font-size:0.9rem;">Todos los Conjuntos Dominantes Conexos (${result.connectedDominatingSets.length}):</strong><br>`;
-            allDomHTML += this._buildInteractiveSetsHTML(result.connectedDominatingSets, false, 'connected_dominating', 'conn-dom-item', 'all_conn_dominating');
-            allDomHTML += `</div>`;
-            sections.push({ title: 'Todos los Conjuntos Dominantes Conexos', html: allDomHTML });
+            this._currentSetsData['all_conn_dominating'] = connResult.connectedDominatingSets;
+            let allConnDomHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+            allConnDomHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Conexos (${connResult.connectedDominatingSets.length}):</strong><br>`;
+            allConnDomHTML += this._buildInteractiveSetsHTML(connResult.connectedDominatingSets, false, 'connected_dominating', 'dom-set-item', 'all_conn_dominating');
+            allConnDomHTML += `</div>`;
+            sections.push({ title: 'Conjuntos Dominantes Conexos', html: allConnDomHTML });
 
             // Minimum Connected Dominating Sets
-            this._currentSetsData['min_conn_dominating'] = result.minimumConnectedDominatingSets;
-            let minDomHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-            minDomHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Conexos Mínimos (${result.minimumConnectedDominatingSets.length}):</strong><br>`;
-            minDomHTML += this._buildInteractiveSetsHTML(result.minimumConnectedDominatingSets, false, 'connected_dominating', 'conn-dom-item', 'min_conn_dominating');
-            minDomHTML += `</div>`;
-            sections.push({ title: 'Conjuntos Dominantes Conexos Mínimos', html: minDomHTML });
+            this._currentSetsData['min_conn_dominating'] = connResult.minimumConnectedDominatingSets;
+            let minConnDomHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+            minConnDomHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Conexos Mínimos (${connResult.minimumConnectedDominatingSets.length}):</strong><br>`;
+            minConnDomHTML += this._buildInteractiveSetsHTML(connResult.minimumConnectedDominatingSets, false, 'connected_dominating', 'dom-set-item', 'min_conn_dominating');
+            minConnDomHTML += `</div>`;
+            sections.push({ title: 'Conjuntos Dominantes Conexos Mínimos', html: minConnDomHTML });
 
             // Maximum Connected Dominating Sets
-            this._currentSetsData['max_conn_dominating'] = result.maximumConnectedDominatingSets;
-            let maxDomHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
-            maxDomHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Conexos Máximos (${result.maximumConnectedDominatingSets.length}):</strong><br>`;
-            maxDomHTML += this._buildInteractiveSetsHTML(result.maximumConnectedDominatingSets, false, 'connected_dominating', 'conn-dom-item', 'max_conn_dominating');
-            maxDomHTML += `</div>`;
-            sections.push({ title: 'Conjuntos Dominantes Conexos Máximos', html: maxDomHTML });
+            this._currentSetsData['max_conn_dominating'] = connResult.maximumConnectedDominatingSets;
+            let maxConnDomHTML = `<div style="font-family:Consolas,monospace;font-size:0.83rem;line-height:1.9;padding:10px;background:rgba(43,87,154,0.04);border-radius:4px;">`;
+            maxConnDomHTML += `<strong style="font-size:0.9rem;">Conjuntos Dominantes Conexos Máximos (${connResult.maximumConnectedDominatingSets.length}):</strong><br>`;
+            maxConnDomHTML += this._buildInteractiveSetsHTML(connResult.maximumConnectedDominatingSets, false, 'connected_dominating', 'dom-set-item', 'max_conn_dominating');
+            maxConnDomHTML += `</div>`;
+            sections.push({ title: 'Conjuntos Dominantes Conexos Máximos', html: maxConnDomHTML });
         }
 
         this._renderDescription(sections);
-        this._bindInteractiveSetClicks('conn-set-item', false, 'connected', src, graph);
-        if (hasDomSets) {
-            this._bindInteractiveSetClicks('conn-dom-item', false, 'connected_dominating', src, graph);
-        }
+        this._bindInteractiveSetClicks('dom-set-item', false, 'dominating', src, graph);
     }
 
     // ─── Matching (Pareamientos) ──────────────────────────────────────────────
@@ -1964,7 +2061,7 @@ class GrafosView {
 
     _buildInteractiveSetsHTML(sets, isEdge, type, itemClass, listId) {
         if (!sets || sets.length === 0) return `<div style="padding:6px 10px;font-style:italic;color:#999;font-size:0.8rem;">No se encontraron conjuntos.</div>`;
-        
+
         let html = `<div style="font-family:Consolas,monospace;font-size:0.82rem;line-height:1.7;max-height:260px;overflow-y:auto;padding:4px 0;">`;
         for (let i = 0; i < sets.length; i++) {
             const set = sets[i];
@@ -1979,7 +2076,7 @@ class GrafosView {
             }
 
             const label = isEdge ? `A<sub>${i + 1}</sub>` : (type === 'dominating' ? `S'<sub>${i + 1}</sub>` : (type === 'connected_dominating' ? `S'<sub>c,${i + 1}</sub>` : (type === 'connected' ? `C<sub>${i + 1}</sub>` : `S<sub>${i + 1}</sub>`)));
-            
+
             html += `<div class="${itemClass}" data-idx="${i}" data-list-id="${listId}" `;
             html += `style="padding:4px 10px;cursor:pointer;border-radius:3px;transition:background 0.15s;" `;
             html += `onmouseover="this.style.background='rgba(43,87,154,0.10)'" `;
@@ -2015,7 +2112,11 @@ class GrafosView {
                 if (isEdgeList) {
                     self._onSelectSet(graphSource, graph, null, selectedSet, type);
                 } else {
-                    self._onSelectSet(graphSource, graph, selectedSet, null, type);
+                    let setType = type;
+                    if (listId && listId.includes('conn_dominating')) {
+                        setType = 'connected_dominating';
+                    }
+                    self._onSelectSet(graphSource, graph, selectedSet, null, setType);
                 }
             });
         });
@@ -2215,8 +2316,18 @@ class GrafosView {
 
     async _onSave() {
         if (!this.g1.created && !this.g2.created) { Validation.showError('No hay grafos para guardar.'); return; }
+
+        const modeToAlgo = {
+            'operaciones': 'grafos-operaciones',
+            'arboles': 'arboles-grafos',
+            'matrices': 'calculo-matrices',
+            'coloreado': 'coloreado-grafos',
+            'conjuntos': 'conjuntos-dom-indep',
+            'matching': 'matching-grafos'
+        };
+
         const data = {
-            algorithm: 'grafos-operaciones',
+            algorithm: modeToAlgo[this._mode] || 'grafos',
             timestamp: new Date().toISOString(),
             structure: {
                 g1: this.g1.created ? this.g1.toJSON() : null,
@@ -2225,7 +2336,7 @@ class GrafosView {
                 opLogMessages: this.opLogMessages
             }
         };
-        await FileManager.saveJSON(JSON.stringify(data, null, 2), `grafos_${Date.now()}.json`);
+        await FileManager.saveJSON(JSON.stringify(data, null, 2), `grafos_${this._mode}_${Date.now()}.json`);
         this._addUpdateLog('Datos guardados exitosamente.', 'success');
     }
 

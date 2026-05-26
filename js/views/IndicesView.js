@@ -3,11 +3,17 @@
  * @module views/IndicesView
  */
 class IndicesView {
-    constructor(containerEl) {
+    /**
+     * @param {HTMLElement} containerEl - Elemento contenedor.
+     * @param {string} indexType - Tipo fijo de índice: 'primario', 'secundario',
+     *                             'multinivel-primario' o 'multinivel-secundario'.
+     */
+    constructor(containerEl, indexType) {
         this.container = containerEl;
         this.model = new IndicesModel();
         this.elements = {};
-        this._algorithmName = 'ext-indices';
+        this._fixedType = indexType;
+        this._algorithmName = 'idx-' + indexType;
         this._offsetX = 0;
         this._offsetY = 0;
         this._scale = 1;
@@ -16,7 +22,15 @@ class IndicesView {
         this._panStartY = 0;
     }
 
-    show() { this.render('Índices en Archivos'); }
+    show() { 
+        const titles = {
+            'primario':             'Índice Primario (No Denso)',
+            'secundario':           'Índice Secundario (Denso)',
+            'multinivel-primario':  'Índice Multinivel Primario (No Denso)',
+            'multinivel-secundario':'Índice Multinivel Secundario (Denso)'
+        };
+        this.render(titles[this._fixedType] || 'Índices en Archivos'); 
+    }
 
     render(title) {
         this.container.innerHTML = '';
@@ -30,16 +44,6 @@ class IndicesView {
                 <div class="section-title">Configuración de la Estructura</div>
                 <div class="config-panel">
                     <div class="config-fields">
-                        <div class="config-group">
-                            <label for="idx-type">Tipo de Índice</label>
-                            <select id="idx-type">
-                                <option value="">-- Seleccione --</option>
-                                <option value="primario">Índice Primario (No Denso)</option>
-                                <option value="secundario">Índice Secundario (Denso)</option>
-                                <option value="multinivel-primario">Multinivel Primario (No Denso)</option>
-                                <option value="multinivel-secundario">Multinivel Secundario (Denso)</option>
-                            </select>
-                        </div>
                         <div class="config-group">
                             <label for="idx-r">r (Registros)</label>
                             <input type="number" id="idx-r" min="1" placeholder="Ej: 500000">
@@ -86,7 +90,6 @@ class IndicesView {
 
     _cacheElements() {
         this.elements = {
-            indexType: document.getElementById('idx-type'),
             inputR: document.getElementById('idx-r'),
             inputB: document.getElementById('idx-B'),
             inputR2: document.getElementById('idx-R'),
@@ -111,9 +114,6 @@ class IndicesView {
         el.btnSave.addEventListener('click', () => this._onSave());
         el.btnPrint.addEventListener('click', () => FileManager.print());
         el.btnFit.addEventListener('click', () => this._fitToView());
-        el.indexType.addEventListener('change', () => {
-            if (this.model.created) this._onSwitchType();
-        });
         const canvas = el.canvas;
         canvas.addEventListener('mousedown', e => this._onMouseDown(e));
         canvas.addEventListener('mousemove', e => this._onMouseMove(e));
@@ -125,19 +125,6 @@ class IndicesView {
             if (this.model.created) this._drawStructure();
         });
         this._resizeObserver.observe(canvas.parentElement);
-    }
-
-    // ─── Switch type ───────────────────────────────────────────────────────────
-    _onSwitchType() {
-        const newType = this.elements.indexType.value;
-        if (!newType) return;
-        const { r, B, R, Ri } = this.model;
-        this.model.reset();
-        const result = this.model.create(newType, r, B, R, Ri);
-        if (!result.success) { Validation.showError(result.error); return; }
-        this._renderCalcTables();
-        this._resizeCanvas();
-        this._fitToView();
     }
 
     // ─── Pan & Zoom ────────────────────────────────────────────────────────────
@@ -172,7 +159,13 @@ class IndicesView {
     _onCreate() {
         if (this.model.created) { Validation.showWarning('Ya existe una estructura activa. Debe limpiarla antes de crear una nueva.'); return; }
         const el = this.elements;
-        const result = this.model.create(el.indexType.value, parseInt(el.inputR.value), parseInt(el.inputB.value), parseInt(el.inputR2.value), parseInt(el.inputRi.value));
+        const result = this.model.create(
+            this._fixedType,
+            parseInt(el.inputR.value),
+            parseInt(el.inputB.value),
+            parseInt(el.inputR2.value),
+            parseInt(el.inputRi.value)
+        );
         if (!result.success) { Validation.showError(result.error); return; }
         this._afterCreate();
     }
@@ -192,7 +185,6 @@ class IndicesView {
         if (this.model.created) { const ok = await Validation.confirm('Se eliminará la estructura actual. ¿Desea continuar?'); if (!ok) return; }
         this.model.reset();
         const el = this.elements;
-        el.indexType.value = ''; el.indexType.disabled = false;
         el.inputR.value = ''; el.inputR.disabled = false;
         el.inputB.value = ''; el.inputB.disabled = false;
         el.inputR2.value = ''; el.inputR2.disabled = false;
@@ -219,9 +211,12 @@ class IndicesView {
         if (!data) return;
         if (data.algorithm && !FileCompat.areCompatible(data.algorithm, this._algorithmName)) { Validation.showError(`Este archivo fue creado para "${data.algorithm}" y no es compatible con esta vista.`); return; }
         if (!data.structure || !data.structure.indexType) { Validation.showError('El archivo no tiene un formato válido para índices.'); return; }
+        if (data.structure.indexType !== this._fixedType) {
+            Validation.showError(`Este archivo es para un índice de tipo "${data.structure.indexType}" y no es compatible con "${this._fixedType}".`);
+            return;
+        }
         this.model.fromJSON(data.structure);
         const el = this.elements;
-        el.indexType.value = data.structure.indexType;
         el.inputR.value = data.structure.r; el.inputB.value = data.structure.B;
         el.inputR2.value = data.structure.R; el.inputRi.value = data.structure.Ri;
         this._afterCreate();
