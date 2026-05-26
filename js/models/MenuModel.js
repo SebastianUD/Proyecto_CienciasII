@@ -108,7 +108,7 @@ const MenuModel = {
                     { id: 'arboles-grafos', label: 'Árboles como Grafos', action: 'arboles-grafos', enabled: true },
                     { id: 'calculo-matrices', label: 'Cálculo de Matrices', action: 'calculo-matrices', enabled: true },
                     { id: 'coloreado-grafos', label: 'Coloreado de Grafos', action: 'coloreado-grafos', enabled: true },
-                    { id: 'conjuntos-dom-indep', label: 'Conjuntos Dominantes e Independientes', action: 'conjuntos-dom-indep', enabled: true },
+                    { id: 'conjuntos-dom-indep', label: 'Conjuntos Independientes y Dominantes', action: 'conjuntos-dom-indep', enabled: true },
                     { id: 'matching-grafos', label: 'Matching', action: 'matching-grafos', enabled: true },
                     {
                         id: 'algoritmos',

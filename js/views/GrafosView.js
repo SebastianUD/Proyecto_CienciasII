@@ -63,7 +63,7 @@ class GrafosView {
             'arboles': 'Grafos — Árboles como Grafos',
             'matrices': 'Grafos — Cálculo de Matrices',
             'coloreado': 'Grafos — Coloreado de Grafos',
-            'conjuntos': 'Grafos — Conjuntos Dominantes e Independientes',
+            'conjuntos': 'Grafos — Conjuntos Independientes y Dominantes',
             'matching': 'Grafos — Matching'
         };
 
@@ -350,7 +350,7 @@ class GrafosView {
         };
         if (this.el.opTypeSelect) {
             this.el.opTypeSelect.value = modeToOpType2[this._mode] || 'binary';
-            
+
             // Adjust options for 'operaciones' mode
             const opTypeRow = document.getElementById('grafos-op-type-row');
             if (opTypeRow) {
@@ -974,7 +974,7 @@ class GrafosView {
                 const rnResult = TreeGraphModel.rankAndNullity(graph);
                 this._inheritPositions(graph, rnResult.mstGraph);
                 this._inheritPositions(graph, rnResult.complementGraph);
-                
+
                 this.gResult = rnResult.mstGraph;
                 this.el.resultLabel.textContent = 'T — Árbol de Expansión (Ramas)';
                 this._resultHighlightVertices = {};
@@ -997,7 +997,7 @@ class GrafosView {
                 this._fitGraph(this.el.canvasResult2, this.gResult2, this._camR2);
                 this._drawResultCanvas();
                 this._drawGraph(this.el.canvasResult2, this.gResult2, this._camR2, this._result2HighlightVertices, this._result2HighlightEdges);
-                
+
                 this._addUpdateLog(`✔ Rango = ${rnResult.rank} | Nulidad = ${rnResult.nullity}`, 'success');
             } else if (op === 'incidenceAdjacencyMatrix') {
                 const resInc = MatrixGraphModel.computeIncidenceMatrix(graph);
@@ -1765,7 +1765,7 @@ class GrafosView {
 
         try {
             const result = GraphColoringModel.computeDominatingSets(graph);
-            
+
             // Also compute connected dominating sets
             let connResult = null;
             try {
